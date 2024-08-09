@@ -1,6 +1,23 @@
-#ifndef GMC_UTILS_H
-#define GMC_UTILS_H
+#ifndef AMC_UTILS_H
+#define AMC_UTILS_H
 
-#define LENGTH(x) (sizeof((x)) / (sizeof((x)[0])))
+#define LENGTH(x)             (sizeof((x)) / (sizeof((x)[0])))
+#define MAX(a, b)             ((a) > (b) ? (a) : (b))
+#define MIN(a, b)             ((a) < (b) ? (a) : (b))
+#define REGION_INT(val, a, b) ((val) >= (a) && (val) <= (b))
+#define free_cl(ptr)          free((ptr)); (ptr) = NULL
+#define free_safe(ptr)        if ((ptr) != NULL) { free_cl((ptr)); }
+
+/**
+ * @param len: string len
+ * @return:
+ *   1: when all characters were integer.
+ *   0: when had not number character.
+ */
+int checkint(const char *str, int len);
+int ublen(unsigned char src);
+int uslen(unsigned short src);
+int uilen(unsigned int src);
+int ullen(unsigned long long src);
 
 #endif

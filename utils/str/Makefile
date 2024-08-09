@@ -4,8 +4,9 @@ SRC = str.c
 OBJ = $(SRC:.c=.o)
 TARGET = libstr.a
 
-.PHONY: all clean
+.PHONY: all debug clean
 all: $(TARGET)
+debug: $(TARGET)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

@@ -1,5 +1,9 @@
-IndentWidth: 4
-IndentCaseLabels: false
+AlignAfterOpenBracket: Align
+AlignArrayOfStructures: Left
+AlignOperands: AlignAfterOperator
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortFunctionsOnASingleLine: None
+BitFieldColonSpacing: None
 BreakBeforeBraces: Custom
 BraceWrapping:
   AfterFunction: true
@@ -7,5 +11,17 @@ BraceWrapping:
   BeforeWhile: false
   BeforeElse: false
 BreakBeforeBinaryOperators: NonAssignment
-AllowShortFunctionsOnASingleLine: None
+IndentWidth: 8
+IndentCaseLabels: false
 PointerAlignment: Right
+RemoveParentheses: MultipleParentheses
+SpaceAfterCStyleCast: false
+SpaceAfterLogicalNot: false
+SpaceBeforeParens: Custom
+SpaceBeforeParensOptions:
+  AfterControlStatements: true
+  AfterFunctionDefinitionName: false
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceBeforeSquareBrackets: false
+SpaceInEmptyBlock: false
+UseTab: Always

@@ -2,8 +2,8 @@ include ../config.mk
 include config.mk
 
 .PHONY: all clean debug
-all: $(PARSER_OBJ)
-debug: $(PARSER_DEBUG_OBJ)
+all: $(CORE_OBJ)
+debug: $(CORE_DEBUG_OBJ)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -12,4 +12,4 @@ debug: $(PARSER_DEBUG_OBJ)
 	$(CC) $(CFLAGS) $(CDEBUG) -c $< -o $@
 
 clean:
-	rm -f $(PARSER_OBJ) $(PARSER_DEBUG_OBJ)
+	rm -f $(CORE_OBJ) $(CORE_DEBUG_OBJ)

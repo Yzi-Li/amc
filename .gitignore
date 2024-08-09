@@ -1,2 +1,5 @@
 *.o
 *.a
+*.debug.o
+./amc
+amc.debug
