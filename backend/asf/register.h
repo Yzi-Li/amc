@@ -1,6 +1,7 @@
-#ifndef AMC_BE_REGISTER_H
-#define AMC_BE_REGISTER_H
+#ifndef AMC_BE_ASF_REGISTER_H
+#define AMC_BE_ASF_REGISTER_H
 #include "../../include/type.h"
+#include "imm.h"
 
 enum ASF_REG_PURPOSE_TYPE {
 	ASF_REG_PURPOSE_NULL,
@@ -55,14 +56,13 @@ struct asf_reg {
 	enum ASF_REG_PURPOSE_TYPE purpose;
 };
 
-extern struct asf_reg regs[];
+extern struct asf_reg asf_regs[];
 
 static const unsigned int ASF_REG_32_OFFSET = 16;
 static const unsigned int ASF_REG_64_OFFSET = 0;
 
 str *asf_reg_clean(struct asf_reg *reg);
-char *asf_reg_get_chr(struct asf_reg *reg);
 str *asf_reg_get_str(struct asf_reg *reg);
-enum ASF_REGS asf_reg_get(enum YZ_TYPE type);
+enum ASF_REGS asf_reg_get(enum ASF_IMM_TYPE type);
 
 #endif

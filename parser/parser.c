@@ -51,6 +51,5 @@ int parser_init(const char *path, struct file *f)
 		if (ret != -1)
 			file_line_next(f);
 	}
-	backend_end();
-	return 0;
+	return backend_end();
 }

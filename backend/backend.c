@@ -12,6 +12,8 @@ enum FLAG {
 	FLAG_ENDED  = 1 << 2,
 };
 
+extern struct backend backend_asf;
+
 static int flag = 0;
 
 struct backend *backends[] = {

@@ -1,8 +1,9 @@
 #include "register.h"
+#include "imm.h"
 #include "inst.h"
 #include "../../include/backend.h"
 
-struct asf_reg regs[] = {
+struct asf_reg asf_regs[] = {
 	[ASF_REG_RAX] = {"rax", 8, {1, 1, 0}, ASF_REG_PURPOSE_NULL},
 	[ASF_REG_RBX] = {"rbx", 8, {1, 1, 0}, ASF_REG_PURPOSE_NULL},
 	[ASF_REG_RCX] = {"rcx", 8, {1, 1, 0}, ASF_REG_PURPOSE_NULL},
@@ -40,32 +41,28 @@ str *asf_reg_clean(struct asf_reg *reg)
 	return asf_inst_mov(ASF_MOV_I2R, &zero, reg);
 }
 
-char *asf_reg_get_chr(struct asf_reg *reg)
-{
-	char *result = NULL;
-	str *s = asf_reg_get_str(reg);
-	result = s->s;
-	free(s);
-	return result;
-}
-
 str *asf_reg_get_str(struct asf_reg *reg)
 {
 	str *s = str_new();
-	str_expand(s, strlen(reg->name) + 1);
-	snprintf(s->s, s->len, "%%%s", reg->name);
+	str_expand(s, strlen(reg->name) + 2);
+	s->s[0] = '%';
+	memcpy(&s->s[1], reg->name, s->len - 1);
 	return s;
 }
 
-enum ASF_REGS asf_reg_get(enum YZ_TYPE type)
+enum ASF_REGS asf_reg_get(enum ASF_IMM_TYPE type)
 {
-	switch (yz_type_table[type - AM_TYPE_OFFSET].len) {
-	case 1:
-	case 2:
-	case 4:
+	switch (type) {
+	case ASF_IMM8:
+	case ASF_IMMU8:
+	case ASF_IMM16:
+	case ASF_IMMU16:
+	case ASF_IMM32:
+	case ASF_IMMU32:
 		return ASF_REG_EAX;
 		break;
-	case 8:
+	case ASF_IMM64:
+	case ASF_IMMU64:
 		return ASF_REG_RAX;
 		break;
 	default:

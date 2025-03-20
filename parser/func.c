@@ -22,11 +22,6 @@ static int func_call_main(struct file *f, struct symbol *sym,
 		struct symbol *fn);
 static int func_call_read_arg(const char *se, struct file *f, void *data);
 static yz_val *func_call_read_arg_int(str *token);
-/**
- * Not support.
- * @important: Don't call this function.
- */
-static yz_val *func_call_read_arg_str(str *token, struct file *f);
 static yz_val *func_call_read_arg_chr(str *token);
 static yz_val *func_call_read_arg_expr(str *token,
 		struct func_call_handle *handle);
@@ -109,25 +104,6 @@ yz_val *func_call_read_arg_int(str *token)
 err_cannot_parse_err:
 	printf("amc: int parse err.\n");
 	backend_stop(BE_STOP_SIGNAL_ERR);
-	free_safe(result);
-	return NULL;
-}
-
-// TODO: Constant string support(ASCII first, then UTF-8).
-yz_val *func_call_read_arg_str(str *token, struct file *f)
-{
-	int ret = 0;
-	yz_val *result = calloc(1, sizeof(*result));
-	if (token->s[token->len - 1] != '"') {
-		ret = token_jump_to('"', f);
-		if (ret == -1)
-			goto err_free_result;
-		token->len += ret;
-	}
-	token->s = &token->s[1];
-	token->len -= 1;
-	return result;
-err_free_result:
 	free_safe(result);
 	return NULL;
 }
@@ -477,22 +453,31 @@ err_free_result:
 int parse_func_ret(struct file *f, struct symbol *sym, struct symbol *fn)
 {
 	struct expr *expr = NULL;
-	int top = f->src[f->pos] != '(';
 	yz_val *val = NULL;
-	if (!top)
-		file_pos_next(f);
-	if ((expr = parse_expr(f, top)) == NULL)
+	if ((expr = parse_expr(f, 1)) == NULL)
 		return 1;
 	if ((val = expr_apply(expr)) == NULL)
 		goto err_free_expr;
 	if (val->type != fn->result_type) {
-		if (REGION_INT(val->type, YZ_I8, YZ_U64)) {
-			val->type = fn->result_type;
-			return backend_call(func_ret)(val);
-		}
-		goto err_free_expr;
+		if (!REGION_INT(val->type, YZ_I8, YZ_U64))
+			goto err_wrong_type;
+		val->type = fn->result_type;
+		if (backend_call(func_ret)(val))
+			return 1;
+		expr_free(expr);
+		return 0;
 	}
-	return backend_call(func_ret)(val);
+	if (backend_call(func_ret)(val))
+		return 1;
+	expr_free(expr);
+	return 0;
+err_wrong_type:
+	printf("amc: parse_func_ret: Wrong type!\n"
+			"| value type: %d\n"
+			"| func type:  %d\n",
+			val->type,
+			fn->result_type);
+	backend_stop(BE_STOP_SIGNAL_ERR);
 err_free_expr:
 	expr_free(expr);
 	return 1;

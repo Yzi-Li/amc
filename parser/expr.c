@@ -4,6 +4,7 @@
  */
 #include "expr.h"
 #include "../include/backend.h"
+#include "../include/backend/operator.h"
 #include "../include/identifier.h"
 #include "../include/token.h"
 #include "../utils/converter.h"
@@ -13,13 +14,47 @@
 
 static const char *TERM_END = ";) \t\n";
 
+static int parse_assignment_expr(struct expr *e);
+
+// some operator need to be parsed in frontend first
+static const struct expr_operator operators[] = {
+	{"*",   1, OP_MUL       },
+	{"/",   1, OP_DIV       },
+	{"+",   2, OP_ADD       },
+	{"-",   2, OP_SUB       },
+
+	{"==",  3, OP_EQ        },
+	{"!=",  3, OP_NE        },
+	{"<",   3, OP_LT        },
+	{"<=",  3, OP_LE        },
+	{">",   3, OP_GT        },
+	{">=",  3, OP_GE        },
+
+	{"and", 4, OP_AND       },
+	{"or",  4, OP_OR        },
+
+	{"=",   5, OP_ASSIGNMENT},
+	{NULL,  0, OP_NONE      }
+};
+
+static backend_op_cmd_f speical_ops[] = {
+	parse_assignment_expr
+};
+
+static const struct expr_operator unary_ops[] = {
+	{"!",   3, OP_NOT },
+	//{"-",   3, backend_
+	{NULL,  0, OP_NONE}
+};
+
 static int expr_binary(struct file *f, struct expr *e, int top);
 static int expr_check_end(char *endc, struct file *f, str *token, int top);
+static enum YZ_TYPE *expr_get_sum_type(yz_val *l, yz_val *r);
 static int expr_operator(struct file *f, struct expr_operator **op, int top);
 static int expr_sub(struct file *f, struct expr **e, int top);
 static int expr_term(struct file *f, yz_val *v, int top);
 static int expr_term_chr(struct file *f, yz_val *v, int top);
-static int expr_term_expr(struct file *f, yz_val *v);
+static int expr_term_expr(struct file *f, yz_val *v, int top);
 static int expr_term_func(struct file *f, yz_val *v, int top);
 static int expr_term_int(struct file *f, yz_val *v, int top);
 static int expr_unary(str *token, struct expr *e);
@@ -30,6 +65,7 @@ int expr_binary(struct file *f, struct expr *e, int top)
 	if ((ret = expr_term(f, e->vall, top)) > 0)
 		return 1;
 	if (ret == -1) {
+		e->sum_type = &e->vall->type;
 		free_safe(e->valr);
 		return -1;
 	}
@@ -43,6 +79,7 @@ int expr_binary(struct file *f, struct expr *e, int top)
 
 	if ((ret = expr_term(f, e->valr, top)) > 0)
 		return 1;
+	e->sum_type = expr_get_sum_type(e->vall, e->valr);
 	if (ret == -1)
 		return -1;
 	return 0;
@@ -65,7 +102,35 @@ int expr_check_end(char *endc, struct file *f, str *token, int top)
 	}
 	if (f->src[f->pos] == ')' || *endc == ')')
 		return 1;
+	if (f->src[f->pos] == '\n') {
+		file_pos_next(f);
+		file_skip_space(f);
+	}
 	return 0;
+}
+
+enum YZ_TYPE *expr_get_sum_type(yz_val *l, yz_val *r)
+{
+	enum YZ_TYPE *sum_type_left = &l->type,
+	             *sum_type_right = &r->type,
+	             sign_left_type = l->type,
+	             sign_right_type = r->type;
+	if (YZ_IS_UNSIGNED_DIGIT(l->type) && YZ_IS_UNSIGNED_DIGIT(r->type))
+		return MAX(&l->type, &r->type);
+	if (l->type == AMC_EXPR) {
+		sum_type_left = ((struct expr*)l->v)->sum_type;
+		sign_left_type = *sum_type_left;
+	}
+	if (r->type == AMC_EXPR) {
+		sum_type_right = ((struct expr*)r->v)->sum_type;
+		sign_right_type = *sum_type_right;
+	}
+	if (YZ_IS_UNSIGNED_DIGIT(sign_left_type))
+		sign_left_type -= 4;
+	if (YZ_IS_UNSIGNED_DIGIT(sign_right_type))
+		sign_right_type -= 4;
+	return sign_left_type > sign_right_type
+		? sum_type_left : sum_type_right;
 }
 
 int expr_operator(struct file *f, struct expr_operator **op, int top)
@@ -116,12 +181,21 @@ int expr_sub(struct file *f, struct expr **e, int top)
 		// 1 + 2 * 3
 		expr->vall->type = (*e)->valr->type;
 		expr->vall->v = (*e)->valr->v;
-		(*e)->valr->type = AMC_SUB_EXPR;
+		expr->sum_type = expr_get_sum_type(
+				expr->vall,
+				expr->valr);
+		(*e)->valr->type = AMC_EXPR;
 		(*e)->valr->v = expr;
+		(*e)->sum_type = expr_get_sum_type(
+				(*e)->vall,
+				(*e)->valr);
 	} else {
 		// 1 * 2 + 3
-		expr->vall->type = AMC_SUB_EXPR;
+		expr->vall->type = AMC_EXPR;
 		expr->vall->v = *e;
+		expr->sum_type = expr_get_sum_type(
+				expr->vall,
+				expr->valr);
 		*e = expr;
 	}
 	if (end == 0) {
@@ -137,13 +211,12 @@ err_valr_not_found:
 
 int expr_term(struct file *f, yz_val *v, int top)
 {
-	struct symbol *sym = NULL;
 	if (REGION_INT(f->src[f->pos], '0', '9')) {
 		return expr_term_int(f, v, top);
 	} else if (f->src[f->pos] == '\'') {
 		return expr_term_chr(f, v, top);
 	} else if (f->src[f->pos] == '(') {
-		return expr_term_expr(f, v);
+		return expr_term_expr(f, v, top);
 	} else if (f->src[f->pos] == '[') {
 		return expr_term_func(f, v, top);
 	}
@@ -175,12 +248,19 @@ err_char_not_end:
 	return 1;
 }
 
-int expr_term_expr(struct file *f, yz_val *v)
+int expr_term_expr(struct file *f, yz_val *v, int top)
 {
 	file_pos_next(f);
 	file_skip_space(f);
-	v->type = AMC_SUB_EXPR;
+	v->type = AMC_EXPR;
 	v->v = parse_expr(f, 0);
+	if (top) {
+		if (f->src[f->pos] != '\n' && f->src[f->pos] != ';')
+			return 0;
+		file_pos_next(f);
+		file_skip_space(f);
+		return -1;
+	}
 	if (f->src[f->pos] == ')') {
 		file_pos_next(f);
 		file_skip_space(f);
@@ -259,26 +339,26 @@ err_not_num:
 	return 1;
 }
 
-int parse_assignment_expr(yz_val *l, yz_val *r)
+int parse_assignment_expr(struct expr *e)
 {
-	struct symbol *sym = l->v;
+	struct symbol *sym = e->vall->v;
 	struct symbol *tmp = NULL;
 	str token = {.s = (char*)sym->name, .len = sym->name_len};
-	if (r->type == AMC_SYM)
+	if (e->valr->type == AMC_SYM)
 		return 1;
-	if (l->type != AMC_SYM || l->v == NULL)
+	if (e->vall->type != AMC_SYM || e->vall->v == NULL)
 		return 1;
 	if (symbol_find_in_group(&token, 1, &tmp)) {
 		if (!sym->flags.mut)
 			goto err_cannot_reassign_immut;
-		backend_call(var_set)(&token, r);
+		backend_call(var_set)(&token, e->valr);
 		return 0;
 	}
 	if (sym->flags.mut) {
-		backend_call(var_set)(&token, r);
+		backend_call(var_set)(&token, e->valr);
 		sym->parse_function = parse_mut_var;
 	} else {
-		backend_call(var_immut_set)(&token, r);
+		backend_call(var_immut_set)(&token, e->valr);
 		sym->parse_function = parse_immut_var;
 	}
 	symbol_register(sym, 1);
@@ -295,11 +375,11 @@ yz_val *expr_apply(struct expr *e)
 	       *tmp_v  = NULL,
 	       v = {.l = 0, .type = AMC_ERR_TYPE};
 	if (e->op == NULL && e->valr == NULL) {
-		if (e->vall == NULL)
-			goto err_incomplete_expr;
+		if (e->vall->type == AMC_EXPR)
+			return expr_apply(e->vall->v);
 		return e->vall;
 	}
-	if (e->vall->type == AMC_SUB_EXPR) {
+	if (e->vall->type == AMC_EXPR) {
 		tmp_v = expr_apply(e->vall->v);
 		v.type = tmp_v->type;
 		v.l = tmp_v->l;
@@ -307,20 +387,16 @@ yz_val *expr_apply(struct expr *e)
 	} else {
 		result = e->vall;
 	}
-	if (e->valr->type == AMC_SUB_EXPR) {
+	if (e->valr->type == AMC_EXPR) {
 		tmp_v = expr_apply(e->valr->v);
 		if (v.type != tmp_v->type)
 			goto err_wrong_type;
 	} else if (result == NULL) {
 		result = e->valr;
 	}
-	if (backend_call(ops[e->op->id])(e->vall, e->valr))
+	if (backend_call(ops[e->op->id])(e))
 		goto err_backend_call;
 	return result;
-err_incomplete_expr:
-	printf("amc: expr_apply: Expression is incomplete!\n");
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return NULL;
 err_wrong_type:
 	printf("amc: expr_apply: Wrong type!\n"
 			"| Left value type:  \"%d\"\n"
@@ -338,13 +414,13 @@ err_backend_call:
 void expr_free(struct expr *e)
 {
 	if (e->vall != NULL) {
-		if (e->vall->type == AMC_SUB_EXPR)
+		if (e->vall->type == AMC_EXPR)
 			expr_free(e->vall->v);
 		free(e->vall);
 	}
 	free_safe(e->op);
 	if (e->valr != NULL) {
-		if (e->valr->type == AMC_SUB_EXPR)
+		if (e->valr->type == AMC_EXPR)
 			expr_free(e->valr->v);
 		free(e->valr);
 	}

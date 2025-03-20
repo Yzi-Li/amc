@@ -1,5 +1,5 @@
-#ifndef AMC_BE_IMM_H
-#define AMC_BE_IMM_H
+#ifndef AMC_BE_ASF_IMM_H
+#define AMC_BE_ASF_IMM_H
 #include "../../include/type.h"
 #include "../../utils/cint.h"
 #include "../../utils/str/str.h"

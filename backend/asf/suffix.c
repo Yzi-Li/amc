@@ -1,6 +1,6 @@
 #include "suffix.h"
 
-char suffix_get(int bytes)
+char asf_suffix_get(int bytes)
 {
 	switch (bytes) {
 	case 1:

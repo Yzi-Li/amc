@@ -1,6 +1,39 @@
 #include "asf.h"
+#include "stack.h"
 #include "../../include/backend.h"
 #include "../../include/backend/target.h"
+
+struct backend backend_asf = {
+	.end      = asf_end,
+	.file_new = asf_file_new,
+	.init     = asf_init,
+	.stop     = asf_stop,
+
+	.func_call = asf_func_call,
+	.func_def  = asf_func_def,
+	.func_ret  = asf_func_ret,
+
+	.ops = {
+		[OP_ADD] = asf_op_add,
+		[OP_AND] = asf_op_and,
+		[OP_DIV] = asf_op_div,
+		[OP_EQ]  = asf_op_eq,
+		[OP_GE]  = asf_op_ge,
+		[OP_GT]  = asf_op_gt,
+		[OP_LE]  = asf_op_le,
+		[OP_LT]  = asf_op_lt,
+		[OP_MUL] = asf_op_mul,
+		[OP_NE]  = asf_op_ne,
+		[OP_NOT] = asf_op_not,
+		[OP_OR]  = asf_op_or,
+		[OP_SUB] = asf_op_sub,
+
+		[OP_ASSIGNMENT] = asf_op_assignment
+	},
+
+	.var_set       = asf_var_set,
+	.var_immut_set = asf_var_immut_set
+};
 
 int asf_init(int argc, char *argv[])
 {
@@ -22,7 +55,7 @@ int asf_stop(enum BE_STOP_SIGNAL bess)
 		//break;
 	case BE_STOP_SIGNAL_ERR:
 	default:
-		object_free(objs[cur_obj]);
+		objects_free(objs[cur_obj]);
 		break;
 	}
 

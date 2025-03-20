@@ -2,20 +2,22 @@
 #define AMC_TYPE_H
 #include "../utils/cint.h"
 #include "../utils/str/str.h"
-#include "file.h"
+#include "../utils/utils.h"
 
 // TODO: AMC_ERR_TYPE and AMC_USER_TYPE name improvement.
 //       And pointer support.
 enum YZ_TYPE {
-	AMC_ERR_TYPE, AMC_USER_TYPE, AM_NULL, AMC_SUB_EXPR,
-	AMC_SYM,
+	AMC_ERR_TYPE, AMC_USER_TYPE,
+	AMC_SYM, AMC_EXPR,
 	YZ_VOID, YZ_CHAR,
 	YZ_I8, YZ_I16, YZ_I32, YZ_I64,
 	YZ_U8, YZ_U16, YZ_U32, YZ_U64,
 	YZ_PTR // ptr start
 };
 
-static const unsigned int AM_TYPE_OFFSET = 6;
+#define YZ_IS_UNSIGNED_DIGIT(X) (REGION_INT((X), YZ_U8, YZ_U64) ? 1 : 0)
+
+static const unsigned int AM_TYPE_OFFSET = 4;
 
 /**
  * @field type: For builtin type.

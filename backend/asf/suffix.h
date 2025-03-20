@@ -1,6 +1,6 @@
-#ifndef AMC_ASF_SUFFIX_H
-#define AMC_ASF_SUFFIX_H
+#ifndef AMC_BE_ASF_SUFFIX_H
+#define AMC_BE_ASF_SUFFIX_H
 
-char suffix_get(int bytes);
+char asf_suffix_get(int bytes);
 
 #endif

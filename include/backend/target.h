@@ -23,7 +23,7 @@ int object_append(struct object_head *h, struct object_node *n);
  */
 int object_insert(struct object_node *src, struct object_node *n1,
 		struct object_node *n2);
-void object_free(struct object_head *o);
+void objects_free(struct object_head *o);
 int target_write(struct object_head **objs, int len);
 
 #endif
