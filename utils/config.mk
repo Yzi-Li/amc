@@ -1,5 +1,4 @@
 UTILS_SRC =\
-	args.c\
 	converter.c\
 	die.c\
 	utils.c

@@ -16,6 +16,25 @@ enum YZ_TYPE yz_get_int_size(long long l)
 	return AMC_ERR_TYPE;
 }
 
+const char *yz_get_type_name(enum YZ_TYPE type)
+{
+	int index = type - YZ_TYPE_OFFSET;
+	if (type < YZ_TYPE_OFFSET || index > LENGTH(yz_type_table)) {
+		switch (type) {
+		case AMC_SYM:
+			return "AMC_SYM";
+			break;
+		case AMC_EXPR:
+			return "AMC_EXPR";
+			break;
+		default:
+			return "(Cannot get type)";
+		}
+		return NULL;
+	}
+	return yz_type_table[index].name;
+}
+
 enum YZ_TYPE yz_type_get(str *s)
 {
 	for (int i = 0, len = LENGTH(yz_type_table); i < len; i++) {

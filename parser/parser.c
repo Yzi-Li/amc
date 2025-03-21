@@ -8,10 +8,9 @@
 
 struct parser parser_global_conf = {0, 0, 0};
 
-static int parse_line(struct file *f);
+static int parse_line(struct file *f, struct scope *scope);
 
-//TODO parser target
-int parse_line(struct file *f)
+int parse_line(struct file *f, struct scope *scope)
 {
 	str token = TOKEN_NEW;
 	struct symbol *sym = NULL;
@@ -22,11 +21,11 @@ int parse_line(struct file *f)
 		return 0;
 	if (token_next(&token, f))
 		return 1;
-	if (!symbol_find(&token, &sym))
+	if (!keyword_find(&token, &sym))
 		goto err_sym_not_found;
 	if (!sym->flags.toplevel)
 		goto err_not_toplevel;
-	return sym->parse_function(f, sym, NULL);
+	return sym->parse_function(f, sym, scope);
 err_sym_not_found:
 	printf("amc: parser.parse_line: symbol not found from token\n");
 	backend_stop(BE_STOP_SIGNAL_ERR);
@@ -40,13 +39,18 @@ err_not_toplevel:
 int parser_init(const char *path, struct file *f)
 {
 	int ret = 0;
+	struct scope toplevel = {
+		.fn = NULL,
+		.parent = NULL,
+		.sym_groups = {}
+	};
 	if (file_init(path, f))
 		die("amc: file_init: no such file: %s\n", path);
 	if (backend_file_new(f))
 		die("amc: backend_file_new: cannot create new file");
 
 	while (f->src[f->pos] != '\0') {
-		if ((ret = parse_line(f)) > 0)
+		if ((ret = parse_line(f, &toplevel)) > 0)
 			return 1;
 		if (ret != -1)
 			file_line_next(f);

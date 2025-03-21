@@ -3,6 +3,6 @@
 #include "../include/file.h"
 #include "../include/symbol.h"
 
-int parse_block(int indent, struct file *f, struct symbol *fn);
+int parse_block(int indent, struct file *f, struct scope *scope);
 
 #endif

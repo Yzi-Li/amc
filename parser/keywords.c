@@ -19,15 +19,13 @@ static struct symbol keywords[] = {
 	//{"while",  5, parse_while,    {0, 1, 0}},
 };
 
-int keyword_init()
+int keyword_find(str *token, struct symbol **result)
 {
-	struct symbol_group *kws = malloc(sizeof(struct symbol_group));
-	kws->name = "keywords";
-	kws->size = LENGTH(keywords);
-	kws->symbols = malloc(sizeof(struct symbol*) * kws->size);
-	for (int i = 0; i < kws->size; i++) {
-		kws->symbols[i] = &keywords[i];
+	for (int i = 0; i < LENGTH(keywords); i++) {
+		if (strncmp(token->s, keywords[i].name, token->len) == 0) {
+			*result = &keywords[i];
+			return 1;
+		}
 	}
-	symbol_group_register(kws);
 	return 0;
 }

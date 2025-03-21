@@ -2,7 +2,6 @@
 #define AMC_SCOPE_H
 #include "symbol.h"
 
-struct yz_scope {
-};
+void scope_free(struct scope *scope);
 
 #endif

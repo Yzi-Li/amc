@@ -17,7 +17,7 @@ enum YZ_TYPE {
 
 #define YZ_IS_UNSIGNED_DIGIT(X) (REGION_INT((X), YZ_U8, YZ_U64) ? 1 : 0)
 
-static const unsigned int AM_TYPE_OFFSET = 4;
+static const unsigned int YZ_TYPE_OFFSET = 4;
 
 /**
  * @field type: For builtin type.
@@ -42,7 +42,8 @@ typedef struct yz_val {
 	enum YZ_TYPE type;
 } yz_val;
 
-static struct yz_type_group const yz_type_table[] = {
+static const struct yz_type_group yz_type_table[] = {
+	{"void",  YZ_VOID,  0},
 	{"char",  YZ_CHAR,  1},
 	{"i8",    YZ_I8,    1},
 	{"i16",   YZ_I16,   2},
@@ -55,6 +56,7 @@ static struct yz_type_group const yz_type_table[] = {
 };
 
 enum YZ_TYPE yz_get_int_size(long long l);
+const char *yz_get_type_name(enum YZ_TYPE type);
 enum YZ_TYPE yz_type_get(str *s);
 int parse_type(str *token, enum YZ_TYPE *type);
 

@@ -1,11 +1,6 @@
 #include "../include/symbol.h"
 #include <stdlib.h>
 
-static struct symbol_groups {
-	int len;
-	struct symbol_group **groups;
-} *symbol_groups = NULL;
-
 int symbol_args_append(struct symbol *self, enum YZ_TYPE type)
 {
 	self->argc += 1;
@@ -15,23 +10,24 @@ int symbol_args_append(struct symbol *self, enum YZ_TYPE type)
 	return 0;
 }
 
-int symbol_find(str *token, struct symbol **result)
+int symbol_find(str *token, struct symbol **result, struct scope *scope)
 {
-	for (int i = 0; i < symbol_groups->len; i++) {
-		if (symbol_find_in_group(token, i, result))
+	for (int i = 0; i < SYM_GROUPS_SIZE; i++) {
+		if (symbol_find_in_group(token, &scope->sym_groups[i], result))
 			return 1;
 	}
-
+	if (scope->parent != NULL)
+		return symbol_find(token, result, scope->parent);
 	return 0;
 }
 
-int symbol_find_in_group(str *token, int group, struct symbol **result)
+int symbol_find_in_group(str *token, struct symbol_group *group,
+		struct symbol **result)
 {
-	for (int i = 0; i < symbol_groups->groups[group]->size; i++) {
-		if (strncmp(token->s, symbol_groups->groups[group]->symbols[i]->name,
-					token->len)
-				== 0) {
-			*result = symbol_groups->groups[group]->symbols[i];
+	for (int i = 0; i < group->size; i++) {
+		if (strncmp(token->s, group->symbols[i]->name,
+					token->len) == 0) {
+			*result = group->symbols[i];
 			return 1;
 		}
 	}
@@ -39,55 +35,30 @@ int symbol_find_in_group(str *token, int group, struct symbol **result)
 	return 0;
 }
 
-int symbol_group_find(const char *name)
+int symbol_find_in_group_in_scope(str *token, struct symbol **result,
+		struct scope *scope, enum SYMG group_type)
 {
-	for (int i = 0; i < symbol_groups->len; i++) {
-		if (strcmp(name, symbol_groups->groups[i]->name) == 0) {
-			return i;
-		}
-	}
-
-	return -1;
-}
-
-int symbol_group_register(struct symbol_group *group)
-{
-	symbol_groups->len += 1;
-	symbol_groups->groups = realloc(
-			symbol_groups->groups,
-			sizeof(struct symbol_group) * symbol_groups->len);
-	if (symbol_groups == NULL)
+	if (symbol_find_in_group(token, &scope->sym_groups[group_type],
+				result))
 		return 1;
-	symbol_groups->groups[symbol_groups->len - 1] = group;
+	if (scope->parent != NULL)
+		return symbol_find_in_group_in_scope(token, result,
+				scope->parent, group_type);
 	return 0;
 }
 
-int symbol_register(struct symbol *symbol, int group)
+void symbol_group_free(struct symbol_group *group)
 {
-	symbol_groups->groups[group]->size += 1;
-	symbol_groups->groups[group]->symbols =
-		realloc(symbol_groups->groups[group]->symbols,
-				sizeof(struct symbol*) * symbol_groups->groups[group]->size);
-	symbol_groups->groups[group]->symbols[symbol_groups->groups[group]->size - 1] = symbol;
-	return 0;
+	for (int i = 0; i < group->size; i++)
+		free(group->symbols[i]);
+	free(group->symbols);
 }
 
-int symbols_init()
+int symbol_register(struct symbol *symbol, struct symbol_group *group)
 {
-	symbol_groups = malloc(sizeof(*symbol_groups));
-	if (symbol_groups == NULL)
-		return 1;
-	symbol_groups->groups = NULL;
-	symbol_groups->len = 0;
-	struct symbol_group *sym = calloc(1, sizeof(struct symbol_group));
-	struct symbol_group *func = calloc(1, sizeof(struct symbol_group));
-	sym->name = "sym";
-	sym->size = 0;
-	sym->symbols = NULL;
-	func->name = "func";
-	func->size = 0;
-	func->symbols = NULL;
-	symbol_group_register(sym);
-	symbol_group_register(func);
+	group->size += 1;
+	group->symbols = realloc(group->symbols,
+			sizeof(struct symbol*) * group->size);
+	group->symbols[group->size - 1] = symbol;
 	return 0;
 }

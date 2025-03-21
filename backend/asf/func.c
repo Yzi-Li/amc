@@ -5,7 +5,7 @@
 #include "../../include/backend/target.h"
 #include "../../utils/utils.h"
 
-static const enum ASF_REGS asf_func_call_arg_regs[] = {
+static enum ASF_REGS asf_func_call_arg_regs[] = {
 	ASF_REG_RDI,
 	ASF_REG_RSI,
 	ASF_REG_RDX,
@@ -15,42 +15,8 @@ static const enum ASF_REGS asf_func_call_arg_regs[] = {
 };
 static const int asf_func_call_arg_regs_len = LENGTH(asf_func_call_arg_regs);
 
-static int asf_func_call_basic_args(struct object_node *node,
-		yz_val **v, int vlen);
-static int asf_func_call_ext_args(struct object_node *node,
-		yz_val **v, int vlen);
 static int asf_func_ret_imm(yz_val *v, enum ASF_REGS reg);
 static int asf_func_ret_val(yz_val *v);
-
-int asf_func_call_basic_args(struct object_node *node,
-		yz_val **v, int vlen)
-{
-	str *tmp = NULL;
-	for (int i = 0; i < asf_func_call_arg_regs_len; i++) {
-		if (i > vlen)
-			return 1;
-		tmp = asf_inst_mov(ASF_MOV_I2R, v[i],
-				&asf_regs[asf_func_call_arg_regs[i]]);
-		str_append(node->s, tmp->len, tmp->s);
-		str_free(tmp);
-	}
-	return 0;
-}
-
-int asf_func_call_ext_args(struct object_node *node,
-		yz_val **v, int vlen)
-{
-	str *tmp = NULL;
-	struct asf_imm imm = {.type = ASF_IMM_NULL, .iq = 0};
-	for (int i = 0; i < vlen; i++) {
-		imm.type = asf_yz_type2imm(v[i]->type);
-		imm.iq = v[i]->l;
-		tmp = asf_inst_pushi(&imm, ASF_STACK_MODE_LOCAL);
-		str_append(node->s, tmp->len, tmp->s);
-		str_free(tmp);
-	}
-	return 0;
-}
 
 int asf_func_ret_imm(yz_val *v, enum ASF_REGS reg)
 {
@@ -76,8 +42,11 @@ err_free_node:
 
 int asf_func_ret_val(yz_val *v)
 {
-	enum ASF_IMM_TYPE imm_type = asf_yz_type2imm(v->type);
+	enum ASF_IMM_TYPE imm_type;
 	enum ASF_REGS reg = ASF_REG_RAX;
+	if (v->type == AMC_SYM)
+		return 0;
+	imm_type = asf_yz_type2imm(v->type);
 	if (REGION_INT(imm_type, ASF_IMM8, ASF_IMM16)) {
 		imm_type = ASF_IMM32;
 	} else if (REGION_INT(imm_type, ASF_IMMU8, ASF_IMMU16)) {
@@ -96,10 +65,23 @@ int asf_func_ret_val(yz_val *v)
 int asf_func_call(const char *name, yz_val **v, int vlen)
 {
 	struct object_node *node = malloc(sizeof(*node));
+	struct asf_imm imm = {};
+	str *tmp = NULL;
 	node->s = str_new();
 	object_append(objs[ASF_OBJ_TEXT], node);
-	if (asf_func_call_basic_args(node, v, vlen))
-		asf_func_call_ext_args(node, v, vlen);
+	for (int i = 0; i < vlen; i++) {
+		imm.type = asf_yz_type2imm(v[i]->type);
+		imm.iq = v[i]->l;
+		if (i < asf_func_call_arg_regs_len) {
+			tmp = asf_inst_mov(ASF_MOV_I2R, &imm,
+					&asf_func_call_arg_regs[i]);
+		} else {
+			tmp = asf_inst_pushi(&imm, ASF_STACK_MODE_NATIVE);
+		}
+		str_append(node->s, tmp->len, tmp->s);
+		tmp->len = 0;
+		free_safe(tmp->s);
+	}
 	return 0;
 }
 
