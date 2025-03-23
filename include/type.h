@@ -15,7 +15,8 @@ enum YZ_TYPE {
 	YZ_PTR // ptr start
 };
 
-#define YZ_IS_UNSIGNED_DIGIT(X) (REGION_INT((X), YZ_U8, YZ_U64) ? 1 : 0)
+#define YZ_IS_DIGIT(X) (REGION_INT((X), YZ_I8, YZ_U64))
+#define YZ_IS_UNSIGNED_DIGIT(X) (REGION_INT((X), YZ_U8, YZ_U64))
 
 static const unsigned int YZ_TYPE_OFFSET = 4;
 

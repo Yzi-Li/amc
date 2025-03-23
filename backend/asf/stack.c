@@ -5,10 +5,10 @@
 #include <stdio.h>
 #include "../../include/backend/target.h"
 
-enum ASF_STACK_MODE asf_stack_mode = ASF_STACK_MODE_NATIVE;
+enum ASF_STACK_MODE asf_stack_mode = ASF_STACK_MODE_LOCAL;
 struct asf_stack_element *asf_stack_top = NULL;
 
-static const char *temp_pop_local = "%d(%%rsp)";
+static const char *temp_pop_local = "-%d(%%rbp)";
 static const char *temp_pop = "pop%c %%%s\n";
 static const char *temp_push = "push%c %s\n";
 
@@ -25,7 +25,7 @@ int stack_element_append(enum ASF_IMM_TYPE bytes)
 		asf_stack_top = element;
 		asf_stack_top->next = NULL;
 		asf_stack_top->prev = NULL;
-		asf_stack_top->addr = 0;
+		asf_stack_top->addr = bytes;
 		asf_stack_top->bytes = bytes;
 		return 0;
 	}
@@ -84,7 +84,7 @@ str *asf_inst_pop_local()
 	const char *temp_rm_top = "subq $%lld, %%rsp\n";
 	struct object_node *node = malloc(sizeof(*node));
 	node->s = str_new();
-	if (object_append(objs[ASF_OBJ_TEXT], node))
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	int top_bytes_len = ullen(asf_stack_top->bytes);
 	str_expand(node->s, strlen(temp_rm_top) - 4 + top_bytes_len);
@@ -106,11 +106,15 @@ str *asf_inst_push(enum ASF_IMM_TYPE bytes, const char *src,
 	str *s = NULL;
 	if (stack_mode_switch(mode))
 		return NULL;
-	s = str_new();
-	str_expand(s, (strlen(temp_push) - 2) + strlen(src));
-	snprintf(s->s, s->len, temp_push,
-			asf_suffix_get(bytes),
-			src);
+	if (mode == ASF_STACK_MODE_NATIVE) {
+		s = str_new();
+		str_expand(s, strlen(temp_push) - 2 + strlen(src));
+		snprintf(s->s, s->len, temp_push,
+				asf_suffix_get(bytes),
+				src);
+	} else {
+		return NULL;
+	}
 	stack_element_append(bytes);
 	return s;
 }
@@ -122,4 +126,11 @@ str *asf_inst_pushi(struct asf_imm *imm, enum ASF_STACK_MODE mode)
 	s = asf_inst_push(imm->type, tmp->s, mode);
 	str_free(tmp);
 	return s;
+}
+
+str *asf_inst_push_reg(enum ASF_REGS src)
+{
+	if (stack_element_append(asf_regs[src].size))
+		return NULL;
+	return asf_inst_mov(ASF_MOV_R2M, &src, asf_stack_top);
 }

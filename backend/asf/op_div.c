@@ -13,7 +13,7 @@ int div_expr_and_expr(struct object_node *node, struct expr *e)
 {
 	const char *temp = YZ_IS_UNSIGNED_DIGIT(*e->sum_type)
 		? temp_unsigned : temp_signed;
-	enum ASF_REGS divisor_reg = ASF_REG_RDX,
+	enum ASF_REGS divisor_reg = ASF_REG_RCX,
 	              result_reg  = ASF_REG_RAX;
 	str *divisor_reg_str = NULL,
 	    *get_divisor     = NULL,
@@ -40,14 +40,14 @@ int div_expr_and_expr(struct object_node *node, struct expr *e)
 
 int asf_op_div(struct expr *e)
 {
-	enum ASF_REGS divisor_reg = ASF_REG_RDX,
+	enum ASF_REGS divisor_reg = ASF_REG_RCX,
 	              result_reg  = ASF_REG_RAX;
 	str *divisor_reg_str = NULL;
 	struct object_node *node = NULL;
 	const char *temp = temp_signed;
 	node = malloc(sizeof(*node));
 	node->s = str_new();
-	if (object_append(objs[ASF_OBJ_TEXT], node))
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	if (e->vall->type == AMC_EXPR && e->valr->type == AMC_EXPR)
 		return div_expr_and_expr(node, e);
@@ -62,9 +62,9 @@ int asf_op_div(struct expr *e)
 	snprintf(node->s->s, node->s->len, temp,
 			asf_suffix_get(asf_regs[divisor_reg].size),
 			divisor_reg_str->s);
-	asf_regs[divisor_reg].purpose = ASF_REG_PURPOSE_NULL;
+	*asf_regs[divisor_reg].purpose = ASF_REG_PURPOSE_NULL;
 	asf_regs[divisor_reg].flags.used = 0;
-	asf_regs[result_reg].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
+	*asf_regs[result_reg].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
 	asf_regs[result_reg].flags.used = 1;
 	str_free(divisor_reg_str);
 	return 0;

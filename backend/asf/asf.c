@@ -1,4 +1,5 @@
 #include "asf.h"
+#include "register.h"
 #include "stack.h"
 #include "../../include/backend.h"
 #include "../../include/backend/target.h"
@@ -38,7 +39,7 @@ struct backend backend_asf = {
 int asf_init(int argc, char *argv[])
 {
 	objs = malloc(sizeof(void*));
-	return 0;
+	return asf_regs_init();
 }
 
 int asf_file_new(struct file *f)

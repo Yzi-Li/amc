@@ -20,7 +20,8 @@ int sub_expr_and_expr(struct object_node *node, struct expr *e)
 	int inst_sub_len = 0,
 	    prefix_len = 0;
 	subtrahend_reg += asf_reg_get(asf_yz_type2imm(*e->sum_type));
-	get_minuend = asf_inst_pop(&minuend_reg);
+	minuend_reg = asf_reg_get(asf_stack_top->bytes);
+	get_minuend = asf_inst_mov(ASF_MOV_M2R, asf_stack_top, &minuend_reg);
 	get_subtrahend = asf_inst_mov(ASF_MOV_R2R,
 			&minuend_reg, &subtrahend_reg);
 	minuend_str = asf_reg_get_str(&asf_regs[minuend_reg]);
@@ -53,7 +54,7 @@ int asf_op_sub(struct expr *e)
 	    *subtrahend_str = NULL;
 	node = malloc(sizeof(*node));
 	node->s = str_new();
-	if (object_append(objs[ASF_OBJ_TEXT], node))
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	if (e->vall->type == AMC_EXPR && e->valr->type == AMC_EXPR)
 		return sub_expr_and_expr(node, e);

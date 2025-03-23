@@ -58,7 +58,7 @@ int asf_op_add(struct expr *e)
 	str_free(addend);
 	str_free(augend_str);
 	asf_regs[augend_reg].flags.used = 1;
-	asf_regs[augend_reg].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
+	*asf_regs[augend_reg].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
 	return 0;
 err_free_node:
 	str_free(node->s);

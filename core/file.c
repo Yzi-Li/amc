@@ -17,7 +17,7 @@ int file_init(const char *path, struct file *self)
 	if (stream == NULL)
 		return 1;
 	fseek(stream, 0, SEEK_END);
-	self->cur_line = 0;
+	self->cur_line = 1;
 	self->cur_column = 0;
 	self->pos = 0;
 	self->len = ftell(stream);
@@ -42,7 +42,7 @@ int file_line_next(struct file *self)
 int file_pos_next(struct file *self)
 {
 	if (self->src[self->pos] == '\n') {
-		file_line_next(self);
+		return file_line_next(self);
 	} else {
 		self->cur_column += 1;
 	}

@@ -34,7 +34,7 @@ int asf_op_mul(struct expr *e)
 	str *multiplicand_str = NULL;
 	node = malloc(sizeof(*node));
 	node->s = str_new();
-	if (object_append(objs[ASF_OBJ_TEXT], node))
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	if (e->vall->type == AMC_EXPR && e->valr->type == AMC_EXPR)
 		return mul_expr_and_expr(node, e);

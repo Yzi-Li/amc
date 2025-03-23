@@ -6,7 +6,6 @@
 
 #define TOKEN_NEW {.len = 0}
 
-int parse_token(str *token, str *type, struct file *f);
 int token_clean_head_space(str *token);
 int token_clean_tail_space(str *token);
 
@@ -43,14 +42,18 @@ int token_next(str *token, struct file *f);
 
 /**
  * Parse a list from file.
- * @param sse: start, separator, end character.
+ * @param se: separator, end character.
  * @param func:
  *   @important: Handle 'se' parameter in 'func'.
  *   @param se: separator, end character.
  */
-int token_parse_list(const char *sse, void *data, struct file *f,
+int token_parse_list(const char *se, void *data, struct file *f,
 		int (*func)(const char *se, struct file *f, void *data));
 
+/**
+ * Read a token from file.
+ * @return: end character.
+ */
 char *token_read_before(const char *s, str *token, struct file *f);
 
 /**

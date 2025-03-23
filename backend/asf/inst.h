@@ -23,5 +23,7 @@ str *asf_inst_pop_local();
 str *asf_inst_push(enum ASF_IMM_TYPE bytes, const char *src,
 		enum ASF_STACK_MODE mode);
 str *asf_inst_pushi(struct asf_imm *imm, enum ASF_STACK_MODE mode);
+str *asf_inst_push_reg(enum ASF_REGS src);
+str *asf_inst_syscall(int code, int vlen, yz_val **vs);
 
 #endif

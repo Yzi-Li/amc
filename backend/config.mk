@@ -15,7 +15,8 @@ BE_ASF_SRC =\
 	op_sub.c\
 	register.c\
 	stack.c\
-	suffix.c
+	suffix.c\
+	syscall.c
 
 BACKEND_SRC += $(addprefix asf/, $(BE_ASF_SRC))
 

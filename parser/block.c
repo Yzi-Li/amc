@@ -61,7 +61,7 @@ err_not_in_block:
 
 int block_parse_line(int indent, struct file *f, struct scope *scope)
 {
-	int cur_indent = block_get_indent(f);
+	int cur_indent = block_get_indent(f), ret = 0;
 	str tok = TOKEN_NEW;
 	if (cur_indent <= indent)
 		return -1;
@@ -70,7 +70,11 @@ int block_parse_line(int indent, struct file *f, struct scope *scope)
 		return 0;
 	if (f->src[f->pos] == '\n')
 		return file_line_next(f);
-	if (block_line_keyword(&tok, cur_indent, f, scope) == 0)
+	if ((ret = block_line_keyword(&tok, cur_indent, f, scope)) == 0)
+		return 0;
+	if (ret > 0)
+		return 1;
+	if (parse_comment(f))
 		return 0;
 	//if (block_line_expr(&tok, cur_indent, f, fn) == 0)
 	//	return 0;

@@ -47,7 +47,7 @@ int asf_op_eq(struct expr *e)
 	struct object_node *node = NULL;
 	node = malloc(sizeof(*node));
 	node->s = str_new();
-	if (object_append(objs[ASF_OBJ_TEXT], node))
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err;
 	if (asf_op_cmp(node, e->vall, e->valr))
 		goto err;
@@ -63,7 +63,7 @@ int asf_op_ge(struct expr *e)
 	struct object_node *node = NULL;
 	node = malloc(sizeof(*node));
 	node->s = str_new();
-	if (object_append(objs[ASF_OBJ_TEXT], node))
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err;
 	if (asf_op_cmp(node, e->vall, e->valr))
 		goto err;
@@ -79,7 +79,7 @@ int asf_op_gt(struct expr *e)
 	struct object_node *node = NULL;
 	node = malloc(sizeof(*node));
 	node->s = str_new();
-	if (object_append(objs[ASF_OBJ_TEXT], node))
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err;
 	if (asf_op_cmp(node, e->vall, e->valr))
 		goto err;
@@ -95,7 +95,7 @@ int asf_op_le(struct expr *e)
 	struct object_node *node = NULL;
 	node = malloc(sizeof(*node));
 	node->s = str_new();
-	if (object_append(objs[ASF_OBJ_TEXT], node))
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err;
 	if (asf_op_cmp(node, e->vall, e->valr))
 		goto err;
@@ -111,7 +111,7 @@ int asf_op_lt(struct expr *e)
 	struct object_node *node = NULL;
 	node = malloc(sizeof(*node));
 	node->s = str_new();
-	if (object_append(objs[ASF_OBJ_TEXT], node))
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err;
 	if (asf_op_cmp(node, e->vall, e->valr))
 		goto err;
@@ -127,7 +127,7 @@ int asf_op_ne(struct expr *e)
 	struct object_node *node = NULL;
 	node = malloc(sizeof(*node));
 	node->s = str_new();
-	if (object_append(objs[ASF_OBJ_TEXT], node))
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err;
 	if (asf_op_cmp(node, e->vall, e->valr))
 		goto err;

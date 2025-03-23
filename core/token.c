@@ -1,29 +1,6 @@
 #include "../include/token.h"
 #include "../utils/die.h"
 
-int parse_token(str *token, str *type, struct file *f)
-{
-	if (token->s[0] == '@') {
-		die("amc: unsupport syntax!");
-	}
-
-	if (token->s[token->len - 1] == ':') {
-		token->len -= 1;
-		return 0;
-	}
-
-	for (int i = 0; i < token->len; i++) {
-		if (token->s[i] != ':')
-			continue;
-		type->s = &token->s[i + 1];
-		type->len = token->len - i - 1;
-		token->len = i;
-		return 0;
-	}
-
-	return 0;
-}
-
 int token_clean_head_space(str *token)
 {
 	int i = 0;
@@ -131,16 +108,14 @@ int token_next(str *token, struct file *f)
 	return 0;
 }
 
-int token_parse_list(const char *sse, void *data, struct file *f,
+int token_parse_list(const char *se, void *data, struct file *f,
 		int (*func)(const char *se, struct file *f, void *data))
 {
 	int ret = 0;
-	if (f->src[f->pos] == sse[0])
-		file_pos_next(f);
-	while ((ret = func(&sse[1], f, data)) != -1) {
+	while ((ret = func(se, f, data)) != -1) {
 		if (ret > 0)
 			return ret;
-		if (f->src[f->pos] == sse[2])
+		if (f->src[f->pos] == se[1])
 			return 0;
 	}
 	return 0;
@@ -157,8 +132,6 @@ char *token_read_before(const char *s, str *token, struct file *f)
 			return NULL;
 	}
 	token_clean_tail_space(token);
-	file_pos_next(f);
-	file_skip_space(f);
 	return endc;
 }
 

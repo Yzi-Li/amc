@@ -26,6 +26,10 @@ struct symbol {
 			struct scope *scope);
 	struct symbol_flag flags;
 
+/**
+ * if args == NULL and argc == 1 =>
+ *   symbol is identifier.
+ */
 	u8 argc;
 	enum YZ_TYPE result_type;
 	enum YZ_TYPE *args;

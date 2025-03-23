@@ -25,12 +25,6 @@ struct func_call_handle {
 static int func_call_main(struct file *f, struct symbol *sym,
 		struct scope *scope);
 static int func_call_read_arg(const char *se, struct file *f, void *data);
-static yz_val *func_call_read_arg_int(str *token);
-static yz_val *func_call_read_arg_chr(str *token);
-static yz_val *func_call_read_arg_expr(str *token,
-		struct func_call_handle *handle);
-static enum YZ_TYPE func_call_read_arg_func(str *token,
-		struct func_call_handle *handle);
 static yz_val **func_call_read_args(struct file *f, struct symbol *fn,
 		struct scope *scope);
 static int func_def_block_start(struct file *f);
@@ -53,169 +47,63 @@ int func_call_main(struct file *f, struct symbol *sym, struct scope *scope)
 
 int func_call_read_arg(const char *se, struct file *f, void *data)
 {
-	char *end = NULL;
+	struct expr *expr = NULL;
 	struct func_call_handle *handle = data;
 	yz_val *result = NULL;
-	str token = TOKEN_NEW;
+	int ret = 0;
 	enum YZ_TYPE type = AMC_ERR_TYPE;
 	if (handle->index > handle->fn->argc)
-		goto err_too_many_params;
-	if (token_next(&token, f))
-		return 1;
-	if ((end = strchr(se, token.s[token.len - 1])) != NULL)
-		token.len -= 1;
-
-	if (REGION_INT(token.s[0], '0', '9')) {
-		result = func_call_read_arg_int(&token);
-		if (result == NULL)
-			return 1;
-		type = handle->fn->args[handle->index];
-	} else if (token.s[0] == '\'') {
-		result = func_call_read_arg_chr(&token);
-		if (result == NULL)
-			return 1;
-		type = result->type;
-	} else if (token.s[0] == '(') {
-		result = func_call_read_arg_expr(&token, handle);
-		if (result == NULL)
-			return 1;
-		type = result->type;
-	} else if (token.s[0] == '[') {
-		type = func_call_read_arg_func(&token, handle);
+		goto err_too_many_args;
+	if ((expr = parse_expr(f, 1, handle->scope)) == NULL)
+		goto err_cannot_parse_arg;
+	if ((ret = expr_apply(expr)) > 0)
+		goto err_cannot_parse_arg;
+	if (ret == -1) {
+		result = expr->vall;
+		free_safe(expr->op);
+		free_safe(expr->valr);
+		free_safe(expr);
+		if (result->type == AMC_EXPR) {
+			type = *((struct expr*)result->v)->sum_type;
+		} else if (result->type == AMC_SYM) {
+			type = ((struct symbol*)result->v)->result_type;
+		} else {
+			type = result->type;
+		}
 	} else {
-		return 1;
+		result = malloc(sizeof(*result));
+		result->type = AMC_EXPR;
+		result->v = expr;
+		type = *((struct expr*)result->v)->sum_type;
 	}
-
-	if (type != handle->fn->args[handle->index])
-		return 1;
+	if (type != handle->fn->args[handle->index]
+			&& result->type != AMC_EXPR) {
+		if (!YZ_IS_DIGIT(handle->fn->args[handle->index])
+				|| !REGION_INT(type, YZ_I8, YZ_U64))
+			goto err_wrong_arg_type;
+		result->type = handle->fn->args[handle->index];
+	}
 	handle->vals[handle->index] = result;
 	handle->index += 1;
-	if (end != NULL && *end == se[1])
-		return -1;
 	return 0;
-err_too_many_params:
-	printf("amc: func_call_read_arg: Too many parameters.");
+err_too_many_args:
+	printf("amc: func_call_read_arg: Too many parameters.\n"
+			"| In l:%lld,c:%lld\n",
+			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
-}
-
-yz_val *func_call_read_arg_int(str *token)
-{
-	char *err_msg = NULL;
-	yz_val *result = calloc(1, sizeof(*result));
-	if (str2int(token, &result->l))
-		goto err_not_num;
-	result->type = yz_get_int_size(result->l);
-	return result;
-err_not_num:
-	err_msg = err_msg_get(token->s, token->len);
-	printf("amc: func_call_read_arg_int: Token: \"%s\" is not number!\n",
-			err_msg);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	free(err_msg);
-	free_safe(result);
-	return NULL;
-}
-
-yz_val *func_call_read_arg_chr(str *token)
-{
-	yz_val *result = NULL;
-	token->s = &token->s[1];
-	token->len -= 2;
-	if (token->s[token->len] != '\'')
-		goto err_char_not_end;
-	result = calloc(1, sizeof(*result));
-	if (token->s[0] == '\\') {
-		if (token->len > 2)
-			goto err_unsupport_esacpe_char;
-		return result;
-	} else if (token->len != 1) {
-		goto err_not_ascii_char;
-	}
-	result->b = token->s[0];
-	result->type = YZ_CHAR;
-	return result;
-err_char_not_end:
-	printf("amc: func_call_read_arg_chr: Character not end!\n");
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return NULL;
-err_unsupport_esacpe_char:
-	printf("amc: func_call_read_arg_chr: Unsupport esacpe character.\n");
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	goto err_free_result;
-err_not_ascii_char:
-	printf("amc: func_call_read_arg_chr: Not ASCII character!\n");
-	backend_stop(BE_STOP_SIGNAL_ERR);
-err_free_result:
-	free_safe(result);
-	return NULL;
-}
-
-yz_val *func_call_read_arg_expr(str *token,
-		struct func_call_handle *handle)
-{
-	int ret = 0;
-	yz_val *result = calloc(1, sizeof(*result));
-	if (token->s[0] == '(') {
-		token->s = &token->s[1];
-		token->len -= 1;
-	}
-	if (token->s[token->len - 1] != ')') {
-		ret = token_jump_to(')', handle->f);
-		if (ret == -1)
-			goto err_free_result;
-		token->len += ret;
-	}
-	//ret = parse_expr();
-	return result;
-err_free_result:
-	free_safe(result);
-	return NULL;
-}
-
-enum YZ_TYPE func_call_read_arg_func(str *token,
-		struct func_call_handle *handle)
-{
-	struct symbol *callee = NULL;
-	char *err_msg;
-	token->s = &token->s[1];
-	token->len -= 1;
-	if (!symbol_find_in_group_in_scope(token, &callee,
-				handle->scope, SYMG_FUNC))
-		goto err_func_not_found;
-	if (!callee->flags.in_block)
-		goto err_not_in_block;
-	if (callee->parse_function(handle->f, callee, handle->scope))
-		goto err_call;
-	return callee->result_type;
-err_func_not_found:
-	err_msg = err_msg_get(token->s, token->len);
-	printf("amc: func_call_read_arg_func: Function not found!\n"
-			"| Token: \"%s\""
-			"|         ^\n"
+err_cannot_parse_arg:
+	printf("amc: func_call_read_arg: Cannot parse argument.\n"
 			"| In l:%lld,c:%lld\n",
-			err_msg,
-			handle->f->cur_line,
-			handle->f->cur_column);
-	free(err_msg);
+			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
-	return AMC_ERR_TYPE;
-err_not_in_block:
-	err_msg = err_msg_get(token->s, token->len);
-	printf("amc: func_call_read_arg_func: Function cannot be called in block!\n"
-			"| Token: \"%s\""
-			"|         ^\n"
-			"| In l:%lld,c:%lld",
-			err_msg,
-			handle->f->cur_line,
-			handle->f->cur_column);
-	free(err_msg);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return AMC_ERR_TYPE;
-err_call:
-	printf("amc: func_call_read_arg_func: Function cannot be called!\n");
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return AMC_ERR_TYPE;
+	return 1;
+err_wrong_arg_type:
+	printf("amc: func_call_read_arg: Wrong argument type: \"%s\"\n"
+			"| In l:%lld,c:%lld\n",
+			yz_get_type_name(type),
+			f->cur_line, f->cur_column);
+	return 1;
 }
 
 yz_val **func_call_read_args(struct file *f, struct symbol *fn,
@@ -228,7 +116,7 @@ yz_val **func_call_read_args(struct file *f, struct symbol *fn,
 	handle->index = 0;
 	handle->scope = scope;
 	handle->vals = result;
-	if (token_parse_list("[,]", handle, f, func_call_read_arg))
+	if (token_parse_list(",]", handle, f, func_call_read_arg))
 		goto err_free_result;
 	free_safe(handle);
 	return result;
@@ -310,6 +198,8 @@ int func_def_read_arg(const char *se, struct file *f, void *data)
 	    type_tok = TOKEN_NEW;
 	if ((end = token_read_before(se, &token, f)) == NULL)
 		return 1;
+	file_pos_next(f);
+	file_skip_space(f);
 	if (token_type_get(&token, &type_tok))
 		return 1;
 	if (func_def_reg_arg(&token, &type_tok, (struct scope*)data))
@@ -321,7 +211,9 @@ int func_def_read_arg(const char *se, struct file *f, void *data)
 
 int func_def_read_args(struct file *f, struct symbol *fn, struct scope *scope)
 {
-	if (token_parse_list("(,)", scope, f, func_def_read_arg))
+	if (f->src[f->pos] == '(')
+		file_pos_next(f);
+	if (token_parse_list(",)", scope, f, func_def_read_arg))
 		goto err_args_cannot_parse;
 	return 0;
 err_args_cannot_parse:
@@ -479,27 +371,28 @@ err_free_result:
 int parse_func_ret(struct file *f, struct symbol *sym, struct scope *scope)
 {
 	struct expr *expr = NULL;
-	yz_val *val = NULL;
+	int is_main = 0, ret = 0;
+	yz_val val = {};
 	if ((expr = parse_expr(f, 1, scope)) == NULL)
 		return 1;
-	if ((val = expr_apply(expr)) == NULL)
+	if ((ret = expr_apply(expr)) > 0)
 		goto err_free_expr;
-	if (val->type != AMC_SYM && val->type != scope->fn->result_type) {
-		if (!REGION_INT(val->type, YZ_I8, YZ_U64))
-			goto err_wrong_type;
-		val->type = scope->fn->result_type;
+	is_main = (scope->fn->name_len == 4
+			&& strncmp(scope->fn->name, "main", 4) == 0);
+	val.type = expr->vall->type;
+	val.l = expr->vall->l;
+	if (*expr->sum_type != scope->fn->result_type
+			&& REGION_INT(*expr->sum_type, YZ_I8, YZ_U64)) {
+		val.type = scope->fn->result_type;
 	}
-	if (backend_call(func_ret)(val))
+	if (ret == 0) {
+		val.type = AMC_EXPR;
+		val.v = expr;
+	}
+	if (backend_call(func_ret)(&val, is_main))
 		return 1;
 	expr_free(expr);
 	return 0;
-err_wrong_type:
-	printf("amc: parse_func_ret: Wrong type!\n"
-			"| Value type: \"%s\"\n"
-			"| Func type:  \"%s\"\n",
-			yz_get_type_name(val->type),
-			yz_get_type_name(scope->fn->result_type));
-	backend_stop(BE_STOP_SIGNAL_ERR);
 err_free_expr:
 	expr_free(expr);
 	return 1;

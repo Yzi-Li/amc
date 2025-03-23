@@ -10,26 +10,26 @@
 #include "../utils/utils.h"
 #include <string.h>
 
-static const char *TERM_END = ";) \t\n";
+static const char *TERM_END = ";),] \t\n";
 
 // some operator need to be parsed in frontend first
 static const struct expr_operator operators[] = {
-	{"*",   1, OP_MUL       },
-	{"/",   1, OP_DIV       },
-	{"+",   2, OP_ADD       },
-	{"-",   2, OP_SUB       },
+	{"*",   1, OP_MUL  },
+	{"/",   1, OP_DIV  },
+	{"+",   2, OP_ADD  },
+	{"-",   2, OP_SUB  },
 
-	{"==",  3, OP_EQ        },
-	{"!=",  3, OP_NE        },
-	{"<",   3, OP_LT        },
-	{"<=",  3, OP_LE        },
-	{">",   3, OP_GT        },
-	{">=",  3, OP_GE        },
+	{"==",  3, OP_EQ   },
+	{"!=",  3, OP_NE   },
+	{"<",   3, OP_LT   },
+	{"<=",  3, OP_LE   },
+	{">",   3, OP_GT   },
+	{">=",  3, OP_GE   },
 
-	{"and", 4, OP_AND       },
-	{"or",  4, OP_OR        },
+	{"and", 4, OP_AND  },
+	{"or",  4, OP_OR   },
 
-	{NULL,  0, OP_NONE      }
+	{NULL,  0, OP_NONE }
 };
 
 static int expr_binary(struct file *f, struct expr *e, int top,
@@ -37,6 +37,7 @@ static int expr_binary(struct file *f, struct expr *e, int top,
 static int expr_check_end(char *endc, struct file *f, str *token, int top);
 static enum YZ_TYPE *expr_get_sum_type(yz_val *l, yz_val *r);
 static int expr_operator(struct file *f, struct expr_operator **op, int top);
+static int expr_read_token(struct file *f, str *token, int top);
 static int expr_sub(struct file *f, struct expr **e, int top,
 		struct scope *scope);
 static int expr_term(struct file *f, yz_val *v, int top, struct scope *scope);
@@ -72,7 +73,9 @@ int expr_binary(struct file *f, struct expr *e, int top, struct scope *scope)
 		return -1;
 	return 0;
 err_valr_not_found:
-	printf("amc: expr_binary: Value right not found!\n");
+	printf("amc: expr_binary: Value right not found!\n"
+			"| In l:%lld,c:%lld\n",
+			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
@@ -82,18 +85,15 @@ int expr_check_end(char *endc, struct file *f, str *token, int top)
 	if (token->len <= 0)
 		return 2;
 	if (top) {
-		if (f->src[f->pos] == '\n')
-			return 1;
-		if (f->src[f->pos] == ';')
+		if (f->src[f->pos] == '\n'
+				|| f->src[f->pos] == ';'
+				|| f->src[f->pos] == ','
+				|| f->src[f->pos] == ']')
 			return 1;
 		return 0;
 	}
 	if (f->src[f->pos] == ')' || *endc == ')')
 		return 1;
-	if (f->src[f->pos] == '\n') {
-		file_pos_next(f);
-		file_skip_space(f);
-	}
 	return 0;
 }
 
@@ -126,8 +126,7 @@ int expr_operator(struct file *f, struct expr_operator **op, int top)
 	int end = 0;
 	str *tmp = str_new(),
 	    token = TOKEN_NEW;
-	if ((end = expr_check_end(token_read_before(TERM_END, &token, f),
-					f, &token, top)) == 2)
+	if ((end = expr_read_token(f, &token, top)) == 2)
 		goto err_eoe;
 	str_append(tmp, token.len, token.s);
 	str_append(tmp, 1, "\0");
@@ -143,9 +142,30 @@ int expr_operator(struct file *f, struct expr_operator **op, int top)
 	return 1;
 err_eoe:
 	str_free(tmp);
-	printf("amc: expr_operator: End of expression!\n");
+	printf("amc: expr_operator: End of expression!\n"
+			"| In l:%lld,c:%lld\n",
+			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
+}
+
+int expr_read_token(struct file *f, str *token, int top)
+{
+	int end = expr_check_end(token_read_before(TERM_END, token, f),
+					f, token, top);
+	if (end == 2)
+		goto err_empty_token;
+	if (f->src[f->pos] == ']' || f->src[f->pos] == ',')
+		return end;
+	file_pos_next(f);
+	file_skip_space(f);
+	return end;
+err_empty_token:
+	printf("amc: expr_read_token: Empty token\n"
+			"| In l:%lld,c:%lld\n",
+			f->cur_line, f->cur_column);
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 2;
 }
 
 int expr_sub(struct file *f, struct expr **e, int top, struct scope *scope)
@@ -210,8 +230,7 @@ int expr_term_chr(struct file *f, yz_val *v, int top)
 {
 	int end = 0;
 	str token = TOKEN_NEW;
-	if ((end = expr_check_end(token_read_before(TERM_END, &token, f),
-					f, &token, top)) == 2)
+	if ((end = expr_read_token(f, &token, top)) == 2)
 		goto err_eoe;
 	token.s = &token.s[1];
 	token.len -= 2;
@@ -255,12 +274,11 @@ int expr_term_expr(struct file *f, yz_val *v, int top, struct scope *scope)
 int expr_term_func(struct file *f, yz_val *v, int top, struct scope *scope)
 {
 	struct symbol *callee = NULL;
-	int end = 0;
+	int end = 0, ret = 0;
 	char *err_msg;
 	str token = TOKEN_NEW;
-	if ((end = expr_check_end(token_read_before(TERM_END, &token, f),
-					f, &token, top)) == 2)
-		goto err_eoe;
+	if ((end = expr_read_token(f, &token, top)) == 2)
+		return 1;
 	token.s = &token.s[1];
 	token.len -= 1;
 	if (!symbol_find_in_group_in_scope(&token, &callee, scope, SYMG_FUNC))
@@ -269,19 +287,17 @@ int expr_term_func(struct file *f, yz_val *v, int top, struct scope *scope)
 		goto err_func_not_in_block;
 	v->type = AMC_SYM;
 	v->v = callee;
-	if (callee->parse_function(f, callee, NULL) == 0)
+	if ((ret = callee->parse_function(f, callee, scope)) == 0)
 		return -1;
+	if (ret > 0)
+		return 1;
 	return end == 1 ? -1 : 0;
-err_eoe:
-	printf("amc: expr_term_func: End of expression!\n");
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
 err_func_not_found:
 	err_msg = err_msg_get(token.s, token.len);
 	printf("amc: expr_term_func: Function not found!\n"
 			"| Token: \"%s\"\n"
 			"|         ^\n"
-			"| In: l:%lld,c:%lld\n",
+			"| In l:%lld,c:%lld\n",
 			err_msg,
 			f->cur_line,
 			f->cur_column);
@@ -292,7 +308,7 @@ err_func_not_in_block:
 	printf("amc: expr_term_func: Function cannot be called in block!\n"
 			"| Token: \"%s\"\n"
 			"|         ^\n"
-			"| In: l:%lld,c:%lld\n",
+			"| In l:%lld,c:%lld\n",
 			err_msg,
 			f->cur_line,
 			f->cur_column);
@@ -305,8 +321,7 @@ int expr_term_int(struct file *f, yz_val *v, int top)
 	int end = 0;
 	char *err_msg;
 	str token = TOKEN_NEW;
-	if ((end = expr_check_end(token_read_before(TERM_END, &token, f),
-					f, &token, top)) == 2)
+	if ((end = expr_read_token(f, &token, top)) == 2)
 		goto err_eoe;
 	if (str2int(&token, &v->l))
 		goto err_not_num;
@@ -324,43 +339,30 @@ err_not_num:
 	return 1;
 }
 
-yz_val *expr_apply(struct expr *e)
+int expr_apply(struct expr *e)
 {
-	yz_val *result = NULL;
-	enum YZ_TYPE type = AMC_ERR_TYPE;
 	if (e->op == NULL && e->valr == NULL) {
 		if (e->vall->type == AMC_EXPR)
 			return expr_apply(e->vall->v);
-		return e->vall;
+		free_safe(e->op);
+		free_safe(e->valr);
+		return -1;
 	}
 	if (e->vall->type == AMC_EXPR) {
-		result = expr_apply(e->vall->v);
-		type = result->type;
-	} else {
-		result = e->vall;
+		if (expr_apply(e->vall->v))
+			return 1;
 	}
 	if (e->valr->type == AMC_EXPR) {
-		result = expr_apply(e->valr->v);
-		if (type != result->type)
-			goto err_wrong_type;
-	} else if (result == NULL) {
-		result = e->valr;
+		if (expr_apply(e->valr->v))
+			return 1;
 	}
 	if (backend_call(ops[e->op->id])(e))
 		goto err_backend_call;
-	return result;
-err_wrong_type:
-	printf("amc: expr_apply: Wrong type!\n"
-			"| Left value type:  \"%s\"\n"
-			"| Right value type: \"%s\"\n",
-			yz_get_type_name(e->vall->type),
-			yz_get_type_name(e->valr->type));
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return NULL;
+	return 0;
 err_backend_call:
 	printf("amc: expr_apply: Backend call faulted!\n");
 	backend_stop(BE_STOP_SIGNAL_ERR);
-	return NULL;
+	return 1;
 }
 
 void expr_free(struct expr *e)

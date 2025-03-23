@@ -15,7 +15,7 @@ int asf_stop(enum BE_STOP_SIGNAL bess);
 
 int asf_func_call(const char *name, yz_val **v, int vlen);
 int asf_func_def(const char *name, int len, enum YZ_TYPE type);
-int asf_func_ret(yz_val *v);
+int asf_func_ret(yz_val *v, int is_main);
 int asf_op_add(struct expr *e);
 int asf_op_div(struct expr *e);
 int asf_op_mul(struct expr *e);

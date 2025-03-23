@@ -3,17 +3,16 @@
 #include "op.h"
 #include "../../include/expr.h"
 
-int asf_op_save_reg(struct object_node *parent, struct asf_reg *reg)
+int asf_op_save_reg(struct object_node *parent, enum ASF_REGS reg)
 {
 	struct object_node *node = malloc(sizeof(*node));
 	str *reg_str = NULL;
 	if (object_insert(node, parent->prev, parent))
 		goto err_free_node;
-	reg_str = asf_reg_get_str(reg);
-	node->s = asf_inst_push(reg->size, reg_str->s,
-			ASF_STACK_MODE_NATIVE);
-	reg->purpose = ASF_REG_PURPOSE_NULL;
-	reg->flags.used = 0;
+	reg_str = asf_reg_get_str(&asf_regs[reg]);
+	node->s = asf_inst_push_reg(reg);
+	*asf_regs[reg].purpose = ASF_REG_PURPOSE_NULL;
+	asf_regs[reg].flags.used = 0;
 	str_free(reg_str);
 	return 0;
 err_free_node:
@@ -30,7 +29,7 @@ int asf_op_save_val(struct object_node *parent, yz_val *v, enum ASF_REGS r)
 	imm.type = asf_yz_type2imm(v->type);
 	imm.iq = v->l;
 	node->s = asf_inst_mov(ASF_MOV_I2R, &imm, &r);
-	asf_regs[r].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
+	*asf_regs[r].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
 	asf_regs[r].flags.used = 1;
 	return 0;
 err_free_node:
@@ -52,7 +51,7 @@ int asf_op_try_save_val(struct object_node *parent, yz_val *src,
 	}
 	*dest = *dest + asf_reg_get(asf_yz_type2imm(src->type));
 	if (asf_regs[*dest].flags.used)
-		if (asf_op_save_reg(parent, &asf_regs[*dest]))
+		if (asf_op_save_reg(parent, *dest))
 			return 1;
 	if (asf_op_save_val(parent, src, *dest))
 		return 1;
