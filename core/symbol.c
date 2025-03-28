@@ -25,6 +25,8 @@ int symbol_find_in_group(str *token, struct symbol_group *group,
 		struct symbol **result)
 {
 	for (int i = 0; i < group->size; i++) {
+		if (token->len != group->symbols[i]->name_len)
+			continue;
 		if (strncmp(token->s, group->symbols[i]->name,
 					token->len) == 0) {
 			*result = group->symbols[i];

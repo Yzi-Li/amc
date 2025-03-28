@@ -29,7 +29,7 @@ static yz_val **func_call_read_args(struct file *f, struct symbol *fn,
 		struct scope *scope);
 static int func_def_block_start(struct file *f);
 static int func_def_check_main(const char *name, int len);
-static int func_def_main(struct file *f, struct scope *scope);
+static int func_def_main(struct file *f, struct scope *fn_scope);
 static int func_def_read_arg(const char *se, struct file *f, void *data);
 static int func_def_read_args(struct file *f, struct symbol *fn,
 		struct scope *scope);
@@ -173,21 +173,21 @@ int func_def_check_main(const char *name, int len)
 	return 0;
 }
 
-int func_def_main(struct file *f, struct scope *scope)
+int func_def_main(struct file *f, struct scope *fn_scope)
 {
-	scope->fn->result_type = YZ_I8;
+	fn_scope->fn->result_type = YZ_I8;
 	parser_global_conf.has_main = 1;
-	while (f->src[f->pos] != '=') {
+	while (f->src[f->pos] != '=')
 		file_pos_next(f);
-	}
 	if (backend_call(func_def)("_start", 7, YZ_VOID))
 		goto err_free_fn;
-	scope->fn->parse_function = func_call_main;
-	if (symbol_register(scope->fn, &scope->sym_groups[SYMG_FUNC]))
+	fn_scope->fn->parse_function = func_call_main;
+	if (symbol_register(fn_scope->fn,
+				&fn_scope->parent->sym_groups[SYMG_FUNC]))
 		goto err_free_fn;
-	return func_def_read_block(f, scope);
+	return func_def_read_block(f, fn_scope);
 err_free_fn:
-	free_safe(scope->fn);
+	free_safe(fn_scope->fn);
 	return 1;
 }
 

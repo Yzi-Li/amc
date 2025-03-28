@@ -8,9 +8,8 @@
 #include <stdio.h>
 
 static int block_get_indent(struct file *f);
-static int block_line_expr(str *tok, int indent, struct file *f,
-		struct scope *scope);
-static int block_line_keyword(str *tok, int indent, struct file *f,
+static int block_parse_expr(int indent, struct file *f, struct scope *scope);
+static int block_parse_keyword(int indent, struct file *f,
 		struct scope *scope);
 static int block_parse_line(int indent, struct file *f, struct scope *scope);
 
@@ -24,37 +23,34 @@ int block_get_indent(struct file *f)
 	return i;
 }
 
-int block_line_expr(str *tok, int indent, struct file *f, struct scope *scope)
+int block_parse_expr(int indent, struct file *f, struct scope *scope)
 {
 	struct expr *expr = NULL;
-	char *tok_start = tok->s;
-	int top = tok->s[0] == '(';
-	if (top) {
-		tok->s = tok_start;
-	} else {
-		tok->s = &tok_start[1];
-		tok->len -= 2;
-	}
-	//expr = parse_expr_token(f, 0);
-	expr_apply(expr);
+	str token = TOKEN_NEW;
+	if ((expr = parse_expr(f, 1, scope)) == NULL)
+		goto err_cannot_parse_expr;
 	return 0;
+err_cannot_parse_expr:
+	printf("amc: block_parse_expr: Cannot parse expression!\n"
+			"| In l:%lld,c:%lld\n",
+			f->cur_line, f->cur_column);
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 1;
 }
 
-int block_line_keyword(str *tok, int indent, struct file *f,
-		struct scope *scope)
+int block_parse_keyword(int indent, struct file *f, struct scope *scope)
 {
 	struct symbol *sym = NULL;
-	if (token_next(tok, f))
+	str token = TOKEN_NEW;
+	if (token_next(&token, f))
 		return 1;
-	if (tok->s[0] == '(')
-		return -1;
-	if (!keyword_find(tok, &sym))
+	if (!keyword_find(&token, &sym))
 		return -1;
 	if (!sym->flags.in_block)
 		goto err_not_in_block;
 	return sym->parse_function(f, sym, scope);
 err_not_in_block:
-	printf("amc: block_line_keyword: Symbol unsupport used in block!\n");
+	printf("amc: block_parse_keyword: Symbol unsupport used in block!\n");
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
@@ -62,7 +58,6 @@ err_not_in_block:
 int block_parse_line(int indent, struct file *f, struct scope *scope)
 {
 	int cur_indent = block_get_indent(f), ret = 0;
-	str tok = TOKEN_NEW;
 	if (cur_indent <= indent)
 		return -1;
 	file_skip_space(f);
@@ -70,14 +65,12 @@ int block_parse_line(int indent, struct file *f, struct scope *scope)
 		return 0;
 	if (f->src[f->pos] == '\n')
 		return file_line_next(f);
-	if ((ret = block_line_keyword(&tok, cur_indent, f, scope)) == 0)
+	if (f->src[f->pos] == '(')
+		return block_parse_expr(cur_indent, f, scope);
+	if ((ret = block_parse_keyword(cur_indent, f, scope)) == 0)
 		return 0;
 	if (ret > 0)
 		return 1;
-	if (parse_comment(f))
-		return 0;
-	//if (block_line_expr(&tok, cur_indent, f, fn) == 0)
-	//	return 0;
 	return 1;
 }
 
