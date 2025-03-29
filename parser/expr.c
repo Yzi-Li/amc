@@ -307,7 +307,7 @@ int expr_term_func(struct file *f, yz_val *v, int top, struct scope *scope)
 		return 1;
 	return end == 1 ? -1 : 0;
 err_func_not_found:
-	err_msg = err_msg_get(token.s, token.len);
+	err_msg = tok2str(token.s, token.len);
 	printf("amc: expr_term_func: Function not found!\n"
 			"| Token: \"%s\"\n"
 			"|         ^\n"
@@ -318,7 +318,7 @@ err_func_not_found:
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_func_not_in_block:
-	err_msg = err_msg_get(token.s, token.len);
+	err_msg = tok2str(token.s, token.len);
 	printf("amc: expr_term_func: Function cannot be called in block!\n"
 			"| Token: \"%s\"\n"
 			"|         ^\n"
@@ -346,7 +346,7 @@ err_eoe:
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_not_num:
-	err_msg = err_msg_get(token.s, token.len);
+	err_msg = tok2str(token.s, token.len);
 	printf("amc: expr_term_int: Token: \"%s\" is not number!\n", err_msg);
 	free(err_msg);
 	backend_stop(BE_STOP_SIGNAL_ERR);

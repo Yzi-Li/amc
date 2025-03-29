@@ -14,7 +14,7 @@ int mul_expr_and_expr(struct object_node *node, struct expr *e)
 	char suffix = asf_suffix_get(asf_stack_top->bytes);
 	const char *temp = YZ_IS_UNSIGNED_DIGIT(*e->sum_type)
 		? temp_unsigned : temp_signed;
-	str *multiplicand = asf_inst_pop_local();
+	str *multiplicand = asf_stack_get_element(asf_stack_top, 1);
 	str_expand(node->s, strlen(temp) - 1
 			+ multiplicand->len - 1);
 	snprintf(node->s->s, node->s->len, temp,

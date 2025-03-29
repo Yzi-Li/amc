@@ -27,9 +27,11 @@ int object_append(struct object_head *h, struct object_node *n)
 {
 	if (h == NULL || n == NULL)
 		return 1;
-	if (h->last == NULL) {
+	if (h->head == NULL) {
 		h->head = n;
 		h->last = n;
+		n->next = NULL;
+		n->prev = NULL;
 		return 0;
 	}
 	n->prev = h->last;

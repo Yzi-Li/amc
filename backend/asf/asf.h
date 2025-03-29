@@ -29,8 +29,7 @@ int asf_op_lt(struct expr *e);
 int asf_op_ne(struct expr *e);
 int asf_op_not(struct expr *e);
 int asf_op_or(struct expr *e);
-int asf_op_assignment(struct expr *e);
-int asf_var_set(str *name, yz_val *val);
-int asf_var_immut_set(str *name, yz_val *val);
+int asf_var_set(char *name, yz_val *val);
+int asf_var_immut_init(char *name, yz_val *val);
 
 #endif

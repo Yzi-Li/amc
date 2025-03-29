@@ -17,7 +17,7 @@ int add_expr_and_expr(struct object_node *node, struct expr *e)
 	addend_reg = asf_reg_get(asf_yz_type2imm(
 				*((struct expr *)e->valr->v)->sum_type));
 	addend_reg_str = asf_reg_get_str(&asf_regs[addend_reg]);
-	augend_str = asf_inst_pop_local();
+	augend_str = asf_stack_get_element(asf_stack_top, 1);
 	str_expand(node->s, strlen(temp) - 4
 			+ augend_str->len - 1
 			+ addend_reg_str->len - 1);

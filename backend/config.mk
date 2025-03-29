@@ -6,6 +6,7 @@ BE_ASF_SRC =\
 	asf.c\
 	expr.c\
 	func.c\
+	identifier.c\
 	imm.c\
 	mov.c\
 	op.c\

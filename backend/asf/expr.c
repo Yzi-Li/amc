@@ -147,18 +147,3 @@ int asf_op_or(struct expr *e)
 {
 	return 0;
 }
-
-int asf_op_assignment(struct expr *e)
-{
-	return 0;
-}
-
-int asf_var_set(str *name, yz_val *val)
-{
-	return 0;
-}
-
-int asf_var_immut_set(str *name, yz_val *val)
-{
-	return 0;
-}

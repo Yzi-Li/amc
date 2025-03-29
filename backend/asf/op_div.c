@@ -22,7 +22,7 @@ int div_expr_and_expr(struct object_node *node, struct expr *e)
 	divisor_reg += result_reg;
 	divisor_reg_str = asf_reg_get_str(&asf_regs[divisor_reg]);
 	get_divisor = asf_inst_mov(ASF_MOV_R2R, &result_reg, &divisor_reg);
-	pop_result = asf_inst_pop(&result_reg);
+	pop_result = asf_inst_pop(result_reg);
 	str_append(node->s, get_divisor->len - 1, get_divisor->s);
 	str_append(node->s, pop_result->len - 1, pop_result->s);
 	str_expand(inst, strlen(temp) - 1

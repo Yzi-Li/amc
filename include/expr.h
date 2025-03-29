@@ -17,11 +17,9 @@ enum OP_ID {
 	OP_NOT,
 	OP_OR,
 	OP_SUB,
-
-	OP_ASSIGNMENT
 };
 
-#define OP_LEN 15
+#define OP_LEN 14
 static const int OP_SPECIAL_START = 14;
 
 struct expr_operator {

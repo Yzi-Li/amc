@@ -11,8 +11,6 @@ int asf_op_save_reg(struct object_node *parent, enum ASF_REGS reg)
 		goto err_free_node;
 	reg_str = asf_reg_get_str(&asf_regs[reg]);
 	node->s = asf_inst_push_reg(reg);
-	*asf_regs[reg].purpose = ASF_REG_PURPOSE_NULL;
-	asf_regs[reg].flags.used = 0;
 	str_free(reg_str);
 	return 0;
 err_free_node:

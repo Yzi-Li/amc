@@ -28,12 +28,10 @@ struct backend backend_asf = {
 		[OP_NOT] = asf_op_not,
 		[OP_OR]  = asf_op_or,
 		[OP_SUB] = asf_op_sub,
-
-		[OP_ASSIGNMENT] = asf_op_assignment
 	},
 
-	.var_set       = asf_var_set,
-	.var_immut_set = asf_var_immut_set
+	.var_set        = asf_var_set,
+	.var_immut_init = asf_var_immut_init
 };
 
 int asf_init(int argc, char *argv[])

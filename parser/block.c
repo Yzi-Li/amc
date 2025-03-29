@@ -51,7 +51,6 @@ err_cannot_apply_expr:
 
 int block_parse_func(int indent, struct file *f, struct scope *scope)
 {
-	str err_tok = TOKEN_NEW;
 	char *err_msg;
 	i64 orig_column = f->cur_column,
 	    orig_line = f->cur_line;
@@ -72,7 +71,7 @@ int block_parse_func(int indent, struct file *f, struct scope *scope)
 		return file_line_next(f);
 	return 0;
 err_func_not_found:
-	err_msg = err_msg_get(err_tok.s, err_tok.len);
+	err_msg = tok2str(token.s, token.len);
 	printf("amc: block_parse_func: Function not found!\n"
 			"| Token: \"%s\"\n"
 			"| In l:%lld,c:%lld\n",

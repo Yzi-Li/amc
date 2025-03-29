@@ -2,6 +2,8 @@
 
 #define AMC_INT_LEN_FUNC(NAME, TYPE) \
 	int NAME(TYPE src) { \
+		if (src == 0)\
+			return 1;\
 		int len = 0; \
 		for (TYPE i = src; i != 0; len++) { \
 			i /= 10; \

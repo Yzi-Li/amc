@@ -54,7 +54,7 @@ int func_call_push_arg(str *s, int index, yz_val *v)
 		return func_call_push_arg_sym(s, index, v->v);
 	} else if (v->type == AMC_EXPR) {
 		return func_call_push_arg_expr(s, index, v->v);
-	} else if (REGION_INT(v->type, YZ_I8, YZ_U64)) {
+	} else if (YZ_IS_DIGIT(v->type)) {
 		return func_call_push_arg_imm(s, index, v);
 	}
 	printf("amc[backend.asf]: func_call_push_arg: "
@@ -67,15 +67,10 @@ int func_call_push_arg_expr(str *s, int index, struct expr *expr)
 {
 	enum ASF_REGS dest = ASF_REG_RDI,
 	              src = ASF_REG_RAX;
-	str *src_str = NULL, *tmp = NULL;
+	str *tmp = NULL;
 	src = asf_reg_get(asf_yz_type2imm(*expr->sum_type));
 	if (index > func_call_arg_regs_len) {
-		src_str = asf_reg_get_str(&asf_regs[src]);
-		if (src_str->s[src_str->len - 1] != '\0')
-			str_append(src_str, 1, "\0");
-		tmp = asf_inst_push(asf_regs[src].size,
-				src_str->s, ASF_STACK_MODE_LOCAL);
-		str_free(src_str);
+		tmp = asf_inst_push_reg(src);
 	} else {
 		dest = src + func_call_arg_regs[index];
 		tmp = asf_inst_mov(ASF_MOV_R2R, &src, &dest);
@@ -87,16 +82,17 @@ int func_call_push_arg_expr(str *s, int index, struct expr *expr)
 
 int func_call_push_arg_imm(str *s, int index, yz_val *v)
 {
+	enum ASF_REGS dest = func_call_arg_regs[index];
 	struct asf_imm imm = {
 		.type = asf_yz_type2imm(v->type),
 		.iq = v->l
 	};
 	str *tmp = NULL;
 	if (index > func_call_arg_regs_len) {
-		tmp = asf_inst_pushi(&imm, ASF_STACK_MODE_NATIVE);
+		tmp = asf_inst_push_imm(&imm);
 	} else {
-		tmp = asf_inst_mov(ASF_MOV_I2R, &imm,
-				&func_call_arg_regs[index]);
+		dest += asf_reg_get(imm.type);
+		tmp = asf_inst_mov(ASF_MOV_I2R, &imm, &dest);
 	}
 	str_append(s, tmp->len - 1, tmp->s);
 	str_free(tmp);
@@ -105,9 +101,9 @@ int func_call_push_arg_imm(str *s, int index, yz_val *v)
 
 int func_call_push_arg_sym(str *s, int index, struct symbol *sym)
 {
-	str *src_str = NULL, *tmp = NULL;
 	enum ASF_REGS dest = ASF_REG_RDI,
 	              src = ASF_REG_RAX;
+	str *tmp = NULL;
 	if (sym->args == NULL && sym->argc == 1) {
 		printf("amc[backend.asf]: func_call_push_arg_sym: "
 				"Unsupport syntax.\n");
@@ -115,11 +111,7 @@ int func_call_push_arg_sym(str *s, int index, struct symbol *sym)
 	}
 	src = asf_reg_get(asf_yz_type2imm(sym->result_type));
 	if (index > func_call_arg_regs_len) {
-		if (src_str->s[src_str->len - 1] != '\0')
-			str_append(src_str, 1, "\0");
-		tmp = asf_inst_push(asf_regs[src].size,
-				src_str->s, ASF_STACK_MODE_LOCAL);
-		str_free(src_str);
+		tmp = asf_inst_push_reg(src);
 	} else {
 		dest = src + func_call_arg_regs[index];
 		tmp = asf_inst_mov(ASF_MOV_R2R, &src, &dest);
@@ -209,7 +201,7 @@ int func_ret_val(yz_val *v)
 		return func_ret_expr(v->v);
 	} else if (v->type == AMC_SYM) {
 		return func_ret_sym(v->v);
-	} else if (REGION_INT(v->type, YZ_I8, YZ_U64)) {
+	} else if (YZ_IS_DIGIT(v->type)) {
 		return func_ret_imm(v);
 	}
 	return 1;

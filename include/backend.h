@@ -27,12 +27,12 @@ struct backend {
 	int (*file_new)(struct file *f);
 	int (*init)(int argc, char *argv[]);
 	int (*stop)(enum BE_STOP_SIGNAL bess);
-	backend_func_call_f     func_call;
-	backend_func_def_f      func_def;
-	backend_func_ret_f      func_ret;
-	backend_op_cmd_f        ops[OP_LEN];
-	backend_var_set_f       var_set;
-	backend_var_immut_set_f var_immut_set;
+	backend_func_call_f      func_call;
+	backend_func_def_f       func_def;
+	backend_func_ret_f       func_ret;
+	backend_op_cmd_f         ops[OP_LEN];
+	backend_var_set_f        var_set;
+	backend_var_immut_init_f var_immut_init;
 };
 
 extern struct backend *backends[];

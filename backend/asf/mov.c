@@ -8,15 +8,36 @@
 #include <stdlib.h>
 #include <string.h>
 
+static str *mov_i2m(struct asf_imm *src, struct asf_stack_element *dest);
 static str *mov_i2r(struct asf_imm *src, enum ASF_REGS dest);
 static str *mov_m2r(struct asf_stack_element *src, enum ASF_REGS dest);
 static str *mov_r2m(enum ASF_REGS src, struct asf_stack_element *dest);
 static str *mov_r2r(enum ASF_REGS src, enum ASF_REGS dest);
 
+str *mov_i2m(struct asf_imm *src, struct asf_stack_element *dest)
+{
+	str *s = NULL;
+	const char *temp = "mov%c $%lld, -%d(%%rbp)\n";
+	if (src->type != dest->bytes)
+		return NULL;
+	s = str_new();
+	str_expand(s, strlen(temp) - 7
+			+ ullen(src->iq)
+			+ ullen(dest->addr));
+	snprintf(s->s, s->len, temp,
+			asf_suffix_get(src->type),
+			src->iq,
+			dest->addr);
+	return s;
+}
+
 str *mov_i2r(struct asf_imm *src, enum ASF_REGS dest)
 {
+	str *s = NULL;
 	const char *temp = "mov%c $%lld, %%%s\n";
-	str *s = str_new();
+	if (src->type != asf_regs[dest].size)
+		return NULL;
+	s = str_new();
 	str_expand(s, strlen(temp) - 4 + ullen(src->iq));
 	snprintf(s->s, s->len, temp,
 			asf_suffix_get(asf_regs[dest].size),
@@ -57,8 +78,8 @@ str *mov_r2m(enum ASF_REGS src, struct asf_stack_element *dest)
 
 str *mov_r2r(enum ASF_REGS src, enum ASF_REGS dest)
 {
-	const char *temp = "mov%c %%%s, %%%s\n";
 	str *s = NULL;
+	const char *temp = "mov%c %%%s, %%%s\n";
 	if (asf_regs[src].size != asf_regs[dest].size)
 		return NULL;
 	s = str_new();
@@ -74,6 +95,8 @@ str *asf_inst_mov(enum ASF_MOV_TYPE mt, void *l, void *r)
 {
 	switch (mt) {
 	case ASF_MOV_I2M:
+		return mov_i2m((struct asf_imm*)l,
+				(struct asf_stack_element*)r);
 		break;
 	case ASF_MOV_I2R:
 		return mov_i2r((struct asf_imm*)l, *(enum ASF_REGS*)r);

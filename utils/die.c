@@ -14,11 +14,3 @@ void die(const char *msg, ...)
 
 	exit(1);
 }
-
-char *err_msg_get(const char *tok, int tok_len)
-{
-	char *msg = malloc(tok_len + 1);
-	msg[tok_len] = '\0';
-	memcpy(msg, tok, tok_len);
-	return msg;
-}

@@ -79,7 +79,7 @@ int func_call_read_arg(const char *se, struct file *f, void *data)
 	if (type != handle->fn->args[handle->index]
 			&& result->type != AMC_EXPR) {
 		if (!YZ_IS_DIGIT(handle->fn->args[handle->index])
-				|| !REGION_INT(type, YZ_I8, YZ_U64))
+				|| !YZ_IS_DIGIT(type))
 			goto err_wrong_arg_type;
 		result->type = handle->fn->args[handle->index];
 	}
@@ -147,7 +147,7 @@ int func_def_block_start(struct file *f)
 		return file_line_next(f);
 	return 0;
 err_not_func_def_start:
-	err_msg = err_msg_get(token.s, token.len);
+	err_msg = tok2str(token.s, token.len);
 	printf("amc: func_def_block_start:\n"
 			"| Function define start character not found\n"
 			"| Token: \"%s\"\n"
@@ -382,7 +382,7 @@ int parse_func_ret(struct file *f, struct symbol *sym, struct scope *scope)
 	val.type = expr->vall->type;
 	val.l = expr->vall->l;
 	if (*expr->sum_type != scope->fn->result_type
-			&& REGION_INT(*expr->sum_type, YZ_I8, YZ_U64)) {
+			&& YZ_IS_DIGIT(*expr->sum_type)) {
 		val.type = scope->fn->result_type;
 	}
 	if (ret == 0) {

@@ -1,5 +1,15 @@
 #include "../include/token.h"
 #include "../utils/die.h"
+#include <stdlib.h>
+#include <string.h>
+
+char *tok2str(const char *tok, int tok_len)
+{
+	char *s = malloc(tok_len + 1);
+	s[tok_len] = '\0';
+	memcpy(s, tok, tok_len);
+	return s;
+}
 
 int token_clean_head_space(str *token)
 {

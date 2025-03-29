@@ -26,7 +26,7 @@ int syscall_push_arg(str *s, yz_val *v, int index)
 		return syscall_push_arg_sym(s, v->v, index);
 	} else if (v->type == AMC_EXPR) {
 		return syscall_push_arg_expr(s, v->v, index);
-	} else if (REGION_INT(v->type, YZ_I8, YZ_U64)) {
+	} else if (YZ_IS_DIGIT(v->type)) {
 		return syscall_push_arg_imm(s, v, index);
 	}
 	printf("amc[backend.asf]: syscall_push_arg: "
@@ -40,7 +40,7 @@ int syscall_push_arg_expr(str *s, struct expr *expr, int index)
 	enum ASF_REGS dest = call_arg_regs[index],
 	              src = ASF_REG_RAX;
 	str *tmp = NULL;
-	if (!REGION_INT(*expr->sum_type, YZ_I8, YZ_U64))
+	if (!YZ_IS_DIGIT(*expr->sum_type))
 		return 1;
 	src = asf_reg_get(asf_yz_type2imm(*expr->sum_type));
 	dest += src;
