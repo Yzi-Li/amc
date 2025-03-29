@@ -54,7 +54,11 @@ int expr_binary(struct file *f, struct expr *e, int top, struct scope *scope)
 	if ((ret = expr_term(f, e->vall, top, scope)) > 0)
 		return 1;
 	if (ret == -1) {
-		e->sum_type = &e->vall->type;
+		if (e->vall->type == AMC_EXPR) {
+			e->sum_type = ((struct expr*)e->vall->v)->sum_type;
+		} else {
+			e->sum_type = &e->vall->type;
+		}
 		free_safe(e->valr);
 		return -1;
 	}
@@ -155,6 +159,8 @@ int expr_read_token(struct file *f, str *token, int top)
 					f, token, top);
 	if (end == 2)
 		goto err_empty_token;
+	if (top && f->src[f->pos] == '\n')
+		return end;
 	if (f->src[f->pos] == ']' || f->src[f->pos] == ',')
 		return end;
 	file_pos_next(f);
@@ -255,12 +261,14 @@ int expr_term_expr(struct file *f, yz_val *v, int top, struct scope *scope)
 	file_pos_next(f);
 	file_skip_space(f);
 	v->type = AMC_EXPR;
-	v->v = parse_expr(f, 0, scope);
+	if ((v->v = parse_expr(f, 0, scope)) == NULL)
+		goto err_cannot_parse_expr;
 	if (top) {
-		if (f->src[f->pos] != '\n' && f->src[f->pos] != ';')
+		if (f->src[f->pos] != '\n'
+				&& f->src[f->pos] != ';'
+				&& f->src[f->pos] != ']'
+				&& f->src[f->pos] != ',')
 			return 0;
-		file_pos_next(f);
-		file_skip_space(f);
 		return -1;
 	}
 	if (f->src[f->pos] == ')') {
@@ -269,6 +277,12 @@ int expr_term_expr(struct file *f, yz_val *v, int top, struct scope *scope)
 		return -1;
 	}
 	return 0;
+err_cannot_parse_expr:
+	printf("amc: expr_term_expr: Cannot parse expression!\n"
+			"| In l:%lld,c:%lld\n",
+			f->cur_line, f->cur_column);
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 1;
 }
 
 int expr_term_func(struct file *f, yz_val *v, int top, struct scope *scope)

@@ -23,6 +23,7 @@ static int func_call_push_arg(str *s, int index, yz_val *v);
 static int func_call_push_arg_expr(str *s, int index, struct expr *expr);
 static int func_call_push_arg_imm(str *s, int index, yz_val *v);
 static int func_call_push_arg_sym(str *s, int index, struct symbol *sym);
+static void func_ret_clean_stack();
 static int func_ret_expr(struct expr *expr);
 static int func_ret_imm(yz_val *v);
 static int func_ret_main(yz_val *v, str *s);
@@ -126,6 +127,18 @@ int func_call_push_arg_sym(str *s, int index, struct symbol *sym)
 	str_append(s, tmp->len - 1, tmp->s);
 	str_free(tmp);
 	return 0;
+}
+
+void func_ret_clean_stack()
+{
+	struct asf_stack_element *cur = asf_stack_top, *nex;
+	while (cur != NULL) {
+		nex = cur->prev;
+		free(cur);
+		cur = nex;
+	}
+	asf_stack_top = NULL;
+	return;
 }
 
 int func_ret_expr(struct expr *expr)
@@ -249,7 +262,6 @@ err_free_node:
 	return 1;
 }
 
-// TODO: refactor
 int asf_func_ret(yz_val *v, int is_main)
 {
 	const char *temp =
@@ -266,6 +278,7 @@ int asf_func_ret(yz_val *v, int is_main)
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	str_append(node->s, strlen(temp), temp);
+	func_ret_clean_stack();
 	return 0;
 err_free_node:
 	str_free(node->s);

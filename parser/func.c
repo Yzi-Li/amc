@@ -52,7 +52,7 @@ int func_call_read_arg(const char *se, struct file *f, void *data)
 	yz_val *result = NULL;
 	int ret = 0;
 	enum YZ_TYPE type = AMC_ERR_TYPE;
-	if (handle->index > handle->fn->argc)
+	if (handle->index > handle->fn->argc - 1)
 		goto err_too_many_args;
 	if ((expr = parse_expr(f, 1, handle->scope)) == NULL)
 		goto err_cannot_parse_arg;

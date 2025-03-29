@@ -12,6 +12,7 @@ static int parse_line(struct file *f, struct scope *scope);
 
 int parse_line(struct file *f, struct scope *scope)
 {
+	char *err_msg;
 	str token = TOKEN_NEW;
 	struct symbol *sym = NULL;
 	file_try_skip_space(f);
@@ -27,8 +28,14 @@ int parse_line(struct file *f, struct scope *scope)
 		goto err_not_toplevel;
 	return sym->parse_function(f, sym, scope);
 err_sym_not_found:
-	printf("amc: parser.parse_line: symbol not found from token\n");
+	err_msg = err_msg_get(token.s, token.len);
+	printf("amc: parser.parse_line: symbol not found from token\n"
+			"| Token: \"%s\"\n"
+			"| In l:%lld,c:%lld\n",
+			err_msg,
+			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
+	free(err_msg);
 	return 2;
 err_not_toplevel:
 	printf("amc: parser.parse_line: token is not toplevel.\n");

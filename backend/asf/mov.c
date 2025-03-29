@@ -32,7 +32,7 @@ str *mov_m2r(struct asf_stack_element *src, enum ASF_REGS dest)
 	if (asf_regs[dest].size != src->bytes)
 		return NULL;
 	s = str_new();
-	str_expand(s, strlen(temp) - 3 + ullen(src->bytes));
+	str_expand(s, strlen(temp) - 3 + ullen(src->addr));
 	snprintf(s->s, s->len, temp,
 			asf_suffix_get(src->bytes),
 			src->addr,
@@ -47,7 +47,7 @@ str *mov_r2m(enum ASF_REGS src, struct asf_stack_element *dest)
 	if (asf_regs[src].size != dest->bytes)
 		return NULL;
 	s = str_new();
-	str_expand(s, strlen(temp) - 3 + ullen(dest->bytes));
+	str_expand(s, strlen(temp) - 3 + ullen(dest->addr));
 	snprintf(s->s, s->len, temp,
 			asf_suffix_get(dest->bytes),
 			asf_regs[src].name,
