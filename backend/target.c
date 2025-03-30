@@ -44,12 +44,20 @@ int object_append(struct object_head *h, struct object_node *n)
 int object_insert(struct object_node *src, struct object_node *n1,
 		struct object_node *n2)
 {
-	if (src == NULL || n1 == NULL || n2 == NULL)
+	if (src == NULL)
 		return 1;
-	src->prev = n1;
-	src->next = n2;
-	n1->next = src;
-	n2->prev = src;
+	if (n1 != NULL) {
+		n1->next = src;
+		src->prev = n1;
+	} else {
+		src->prev = NULL;
+	}
+	if (n2 != NULL) {
+		n2->prev = src;
+		src->next = n2;
+	} else {
+		src->next = NULL;
+	}
 	return 0;
 }
 

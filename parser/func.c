@@ -382,6 +382,7 @@ int parse_func_ret(struct file *f, struct symbol *sym, struct scope *scope)
 	val.type = expr->vall->type;
 	val.l = expr->vall->l;
 	if (*expr->sum_type != scope->fn->result_type
+			&& val.type != AMC_SYM
 			&& YZ_IS_DIGIT(*expr->sum_type)) {
 		val.type = scope->fn->result_type;
 	}

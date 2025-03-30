@@ -63,6 +63,5 @@ int asf_stop(enum BE_STOP_SIGNAL bess)
 
 int asf_end()
 {
-	target_write(objs, 1);
-	return 0;
+	return target_write(objs, 1);
 }

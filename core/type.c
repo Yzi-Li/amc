@@ -21,6 +21,9 @@ const char *yz_get_type_name(enum YZ_TYPE type)
 	int index = type - YZ_TYPE_OFFSET;
 	if (type < YZ_TYPE_OFFSET || index > LENGTH(yz_type_table)) {
 		switch (type) {
+		case AMC_ERR_TYPE:
+			return "AMC_ERR_TYPE";
+			break;
 		case AMC_SYM:
 			return "AMC_SYM";
 			break;

@@ -1,10 +1,12 @@
 #include "asf.h"
+#include "identifier.h"
 #include "imm.h"
 #include "inst.h"
 #include "register.h"
 #include "../../include/backend/target.h"
 #include "../../include/expr.h"
 #include "../../include/symbol.h"
+#include "../../include/token.h"
 #include "../../utils/utils.h"
 
 static enum ASF_REGS func_call_arg_regs[] = {
@@ -21,8 +23,11 @@ static int func_call_basic_args(str *s, yz_val **vs, int vlen);
 static int func_call_ext_args(str *s, yz_val **vs, int vlen);
 static int func_call_push_arg(str *s, int index, yz_val *v);
 static int func_call_push_arg_expr(str *s, int index, struct expr *expr);
+static int func_call_push_arg_identifier(str *s, int index,
+		struct symbol *sym);
 static int func_call_push_arg_imm(str *s, int index, yz_val *v);
 static int func_call_push_arg_sym(str *s, int index, struct symbol *sym);
+static int func_call_set_stack_top(struct object_node *parent);
 static void func_ret_clean_stack();
 static int func_ret_expr(struct expr *expr);
 static int func_ret_imm(yz_val *v);
@@ -65,15 +70,34 @@ int func_call_push_arg(str *s, int index, yz_val *v)
 
 int func_call_push_arg_expr(str *s, int index, struct expr *expr)
 {
-	enum ASF_REGS dest = ASF_REG_RDI,
+	enum ASF_REGS dest = func_call_arg_regs[index],
 	              src = ASF_REG_RAX;
 	str *tmp = NULL;
 	src = asf_reg_get(asf_yz_type2imm(*expr->sum_type));
 	if (index > func_call_arg_regs_len) {
 		tmp = asf_inst_push_reg(src);
 	} else {
-		dest = src + func_call_arg_regs[index];
+		dest += src;
 		tmp = asf_inst_mov(ASF_MOV_R2R, &src, &dest);
+	}
+	str_append(s, tmp->len - 1, tmp->s);
+	str_free(tmp);
+	return 0;
+}
+
+int func_call_push_arg_identifier(str *s, int index, struct symbol *sym)
+{
+	enum ASF_REGS dest = func_call_arg_regs[index];
+	char *name = tok2str(sym->name, sym->name_len);
+	str *tmp = NULL;
+	struct asf_stack_element *src = asf_identifier_get(name);
+	if (index > func_call_arg_regs_len) {
+		printf("amc[backend.asf]: func_call_push_arg_identifier: "
+				"Unsupport syntax!\n");
+		return 1;
+	} else {
+		dest += asf_reg_get(src->bytes);
+		tmp = asf_inst_mov(ASF_MOV_M2R, src, &dest);
 	}
 	str_append(s, tmp->len - 1, tmp->s);
 	str_free(tmp);
@@ -104,11 +128,8 @@ int func_call_push_arg_sym(str *s, int index, struct symbol *sym)
 	enum ASF_REGS dest = ASF_REG_RDI,
 	              src = ASF_REG_RAX;
 	str *tmp = NULL;
-	if (sym->args == NULL && sym->argc == 1) {
-		printf("amc[backend.asf]: func_call_push_arg_sym: "
-				"Unsupport syntax.\n");
-		return 1;
-	}
+	if (sym->args == NULL && sym->argc == 1)
+		return func_call_push_arg_identifier(s, index, sym);
 	src = asf_reg_get(asf_yz_type2imm(sym->result_type));
 	if (index > func_call_arg_regs_len) {
 		tmp = asf_inst_push_reg(src);
@@ -118,6 +139,19 @@ int func_call_push_arg_sym(str *s, int index, struct symbol *sym)
 	}
 	str_append(s, tmp->len - 1, tmp->s);
 	str_free(tmp);
+	return 0;
+}
+
+int func_call_set_stack_top(struct object_node *parent)
+{
+	struct object_node *node = malloc(sizeof(*node));
+	const char *temp = "subq $%lld, %%rsp\n";
+	if (object_insert(node, parent->prev, parent))
+		return 1;
+	node->s = str_new();
+	str_expand(node->s, strlen(temp) - 4
+			+ ullen(asf_stack_top->addr));
+	snprintf(node->s->s, node->s->len, temp, asf_stack_top->addr);
 	return 0;
 }
 
@@ -150,13 +184,9 @@ int func_ret_imm(yz_val *v)
 	enum ASF_REGS reg = ASF_REG_RAX;
 	imm.type = asf_yz_type2imm(v->type);
 	imm.iq = v->l;
-	if (REGION_INT(imm.type, ASF_IMM8, ASF_IMM16)) {
-		imm.type = ASF_IMM32;
-	} else if (REGION_INT(imm.type, ASF_IMMU8, ASF_IMMU16)) {
-		imm.type = ASF_IMMU32;
-	}
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
+	reg = asf_reg_get(imm.type);
 	node->s = asf_inst_mov(ASF_MOV_I2R, &imm, &reg);
 	return 0;
 err_free_node:
@@ -214,20 +244,29 @@ int asf_func_call(const char *name, yz_val **vs, int vlen)
 	int inst_len = 0;
 	const char *temp = "call %s\n";
 	node->s = str_new();
-	object_append(&objs[cur_obj][ASF_OBJ_TEXT], node);
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+		goto err_free_node;
 	if (func_call_basic_args(node->s, vs, vlen))
-		return 1;
+		goto err_free_node;
 	if (vlen > func_call_arg_regs_len) {
 		if (func_call_ext_args(node->s,
 				&vs[func_call_arg_regs_len],
 				vlen - func_call_arg_regs_len))
-			return 1;
+			goto err_free_node;
+	}
+	if (asf_stack_top != NULL) {
+		if (func_call_set_stack_top(node))
+			goto err_free_node;
 	}
 	node_str_last = node->s->len;
-	inst_len = strlen(temp) + strlen(name);
+	inst_len = strlen(temp) - 1 + strlen(name);
 	str_expand(node->s, inst_len);
 	snprintf(&node->s->s[node_str_last], inst_len, temp, name);
 	return 0;
+err_free_node:
+	str_free(node->s);
+	free(node);
+	return 1;
 }
 
 int asf_func_def(const char *name, int len, enum YZ_TYPE type)

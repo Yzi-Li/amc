@@ -4,6 +4,7 @@
 #include "op.h"
 #include "register.h"
 #include "suffix.h"
+#include "../../include/symbol.h"
 
 static const char *temp = "sub%c %s, %s\n";
 
@@ -46,10 +47,8 @@ int sub_expr_and_expr(struct object_node *node, struct expr *e)
 
 int asf_op_sub(struct expr *e)
 {
-	struct asf_imm imm = {};
 	struct object_node *node = NULL;
-	enum ASF_REGS minuend_reg = ASF_REG_RAX,
-	              subtrahend_reg = ASF_REG_RDX;
+	enum ASF_REGS minuend_reg = ASF_REG_RAX;
 	str *minuend_str = NULL,
 	    *subtrahend_str = NULL;
 	node = malloc(sizeof(*node));
@@ -58,22 +57,11 @@ int asf_op_sub(struct expr *e)
 		goto err_free_node;
 	if (e->vall->type == AMC_EXPR && e->valr->type == AMC_EXPR)
 		return sub_expr_and_expr(node, e);
-	if (e->valr->type == AMC_EXPR) {
-		minuend_reg = ASF_REG_RDX;
-		if (asf_op_try_save_val(node, e->vall, &minuend_reg))
-			goto err_free_node;
-		minuend_str = asf_reg_get_str(&asf_regs[minuend_reg]);
-		subtrahend_reg = asf_reg_get(asf_yz_type2imm(
-				*((struct expr*)e->valr->v)->sum_type));
-		subtrahend_str = asf_reg_get_str(&asf_regs[subtrahend_reg]);
-	} else {
-		if (asf_op_try_save_val(node, e->vall, &minuend_reg))
-			goto err_free_node;
-		minuend_str = asf_reg_get_str(&asf_regs[minuend_reg]);
-		imm.type = asf_yz_type2imm(e->valr->type);
-		imm.iq = e->valr->l;
-		subtrahend_str = asf_imm_str_new(&imm);
-	}
+	if ((subtrahend_str = asf_op_get_val(node, e->valr)) == NULL)
+		goto err_free_node;
+	if (asf_op_try_save_val(node, e->vall, &minuend_reg))
+		goto err_free_node;
+	minuend_str = asf_reg_get_str(&asf_regs[minuend_reg]);
 	str_expand(node->s, strlen(temp) - 2
 			+ subtrahend_str->len - 1
 			+ minuend_str->len - 1);
@@ -81,13 +69,6 @@ int asf_op_sub(struct expr *e)
 			asf_suffix_get(asf_regs[minuend_reg].size),
 			subtrahend_str->s,
 			minuend_str->s);
-	if (e->valr->type == AMC_EXPR) {
-		node->s->len -= 1;
-		str_free(minuend_str);
-		minuend_str = asf_inst_mov(ASF_MOV_R2R,
-				&minuend_reg, &subtrahend_reg);
-		str_append(node->s, minuend_str->len, minuend_str->s);
-	}
 	str_free(minuend_str);
 	str_free(subtrahend_str);
 	return 0;

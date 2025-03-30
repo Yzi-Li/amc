@@ -1,6 +1,9 @@
+#include "identifier.h"
 #include "inst.h"
+#include "stack.h"
 #include "../../include/expr.h"
 #include "../../include/symbol.h"
+#include "../../include/token.h"
 #include "../../utils/utils.h"
 #include <stdio.h>
 
@@ -16,6 +19,7 @@ static const int call_arg_regs_len = LENGTH(call_arg_regs);
 
 static int syscall_push_arg(str *s, yz_val *v, int index);
 static int syscall_push_arg_expr(str *s, struct expr *expr, int index);
+static int syscall_push_arg_identifier(str *s, struct symbol *sym, int index);
 static int syscall_push_arg_imm(str *s, yz_val *v, int index);
 static int syscall_push_arg_sym(str *s, struct symbol *sym, int index);
 static int syscall_push_args(str *s, int vlen, yz_val **vs);
@@ -50,6 +54,27 @@ int syscall_push_arg_expr(str *s, struct expr *expr, int index)
 	return 0;
 }
 
+int syscall_push_arg_identifier(str *s, struct symbol *sym, int index)
+{
+	char *name = tok2str(sym->name, sym->name_len);
+	str *tmp = NULL;
+	enum ASF_REGS dest = call_arg_regs[index];
+	struct asf_stack_element *src = asf_identifier_get(name);
+	if (src == NULL)
+		goto err_identifier_not_found;
+	dest += asf_reg_get(src->bytes);
+	tmp = asf_inst_mov(ASF_MOV_M2R, src, &dest);
+	str_append(s, tmp->len - 1, tmp->s);
+	str_free(tmp);
+	free(name);
+	return 0;
+err_identifier_not_found:
+	printf("amc[backend.asf]: syscall_push_arg_identifier: "
+			"\"%s\"\n", name);
+	free(name);
+	return 1;
+}
+
 int syscall_push_arg_imm(str *s, yz_val *v, int index)
 {
 	struct asf_imm imm = {
@@ -68,11 +93,8 @@ int syscall_push_arg_sym(str *s, struct symbol *sym, int index)
 	enum ASF_REGS dest = call_arg_regs[index],
 	              src = ASF_REG_RAX;
 	str *tmp = NULL;
-	if (sym->args == NULL && sym->argc == 1) {
-		printf("amc[backend.asf]: syscall_push_arg: "
-				"Unsupport syntax: identifier.\n");
-		return 1;
-	}
+	if (sym->args == NULL && sym->argc == 1)
+		return syscall_push_arg_identifier(s, sym, index);
 	src = asf_reg_get(asf_yz_type2imm(sym->result_type));
 	dest += src;
 	tmp = asf_inst_mov(ASF_MOV_R2R, &src, &dest);

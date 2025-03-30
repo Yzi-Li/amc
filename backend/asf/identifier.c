@@ -1,4 +1,5 @@
 #include "asf.h"
+#include "identifier.h"
 #include "imm.h"
 #include "inst.h"
 #include "register.h"
@@ -136,4 +137,12 @@ int asf_var_set(char *name, yz_val *val)
 int asf_var_immut_init(char *name, yz_val *val)
 {
 	return asf_var_set(name, val);
+}
+
+struct asf_stack_element *asf_identifier_get(char *name)
+{
+	sym_id_t id = -1;
+	if ((id = get_id(name)) == -1)
+		return NULL;
+	return defined_syms[id].stack;
 }

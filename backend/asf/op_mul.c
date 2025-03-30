@@ -29,7 +29,7 @@ int asf_op_mul(struct expr *e)
 	struct object_node *node = NULL;
 	const char *temp = YZ_IS_UNSIGNED_DIGIT(*e->sum_type)
 		? temp_unsigned : temp_signed;
-	enum ASF_REGS multiplicand_reg = ASF_REG_RDX,
+	enum ASF_REGS multiplicand_reg = ASF_REG_RCX,
 	              result_reg       = ASF_REG_RAX;
 	str *multiplicand_str = NULL;
 	node = malloc(sizeof(*node));
@@ -38,9 +38,9 @@ int asf_op_mul(struct expr *e)
 		goto err_free_node;
 	if (e->vall->type == AMC_EXPR && e->valr->type == AMC_EXPR)
 		return mul_expr_and_expr(node, e);
-	if (asf_op_try_save_val(node, e->vall, &result_reg))
-		goto err_free_node;
 	if (asf_op_try_save_val(node, e->valr, &multiplicand_reg))
+		goto err_free_node;
+	if (asf_op_try_save_val(node, e->vall, &result_reg))
 		goto err_free_node;
 	multiplicand_str = asf_reg_get_str(&asf_regs[multiplicand_reg]);
 	str_expand(node->s, strlen(temp) - 3

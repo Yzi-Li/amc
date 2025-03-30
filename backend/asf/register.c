@@ -33,12 +33,12 @@ struct asf_reg asf_regs[] = {
 	[ASF_REG_ESP] = {"esp", 4, {0, 0, 0}, NULL},
 };
 
-str *asf_reg_clean(struct asf_reg *reg)
+str *asf_reg_clean(enum ASF_REGS reg)
 {
-	struct asf_imm zero = {.iq = 0, .type = reg->size};
-	reg->purpose = ASF_REG_PURPOSE_NULL;
-	reg->flags.used = 0;
-	return asf_inst_mov(ASF_MOV_I2R, &zero, reg);
+	struct asf_imm zero = {.iq = 0, .type = asf_regs[reg].size};
+	asf_regs[reg].purpose = ASF_REG_PURPOSE_NULL;
+	asf_regs[reg].flags.used = 0;
+	return asf_inst_mov(ASF_MOV_I2R, &zero, &reg);
 }
 
 str *asf_reg_get_str(struct asf_reg *reg)

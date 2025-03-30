@@ -61,7 +61,7 @@ extern struct asf_reg asf_regs[];
 static const unsigned int ASF_REG_32_OFFSET = 16;
 static const unsigned int ASF_REG_64_OFFSET = 0;
 
-str *asf_reg_clean(struct asf_reg *reg);
+str *asf_reg_clean(enum ASF_REGS reg);
 str *asf_reg_get_str(struct asf_reg *reg);
 enum ASF_REGS asf_reg_get(enum ASF_IMM_TYPE type);
 int asf_regs_init();

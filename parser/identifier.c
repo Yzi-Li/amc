@@ -11,8 +11,7 @@
 
 static int let_check_defined(struct file *f, str *name, struct scope *scope);
 static int let_check_val_type(yz_val *src, enum YZ_TYPE dest);
-static yz_val *let_expr_val_handle(struct expr **e, int single,
-		struct symbol *sym);
+static yz_val *let_expr_val_handle(struct expr **e, struct symbol *sym);
 static int let_initialize_val(struct file *f, struct symbol *sym,
 		struct scope *scope);
 static int let_read_def(struct file *f, str *name, str *type);
@@ -59,10 +58,10 @@ int let_check_val_type(yz_val *src, enum YZ_TYPE dest)
 	return 1;
 }
 
-yz_val *let_expr_val_handle(struct expr **e, int single, struct symbol *sym)
+yz_val *let_expr_val_handle(struct expr **e, struct symbol *sym)
 {
 	yz_val *val = NULL;
-	if (single) {
+	if ((*e)->op == NULL && (*e)->valr == NULL) {
 		val = (*e)->vall;
 		free_safe((*e)->op);
 		free_safe((*e)->valr);
@@ -97,7 +96,7 @@ int let_initialize_val(struct file *f, struct symbol *sym, struct scope *scope)
 		goto err_cannot_parse_expr;
 	if ((ret = expr_apply(expr)) > 0)
 		goto err_cannot_apply_expr;
-	if ((val = let_expr_val_handle(&expr, ret == -1 ? 1 : 0, sym)) == NULL)
+	if ((val = let_expr_val_handle(&expr, sym)) == NULL)
 		goto err_cannot_apply_expr;
 	if (sym->flags.mut) {
 		if (backend_call(var_set)(name, val))
@@ -168,6 +167,8 @@ struct symbol *let_reg_sym(struct file *f, str *name, int mut,
 	if (let_check_defined(f, name, scope))
 		return NULL;
 	result = calloc(1, sizeof(*result));
+	result->argc = 1;
+	result->args = NULL;
 	result->name = name->s;
 	result->name_len = name->len;
 	if (mut) {
