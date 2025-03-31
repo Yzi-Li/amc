@@ -11,7 +11,6 @@
 #include "expr.h"
 #include "block.h"
 #include "keywords.h"
-#include <limits.h>
 #include <stdio.h>
 
 struct func_call_handle {
@@ -22,6 +21,8 @@ struct func_call_handle {
 	yz_val **vals;
 };
 
+static int func_call_arg_handle(struct expr *expr, yz_val **val,
+		enum YZ_TYPE arg);
 static int func_call_main(struct file *f, struct symbol *sym,
 		struct scope *scope);
 static int func_call_read_arg(const char *se, struct file *f, void *data);
@@ -38,9 +39,43 @@ static int func_def_read_name(struct file *f, struct symbol *fn);
 static int func_def_read_type(struct file *f, struct symbol *fn);
 static int func_def_reg_arg(str *name, str *type_tok, struct scope *scope);
 
+int func_call_arg_handle(struct expr *expr, yz_val **val, enum YZ_TYPE arg)
+{
+	enum YZ_TYPE type = AMC_ERR_TYPE;
+	if (expr->op == NULL && expr->valr == NULL) {
+		*val = expr->vall;
+		free_safe(expr);
+		if ((*val)->type == AMC_EXPR) {
+			type = *((struct expr*)(*val)->v)->sum_type;
+		} else if ((*val)->type == AMC_SYM) {
+			type = ((struct symbol*)(*val)->v)->result_type;
+		} else {
+			type = (*val)->type;
+		}
+	} else {
+		*val = malloc(sizeof(*(*val)));
+		(*val)->type = AMC_EXPR;
+		(*val)->v = expr;
+		type = *((struct expr*)(*val)->v)->sum_type;
+	}
+	if (type != arg && (*val)->type != AMC_EXPR) {
+		if (!YZ_IS_DIGIT(arg) || !YZ_IS_DIGIT(type))
+			goto err_wrong_arg_type;
+		(*val)->type = arg;
+	}
+	return 0;
+err_wrong_arg_type:
+	printf("amc: func_call_read_arg: Wrong argument type: \"%s\"\n",
+			yz_get_type_name(type));
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 1;
+}
+
 int func_call_main(struct file *f, struct symbol *sym, struct scope *scope)
 {
-	printf("amc: You cannot call the main function!\n");
+	printf("amc: You cannot call the main function!\n"
+			"| In l:%lld,c:%lld\n",
+			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
@@ -50,38 +85,21 @@ int func_call_read_arg(const char *se, struct file *f, void *data)
 	struct expr *expr = NULL;
 	struct func_call_handle *handle = data;
 	yz_val *result = NULL;
-	int ret = 0;
-	enum YZ_TYPE type = AMC_ERR_TYPE;
 	if (handle->index > handle->fn->argc - 1)
 		goto err_too_many_args;
 	if ((expr = parse_expr(f, 1, handle->scope)) == NULL)
 		goto err_cannot_parse_arg;
-	if ((ret = expr_apply(expr)) > 0)
+	if (expr_apply(expr) > 0)
 		goto err_cannot_parse_arg;
-	if (ret == -1) {
-		result = expr->vall;
-		free_safe(expr->op);
-		free_safe(expr->valr);
-		free_safe(expr);
-		if (result->type == AMC_EXPR) {
-			type = *((struct expr*)result->v)->sum_type;
-		} else if (result->type == AMC_SYM) {
-			type = ((struct symbol*)result->v)->result_type;
-		} else {
-			type = result->type;
-		}
-	} else {
-		result = malloc(sizeof(*result));
-		result->type = AMC_EXPR;
-		result->v = expr;
-		type = *((struct expr*)result->v)->sum_type;
-	}
-	if (type != handle->fn->args[handle->index]
-			&& result->type != AMC_EXPR) {
-		if (!YZ_IS_DIGIT(handle->fn->args[handle->index])
-				|| !YZ_IS_DIGIT(type))
-			goto err_wrong_arg_type;
-		result->type = handle->fn->args[handle->index];
+	if (func_call_arg_handle(expr, &result,
+				handle->fn->args[handle->index]))
+		goto err_cannot_handle_arg;
+	if (f->src[f->pos] == ',') {
+		file_pos_next(f);
+		file_skip_space(f);
+	} if (f->src[f->pos] == '\n') {
+		file_line_next(f);
+		file_skip_space(f);
 	}
 	handle->vals[handle->index] = result;
 	handle->index += 1;
@@ -98,17 +116,18 @@ err_cannot_parse_arg:
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
-err_wrong_arg_type:
-	printf("amc: func_call_read_arg: Wrong argument type: \"%s\"\n"
-			"| In l:%lld,c:%lld\n",
-			yz_get_type_name(type),
+err_cannot_handle_arg:
+	printf("|< amc: func_call_read_arg: Cannot handle argument.\n"
+			"|< In l:%lld,c:%lld\n",
 			f->cur_line, f->cur_column);
+	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
 
 yz_val **func_call_read_args(struct file *f, struct symbol *fn,
 		struct scope *scope)
 {
+	char *err_msg;
 	yz_val **result = calloc(fn->argc, sizeof(*result));
 	struct func_call_handle *handle = malloc(sizeof(*handle));
 	handle->f = f;
@@ -118,6 +137,8 @@ yz_val **func_call_read_args(struct file *f, struct symbol *fn,
 	handle->vals = result;
 	if (token_parse_list(",]", handle, f, func_call_read_arg))
 		goto err_free_result;
+	if (handle->index < fn->argc)
+		goto err_too_few_arg;
 	free_safe(handle);
 	return result;
 err_free_result:
@@ -126,6 +147,18 @@ err_free_result:
 		free_safe(result[i]);
 	free_safe(result);
 	return NULL;
+err_too_few_arg:
+	err_msg = tok2str(fn->name, fn->name_len);
+	printf("amc: func_call_read_args: Too few arguments!\n"
+			"| Function: \"%s\"\n"
+			"| Need %d but only has %d\n"
+			"| In l:%lld,c:%lld\n",
+			err_msg,
+			fn->argc, handle->index,
+			f->cur_line, f->cur_column);
+	free(err_msg);
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	goto err_free_result;
 }
 
 int func_def_block_start(struct file *f)
@@ -299,6 +332,9 @@ int func_def_reg_arg(str *name, str *type_tok, struct scope *scope)
 	sym->name = name->s;
 	sym->name_len = name->len;
 	sym->parse_function = parse_immut_var;
+	sym->result_type = type;
+	sym->argc = 2 + scope->fn->argc;
+	sym->args = NULL;
 	if (symbol_register(sym, &scope->sym_groups[SYMG_SYM]))
 		goto err_free_sym;
 	if (symbol_args_append(scope->fn, type))

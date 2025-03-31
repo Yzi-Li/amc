@@ -1,3 +1,4 @@
+#include "call.h"
 #include "identifier.h"
 #include "inst.h"
 #include "stack.h"
@@ -6,16 +7,6 @@
 #include "../../include/token.h"
 #include "../../utils/utils.h"
 #include <stdio.h>
-
-static enum ASF_REGS call_arg_regs[] = {
-	ASF_REG_RDI,
-	ASF_REG_RSI,
-	ASF_REG_RDX,
-	ASF_REG_RCX,
-	ASF_REG_R8,
-	ASF_REG_R9
-};
-static const int call_arg_regs_len = LENGTH(call_arg_regs);
 
 static int syscall_push_arg(str *s, yz_val *v, int index);
 static int syscall_push_arg_expr(str *s, struct expr *expr, int index);
@@ -41,7 +32,7 @@ int syscall_push_arg(str *s, yz_val *v, int index)
 
 int syscall_push_arg_expr(str *s, struct expr *expr, int index)
 {
-	enum ASF_REGS dest = call_arg_regs[index],
+	enum ASF_REGS dest = asf_call_arg_regs[index],
 	              src = ASF_REG_RAX;
 	str *tmp = NULL;
 	if (!YZ_IS_DIGIT(*expr->sum_type))
@@ -58,7 +49,7 @@ int syscall_push_arg_identifier(str *s, struct symbol *sym, int index)
 {
 	char *name = tok2str(sym->name, sym->name_len);
 	str *tmp = NULL;
-	enum ASF_REGS dest = call_arg_regs[index];
+	enum ASF_REGS dest = asf_call_arg_regs[index];
 	struct asf_stack_element *src = asf_identifier_get(name);
 	if (src == NULL)
 		goto err_identifier_not_found;
@@ -81,7 +72,7 @@ int syscall_push_arg_imm(str *s, yz_val *v, int index)
 		.type = asf_yz_type2imm(v->type),
 		.iq = v->l
 	};
-	enum ASF_REGS reg = call_arg_regs[index] + asf_reg_get(imm.type);
+	enum ASF_REGS reg = asf_call_arg_regs[index] + asf_reg_get(imm.type);
 	str *tmp = asf_inst_mov(ASF_MOV_I2R, &imm, &reg);
 	str_append(s, tmp->len - 1, tmp->s);
 	str_free(tmp);
@@ -90,7 +81,7 @@ int syscall_push_arg_imm(str *s, yz_val *v, int index)
 
 int syscall_push_arg_sym(str *s, struct symbol *sym, int index)
 {
-	enum ASF_REGS dest = call_arg_regs[index],
+	enum ASF_REGS dest = asf_call_arg_regs[index],
 	              src = ASF_REG_RAX;
 	str *tmp = NULL;
 	if (sym->args == NULL && sym->argc == 1)
@@ -106,7 +97,7 @@ int syscall_push_arg_sym(str *s, struct symbol *sym, int index)
 int syscall_push_args(str *s, int vlen, yz_val **vs)
 {
 	for (int i = 0; i < vlen; i++) {
-		if (i > call_arg_regs_len)
+		if (i > asf_call_arg_regs_len)
 			goto err_too_many_arg;
 		if (vs[i] == NULL)
 			goto err_arg_not_exists;

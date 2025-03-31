@@ -1,8 +1,12 @@
 # Yuanzi Programming Language Complier
-# Syntax
-Look [yz-lang](https://github.com/at2er/yz-lang).
+Implementation on C.
+
+# BUGS
+## Unsupport 32-bit!
+The file output by the compiler dosen't support 32-bit devices.
 
 # TODO
+- [ ] 32-bit support (but, maybe it will be implement in YZC)
 - [ ] syntax:
     - [ ] decorator.
 - [ ] type:

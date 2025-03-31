@@ -38,7 +38,12 @@ err_sym_not_found:
 	free(err_msg);
 	return 2;
 err_not_toplevel:
-	printf("amc: parser.parse_line: token is not toplevel.\n");
+	err_msg = tok2str(token.s, token.len);
+	printf("amc: parser.parse_line: token is not toplevel.\n"
+			"| Token: \"%s\"\n"
+			"| In l:%lld,c:%lld\n",
+			err_msg,
+			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 2;
 }
@@ -59,6 +64,8 @@ int parser_init(const char *path, struct file *f)
 	while (f->src[f->pos] != '\0') {
 		if ((ret = parse_line(f, &toplevel)) > 0)
 			return 1;
+		if (f->src[f->pos] == '\0')
+			break;
 		if (ret != -1)
 			file_line_next(f);
 	}

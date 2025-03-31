@@ -1,4 +1,5 @@
 #include "asf.h"
+#include "call.h"
 #include "identifier.h"
 #include "imm.h"
 #include "inst.h"
@@ -8,16 +9,6 @@
 #include "../../include/symbol.h"
 #include "../../include/token.h"
 #include "../../utils/utils.h"
-
-static enum ASF_REGS func_call_arg_regs[] = {
-	ASF_REG_RDI,
-	ASF_REG_RSI,
-	ASF_REG_RDX,
-	ASF_REG_RCX,
-	ASF_REG_R8,
-	ASF_REG_R9
-};
-static const int func_call_arg_regs_len = LENGTH(func_call_arg_regs);
 
 static int func_call_basic_args(str *s, yz_val **vs, int vlen);
 static int func_call_ext_args(str *s, yz_val **vs, int vlen);
@@ -30,6 +21,7 @@ static int func_call_push_arg_sym(str *s, int index, struct symbol *sym);
 static int func_call_set_stack_top(struct object_node *parent);
 static void func_ret_clean_stack();
 static int func_ret_expr(struct expr *expr);
+static int func_ret_identifier(struct object_node *node, struct symbol *sym);
 static int func_ret_imm(yz_val *v);
 static int func_ret_main(yz_val *v, str *s);
 static int func_ret_sym(struct symbol *sym);
@@ -70,11 +62,11 @@ int func_call_push_arg(str *s, int index, yz_val *v)
 
 int func_call_push_arg_expr(str *s, int index, struct expr *expr)
 {
-	enum ASF_REGS dest = func_call_arg_regs[index],
+	enum ASF_REGS dest = asf_call_arg_regs[index],
 	              src = ASF_REG_RAX;
 	str *tmp = NULL;
 	src = asf_reg_get(asf_yz_type2imm(*expr->sum_type));
-	if (index > func_call_arg_regs_len) {
+	if (index > asf_call_arg_regs_len) {
 		tmp = asf_inst_push_reg(src);
 	} else {
 		dest += src;
@@ -87,11 +79,11 @@ int func_call_push_arg_expr(str *s, int index, struct expr *expr)
 
 int func_call_push_arg_identifier(str *s, int index, struct symbol *sym)
 {
-	enum ASF_REGS dest = func_call_arg_regs[index];
+	enum ASF_REGS dest = asf_call_arg_regs[index];
 	char *name = tok2str(sym->name, sym->name_len);
 	str *tmp = NULL;
 	struct asf_stack_element *src = asf_identifier_get(name);
-	if (index > func_call_arg_regs_len) {
+	if (index > asf_call_arg_regs_len) {
 		printf("amc[backend.asf]: func_call_push_arg_identifier: "
 				"Unsupport syntax!\n");
 		return 1;
@@ -106,13 +98,13 @@ int func_call_push_arg_identifier(str *s, int index, struct symbol *sym)
 
 int func_call_push_arg_imm(str *s, int index, yz_val *v)
 {
-	enum ASF_REGS dest = func_call_arg_regs[index];
+	enum ASF_REGS dest = asf_call_arg_regs[index];
 	struct asf_imm imm = {
 		.type = asf_yz_type2imm(v->type),
 		.iq = v->l
 	};
 	str *tmp = NULL;
-	if (index > func_call_arg_regs_len) {
+	if (index > asf_call_arg_regs_len) {
 		tmp = asf_inst_push_imm(&imm);
 	} else {
 		dest += asf_reg_get(imm.type);
@@ -126,15 +118,25 @@ int func_call_push_arg_imm(str *s, int index, yz_val *v)
 int func_call_push_arg_sym(str *s, int index, struct symbol *sym)
 {
 	enum ASF_REGS dest = ASF_REG_RDI,
+	              offset_base = ASF_REG_RAX,
 	              src = ASF_REG_RAX;
 	str *tmp = NULL;
 	if (sym->args == NULL && sym->argc == 1)
 		return func_call_push_arg_identifier(s, index, sym);
-	src = asf_reg_get(asf_yz_type2imm(sym->result_type));
-	if (index > func_call_arg_regs_len) {
+	offset_base = asf_reg_get(asf_yz_type2imm(sym->result_type));
+	if (sym->args == NULL && sym->argc > 1) {
+		if (sym->argc - 2 > asf_call_arg_regs_len)
+			return 1;
+		src = offset_base + asf_call_arg_regs[sym->argc - 2];
+	} else {
+		src = offset_base;
+	}
+	if (index > asf_call_arg_regs_len) {
 		tmp = asf_inst_push_reg(src);
 	} else {
-		dest = src + func_call_arg_regs[index];
+		dest = offset_base + asf_call_arg_regs[index];
+		if (dest == src)
+			return 0;
 		tmp = asf_inst_mov(ASF_MOV_R2R, &src, &dest);
 	}
 	str_append(s, tmp->len - 1, tmp->s);
@@ -177,6 +179,25 @@ int func_ret_expr(struct expr *expr)
 	return 0;
 }
 
+int func_ret_identifier(struct object_node *node, struct symbol *sym)
+{
+	char *name = tok2str(sym->name, sym->name_len);
+	enum ASF_REGS dest = asf_reg_get(asf_yz_type2imm(sym->result_type));
+	struct asf_stack_element *src = asf_identifier_get(name);
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+		goto err_free_all;
+	if (src == NULL)
+		goto err_free_all;
+	node->s = asf_inst_mov(ASF_MOV_M2R, src, &dest);
+	free(name);
+	return 0;
+err_free_all:
+	free(name);
+	str_free(node->s);
+	free(node);
+	return 1;
+}
+
 int func_ret_imm(yz_val *v)
 {
 	struct asf_imm imm = {};
@@ -210,14 +231,21 @@ err_free_tmp:
 
 int func_ret_sym(struct symbol *sym)
 {
-	struct object_node *node = malloc(sizeof(*node));
-	enum ASF_REGS src = ASF_REG_RAX,
-	              dest = ASF_REG_RDI;
-	src = asf_reg_get(asf_yz_type2imm(sym->result_type));
-	dest += src;
-	node->s = asf_inst_mov(ASF_MOV_R2R, &src, &dest);
+	struct object_node *node = NULL;
+	enum ASF_REGS dest = ASF_REG_RAX,
+	              src = ASF_REG_RDI;
+	if (sym->args == NULL && sym->argc == 1)
+		return func_ret_identifier(node, sym);
+	if (sym->args != NULL && sym->argc != 0)
+		return 0;
+	node = malloc(sizeof(*node));
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
+	dest = asf_reg_get(asf_yz_type2imm(sym->result_type));
+	if (sym->argc - 2 > asf_call_arg_regs_len)
+		goto err_free_node;
+	src = asf_call_arg_regs[sym->argc - 2] + dest;
+	node->s = asf_inst_mov(ASF_MOV_R2R, &src, &dest);
 	return 0;
 err_free_node:
 	str_free(node->s);
@@ -248,10 +276,10 @@ int asf_func_call(const char *name, yz_val **vs, int vlen)
 		goto err_free_node;
 	if (func_call_basic_args(node->s, vs, vlen))
 		goto err_free_node;
-	if (vlen > func_call_arg_regs_len) {
+	if (vlen > asf_call_arg_regs_len) {
 		if (func_call_ext_args(node->s,
-				&vs[func_call_arg_regs_len],
-				vlen - func_call_arg_regs_len))
+				&vs[asf_call_arg_regs_len],
+				vlen - asf_call_arg_regs_len))
 			goto err_free_node;
 	}
 	if (asf_stack_top != NULL) {

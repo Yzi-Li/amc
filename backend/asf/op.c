@@ -1,3 +1,4 @@
+#include "call.h"
 #include "identifier.h"
 #include "imm.h"
 #include "inst.h"
@@ -50,18 +51,24 @@ str *get_val_sym(struct object_node *parent, struct symbol *sym)
 	enum ASF_REGS dest = ASF_REG_RDX,
 	              src = ASF_REG_RAX;
 	struct object_node *node = NULL;
-	if (sym->argc == 1 && sym->args == NULL)
+	if (sym->args == NULL && sym->argc == 1)
 		return get_val_identifier(sym);
+	src = asf_reg_get(asf_yz_type2imm(sym->result_type));
+	if (sym->args == NULL && sym->argc > 1) {
+		if (sym->argc - 2 > asf_call_arg_regs_len)
+			goto err_free_node;
+		src += asf_call_arg_regs[sym->argc - 2];
+		return asf_reg_get_str(&asf_regs[src]);
+	}
 	node = calloc(1, sizeof(*node));
 	if (object_insert(node, parent->prev, parent))
 		goto err_free_node;
-	src = asf_reg_get(asf_yz_type2imm(sym->result_type));
 	dest += src;
 	node->s = asf_inst_mov(ASF_MOV_R2R, &src, &dest);
 	return asf_reg_get_str(&asf_regs[dest]);
 err_free_node:
 	str_free(node->s);
-	free(node);
+	free_safe(node);
 	return NULL;
 }
 
@@ -92,10 +99,17 @@ int save_sym(struct object_node *parent, struct symbol *sym,
 {
 	struct object_node *node = NULL;
 	enum ASF_REGS src = ASF_REG_RAX;
-	if (sym->argc == 1 && sym->args == NULL)
+	if (sym->args == NULL && sym->argc == 1)
 		return save_identifier(parent, sym, dest);
 	src = asf_reg_get(asf_yz_type2imm(sym->result_type));
-	*dest += src;
+	if (sym->args == NULL && sym->argc > 1) {
+		if (sym->argc - 2 > asf_call_arg_regs_len)
+			goto err_free_node;
+		*dest = src;
+		src += asf_call_arg_regs[sym->argc - 2];
+	} else {
+		*dest += src;
+	}
 	if (*dest == src)
 		return 0;
 	node = malloc(sizeof(*node));
@@ -104,7 +118,8 @@ int save_sym(struct object_node *parent, struct symbol *sym,
 	node->s = asf_inst_mov(ASF_MOV_R2R, &src, dest);
 	return 0;
 err_free_node:
-	free(node);
+	str_free(node->s);
+	free_safe(node);
 	return 1;
 }
 
