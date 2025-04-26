@@ -10,6 +10,10 @@ struct asf_stack_element {
 
 extern struct asf_stack_element *asf_stack_top;
 
+str *asf_inst_pop(enum ASF_REGS dest);
+str *asf_inst_push_imm(struct asf_imm *imm);
+str *asf_inst_push_reg(enum ASF_REGS src);
+str *asf_inst_syscall(int code, int vlen, yz_val **vs);
 str *asf_stack_get_element(struct asf_stack_element *element, int pop);
 
 #endif

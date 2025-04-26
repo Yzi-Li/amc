@@ -1,9 +1,11 @@
-#include "asf.h"
-#include "call.h"
-#include "identifier.h"
-#include "imm.h"
-#include "inst.h"
-#include "register.h"
+#include "include/asf.h"
+#include "include/call.h"
+#include "include/identifier.h"
+#include "include/imm.h"
+#include "include/mov.h"
+#include "include/op.h"
+#include "include/register.h"
+#include "include/stack.h"
 #include "../../include/backend/target.h"
 #include "../../include/expr.h"
 #include "../../include/symbol.h"
@@ -166,6 +168,7 @@ void func_ret_clean_stack()
 		cur = nex;
 	}
 	asf_stack_top = NULL;
+	asf_identifier_free_id(0);
 	return;
 }
 
@@ -175,7 +178,6 @@ int func_ret_expr(struct expr *expr)
 	if (*asf_regs[reg].purpose != ASF_REG_PURPOSE_EXPR_RESULT)
 		return 1;
 	*asf_regs[reg].purpose = ASF_REG_PURPOSE_NULL;
-	asf_regs[reg].flags.used = 0;
 	return 0;
 }
 
@@ -265,15 +267,21 @@ int func_ret_val(yz_val *v)
 	return 1;
 }
 
-int asf_func_call(const char *name, yz_val **vs, int vlen)
+int asf_func_call(const char *name, enum YZ_TYPE type, yz_val **vs, int vlen)
 {
 	struct object_node *node = malloc(sizeof(*node));
 	int node_str_last = 0;
 	int inst_len = 0;
+	enum ASF_REGS reg = ASF_REG_RAX;
 	const char *temp = "call %s\n";
 	node->s = str_new();
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
+	reg = asf_reg_get(asf_yz_type2imm(type));
+	if (*asf_regs[reg].purpose != ASF_REG_PURPOSE_NULL)
+		if (asf_op_save_reg(node, reg))
+			goto err_free_node;
+	*asf_regs[reg].purpose = ASF_REG_PURPOSE_FUNC_RESULT;
 	if (func_call_basic_args(node->s, vs, vlen))
 		goto err_free_node;
 	if (vlen > asf_call_arg_regs_len) {

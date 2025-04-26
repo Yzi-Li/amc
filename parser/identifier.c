@@ -87,14 +87,13 @@ int let_initialize_val(struct file *f, struct symbol *sym, struct scope *scope)
 	struct expr *expr = NULL;
 	i64 orig_column = f->cur_column,
 	    orig_line = f->cur_line;
-	int ret = 0;
 	yz_val *val = NULL;
 	char *name = tok2str(sym->name, sym->name_len);
 	file_pos_next(f);
 	file_skip_space(f);
 	if ((expr = parse_expr(f, 1, scope)) == NULL)
 		goto err_cannot_parse_expr;
-	if ((ret = expr_apply(expr)) > 0)
+	if (expr_apply(expr) > 0)
 		goto err_cannot_apply_expr;
 	if ((val = let_expr_val_handle(&expr, sym)) == NULL)
 		goto err_cannot_apply_expr;

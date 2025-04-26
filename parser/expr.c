@@ -28,8 +28,6 @@ static const struct expr_operator operators[] = {
 
 	{"and", 4, OP_AND  },
 	{"or",  4, OP_OR   },
-
-	{NULL,  0, OP_NONE }
 };
 
 static int expr_binary(struct file *f, struct expr *e, int top,
@@ -72,6 +70,8 @@ int expr_binary(struct file *f, struct expr *e, int top, struct scope *scope)
 		return 1;
 	if (ret == -1)
 		goto err_valr_not_found;
+	if (ret == -2)
+		return -1;
 	if (!top)
 		e->op->priority = -1;
 
@@ -141,6 +141,8 @@ int expr_operator(struct file *f, struct expr_operator **op, int top)
 	    token = TOKEN_NEW;
 	if ((end = expr_read_token(f, &token, top)) == 2)
 		goto err_eoe;
+	if (end == 3)
+		return -2;
 	str_append(tmp, token.len, token.s);
 	str_append(tmp, 1, "\0");
 	for (int i = 0; i < LENGTH(operators); i++) {
@@ -165,6 +167,8 @@ int expr_read_token(struct file *f, str *token, int top)
 			f, top);
 	if (token->len <= 0)
 		goto err_empty_token;
+	if (top && token->s[0] == '=' && token->s[1] == '>')
+		return 3;
 	if (top && f->src[f->pos] == '\n')
 		return end;
 	if (f->src[f->pos] == ']' || f->src[f->pos] == ',')
@@ -190,6 +194,8 @@ int expr_sub(struct file *f, struct expr **e, int top, struct scope *scope)
 		return 1;
 	if (end == -1)
 		goto err_valr_not_found;
+	if (end == -2)
+		return -1;
 	if ((end = expr_term(f, expr->valr, top, scope)) > 0)
 		return 1;
 	if (expr->op->priority < (*e)->op->priority) {
@@ -244,6 +250,8 @@ int expr_term_chr(struct file *f, yz_val *v, int top)
 	str token = TOKEN_NEW;
 	if ((end = expr_read_token(f, &token, top)) == 2)
 		goto err_eoe;
+	if (end == 3)
+		return -1;
 	token.s = &token.s[1];
 	token.len -= 2;
 	if (token.s[token.len] != '\'')
@@ -298,6 +306,8 @@ int expr_term_func(struct file *f, yz_val *v, int top, struct scope *scope)
 	str token = TOKEN_NEW;
 	if ((end = expr_read_token(f, &token, top)) == 2)
 		return 1;
+	if (end == 3)
+		return -1;
 	token.s = &token.s[1];
 	token.len -= 1;
 	if (!symbol_find_in_group_in_scope(&token, &callee, scope, SYMG_FUNC))
@@ -352,6 +362,8 @@ int expr_term_identifier(struct file *f, yz_val *v, int top,
 	str token = TOKEN_NEW;
 	if ((end = expr_read_token(f, &token, top)) == 2)
 		goto err_eoe;
+	if (end == 3)
+		return -1;
 	if (!symbol_find_in_group_in_scope(&token, &sym, scope, SYMG_SYM))
 		goto err_identifier_not_found;
 	v->type = AMC_SYM;
@@ -378,6 +390,8 @@ int expr_term_int(struct file *f, yz_val *v, int top)
 	str token = TOKEN_NEW;
 	if ((end = expr_read_token(f, &token, top)) == 2)
 		goto err_eoe;
+	if (end == 3)
+		return -1;
 	if (str2int(&token, &v->l))
 		goto err_not_num;
 	v->type = yz_get_int_size(v->l);
@@ -414,7 +428,7 @@ int expr_apply(struct expr *e)
 		goto err_backend_call;
 	return 0;
 err_backend_call:
-	printf("amc: expr_apply: Backend call faulted!\n");
+	printf("amc: expr_apply: Backend call failed!\n");
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }

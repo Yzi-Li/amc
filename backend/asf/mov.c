@@ -1,8 +1,8 @@
-#include "inst.h"
-#include "imm.h"
-#include "register.h"
-#include "stack.h"
-#include "suffix.h"
+#include "include/mov.h"
+#include "include/imm.h"
+#include "include/register.h"
+#include "include/stack.h"
+#include "include/suffix.h"
 #include "../../utils/utils.h"
 #include <stdint.h>
 #include <stdlib.h>

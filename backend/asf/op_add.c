@@ -1,65 +1,37 @@
-#include "asf.h"
-#include "imm.h"
-#include "inst.h"
-#include "op.h"
-#include "register.h"
-#include "suffix.h"
+#include "include/asf.h"
+#include "include/op.h"
+#include "include/suffix.h"
 
 static const char *temp = "add%c %s, %s\n";
 
-static int add_expr_and_expr(struct object_node *node, struct expr *e);
-
-int add_expr_and_expr(struct object_node *node, struct expr *e)
-{
-	enum ASF_REGS addend_reg = ASF_REG_RDX;
-	str *addend_reg_str = NULL,
-	    *augend_str = NULL;
-	addend_reg = asf_reg_get(asf_yz_type2imm(
-				*((struct expr *)e->valr->v)->sum_type));
-	addend_reg_str = asf_reg_get_str(&asf_regs[addend_reg]);
-	augend_str = asf_stack_get_element(asf_stack_top, 1);
-	str_expand(node->s, strlen(temp) - 4
-			+ augend_str->len - 1
-			+ addend_reg_str->len - 1);
-	snprintf(node->s->s, node->s->len, temp,
-			asf_suffix_get(asf_regs[addend_reg].size),
-			augend_str->s,
-			addend_reg_str->s);
-	str_free(addend_reg_str);
-	str_free(augend_str);
-	return 0;
-}
-
 int asf_op_add(struct expr *e)
 {
-	str *addend_str = NULL,
-	    *augend_str = NULL;
-	enum ASF_REGS augend_reg = ASF_REG_RAX;
+	str *addend = NULL,
+	    *augend = NULL;
 	struct object_node *node = NULL;
 	node = malloc(sizeof(*node));
 	node->s = str_new();
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
-	if (e->vall->type == AMC_EXPR && e->valr->type == AMC_EXPR)
-		return add_expr_and_expr(node, e);
-	if ((addend_str = asf_op_get_val(node, e->valr)) == NULL)
+	if ((addend = asf_op_get_val_right(node, e, -1)) == NULL)
 		goto err_free_node;
-	if (asf_op_try_save_val(node, e->vall, &augend_reg))
-		goto err_free_node;
-	str_expand(node->s, (strlen(temp) - 1)
-			+ addend_str->len);
-	augend_str = asf_reg_get_str(&asf_regs[augend_reg]);
+	if ((augend = asf_op_get_val_left(node, e)) == NULL)
+		goto err_free_node_and_addend;
+	str_expand(node->s, strlen(temp) - 4
+			+ addend->len - 1
+			+ augend->len - 1);
 	snprintf(node->s->s, node->s->len, temp,
-			asf_suffix_get(asf_regs[augend_reg].size),
-			addend_str->s,
-			augend_str->s);
-	str_free(addend_str);
-	str_free(augend_str);
-	asf_regs[augend_reg].flags.used = 1;
-	*asf_regs[augend_reg].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
+			asf_suffix_get(asf_yz_type2imm(*e->sum_type)),
+			addend->s,
+			augend->s);
+	str_free(addend);
+	str_free(augend);
 	return 0;
 err_free_node:
 	str_free(node->s);
 	free(node);
 	return 1;
+err_free_node_and_addend:
+	str_free(addend);
+	goto err_free_node;
 }

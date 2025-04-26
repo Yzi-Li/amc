@@ -1,6 +1,6 @@
 #ifndef AMC_BE_ASF_H
 #define AMC_BE_ASF_H
-#include "../../include/backend.h"
+#include "../../../include/backend.h"
 
 enum OBJ_SECTION_TYPE {
 	ASF_OBJ_TEXT,
@@ -13,7 +13,8 @@ int asf_file_new(struct file *f);
 int asf_init(int argc, char *argv[]);
 int asf_stop(enum BE_STOP_SIGNAL bess);
 
-int asf_func_call(const char *name, yz_val **v, int vlen);
+int asf_block_end();
+int asf_func_call(const char *name, enum YZ_TYPE type, yz_val **v, int vlen);
 int asf_func_def(const char *name, int len, enum YZ_TYPE type);
 int asf_func_ret(yz_val *v, int is_main);
 int asf_op_add(struct expr *e);

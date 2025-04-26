@@ -1,9 +1,9 @@
-#include "asf.h"
-#include "identifier.h"
-#include "imm.h"
-#include "inst.h"
-#include "register.h"
-#include "stack.h"
+#include "include/asf.h"
+#include "include/identifier.h"
+#include "include/imm.h"
+#include "include/mov.h"
+#include "include/register.h"
+#include "include/stack.h"
 #include "../../include/symbol.h"
 #include "../../include/backend/target.h"
 
@@ -16,6 +16,7 @@ struct defined_sym {
 
 static struct defined_sym *defined_syms = NULL;
 static int defined_sym_len = 0;
+static int defined_sym_capacity = 0;
 
 static sym_id_t get_id(char *name);
 static sym_id_t reg_id(char *name);
@@ -25,6 +26,8 @@ static int set_sym(char *name, struct symbol *sym);
 
 sym_id_t get_id(char *name)
 {
+	if (name == NULL)
+		return -1;
 	for (int i = 0; i < defined_sym_len; i++) {
 		if (strcmp(name, defined_syms[i].index) == 0)
 			return i;
@@ -34,15 +37,21 @@ sym_id_t get_id(char *name)
 
 sym_id_t reg_id(char *name)
 {
+	if (name == NULL)
+		return -1;
 	if (defined_syms == NULL) {
+		defined_sym_capacity = 1;
 		defined_sym_len = 1;
 		defined_syms = malloc(sizeof(*defined_syms));
 		defined_syms[0].index = name;
 		return 0;
 	}
 	defined_sym_len += 1;
-	defined_syms = realloc(defined_syms,
-			defined_sym_len * sizeof(*defined_syms));
+	if (defined_sym_len > defined_sym_capacity) {
+		defined_sym_capacity += 1;
+		defined_syms = realloc(defined_syms,
+				defined_sym_capacity * sizeof(*defined_syms));
+	}
 	defined_syms[defined_sym_len - 1].index = name;
 	return defined_sym_len - 1;
 }
@@ -137,6 +146,19 @@ int asf_var_set(char *name, yz_val *val)
 int asf_var_immut_init(char *name, yz_val *val)
 {
 	return asf_var_set(name, val);
+}
+
+void asf_identifier_free_id(int num)
+{
+	if (num == 0)
+		num = defined_sym_len;
+	if (defined_sym_len == 0)
+		return;
+	for (int i = 0; i < num; i++) {
+		defined_sym_len--;
+		if (defined_syms[defined_sym_len].index != NULL)
+			free(defined_syms[defined_sym_len].index);
+	}
 }
 
 struct asf_stack_element *asf_identifier_get(char *name)

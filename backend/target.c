@@ -46,18 +46,12 @@ int object_insert(struct object_node *src, struct object_node *n1,
 {
 	if (src == NULL)
 		return 1;
-	if (n1 != NULL) {
+	if (n1 != NULL)
 		n1->next = src;
-		src->prev = n1;
-	} else {
-		src->prev = NULL;
-	}
-	if (n2 != NULL) {
+	src->prev = n1;
+	if (n2 != NULL)
 		n2->prev = src;
-		src->next = n2;
-	} else {
-		src->next = NULL;
-	}
+	src->next = n2;
 	return 0;
 }
 

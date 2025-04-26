@@ -1,5 +1,5 @@
-#ifndef ASF_BE_CALL_H
-#define ASF_BE_CALL_H
+#ifndef AMC_BE_ASF_CALL_H
+#define AMC_BE_ASF_CALL_H
 #include "register.h"
 
 static enum ASF_REGS asf_call_arg_regs[] = {

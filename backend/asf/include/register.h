@@ -1,6 +1,6 @@
 #ifndef AMC_BE_ASF_REGISTER_H
 #define AMC_BE_ASF_REGISTER_H
-#include "../../include/type.h"
+#include "../../../include/type.h"
 #include "imm.h"
 
 enum ASF_REG_PURPOSE_TYPE {
@@ -46,7 +46,7 @@ enum ASF_REGS {
  * @field common: Without any special purpose.
  */
 struct reg_flags {
-	unsigned int bit_64:1, common:1, used:1;
+	unsigned int bit_64:1, common:1;
 };
 
 struct asf_reg {

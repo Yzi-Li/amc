@@ -9,7 +9,7 @@ static struct symbol keywords[] = {
 	{"fn",     2, parse_func_def, {1, 0, 0}},
 	//{"for",    3, parse_for,      {0, 1, 0}},
 	//{"from",   4, parse_from,     {0, 1, 0}},
-	//{"if",     2, parse_if,       {0, 1, 0}},
+	{"if",     2, parse_if,       {0, 1, 0}},
 	//{"import", 6, parse_import,   {1, 0, 0}},
 	{"let",    3, parse_let,      {1, 1, 0}},
 	//{"module", 6, parse_module,   {1, 0, 0}},

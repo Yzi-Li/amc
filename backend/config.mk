@@ -4,13 +4,17 @@ BACKEND_SRC =\
 
 BE_ASF_SRC =\
 	asf.c\
+	cmp.c\
 	expr.c\
 	func.c\
 	identifier.c\
 	imm.c\
+	jmp.c\
+	label.c\
 	mov.c\
 	op.c\
 	op_add.c\
+	op_cmp.c\
 	op_div.c\
 	op_mul.c\
 	op_sub.c\

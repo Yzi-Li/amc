@@ -1,6 +1,6 @@
-#include "asf.h"
-#include "register.h"
-#include "stack.h"
+#include "include/asf.h"
+#include "include/register.h"
+#include "include/stack.h"
 #include "../../include/backend.h"
 #include "../../include/backend/target.h"
 
@@ -9,6 +9,8 @@ struct backend backend_asf = {
 	.file_new = asf_file_new,
 	.init     = asf_init,
 	.stop     = asf_stop,
+
+	.block_end = asf_block_end,
 
 	.func_call = asf_func_call,
 	.func_def  = asf_func_def,

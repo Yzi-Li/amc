@@ -361,11 +361,13 @@ int parse_func_call(struct file *f, struct symbol *sym, struct scope *scope)
 		name = malloc(sym->name_len + 1);
 		memcpy(name, sym->name, sym->name_len);
 		name[sym->name_len] = '\0';
-		ret = backend_call(func_call)(name, v, sym->argc);
+		ret = backend_call(func_call)(name, sym->result_type,
+				v, sym->argc);
 		if (ret)
 			return 1;
 	} else {
-		ret = backend_call(func_call)(sym->name, v, sym->argc);
+		ret = backend_call(func_call)(sym->name, sym->result_type,
+				v, sym->argc);
 		if (ret)
 			return 1;
 	}
@@ -413,6 +415,9 @@ int parse_func_ret(struct file *f, struct symbol *sym, struct scope *scope)
 		return 1;
 	if ((ret = expr_apply(expr)) > 0)
 		goto err_free_expr;
+	if (f->src[f->pos] == '\n')
+		file_line_next(f);
+	parse_comment(f);
 	is_main = (scope->fn->name_len == 4
 			&& strncmp(scope->fn->name, "main", 4) == 0);
 	val.type = expr->vall->type;
@@ -427,10 +432,14 @@ int parse_func_ret(struct file *f, struct symbol *sym, struct scope *scope)
 		val.v = expr;
 	}
 	if (backend_call(func_ret)(&val, is_main))
-		return 1;
+		goto err_backend_failed;
 	expr_free(expr);
 	return 0;
 err_free_expr:
 	expr_free(expr);
+	return 1;
+err_backend_failed:
+	printf("amc: parse_func_ret: "
+			"Backend call failed!\n");
 	return 1;
 }

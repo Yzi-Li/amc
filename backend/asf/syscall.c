@@ -1,7 +1,8 @@
-#include "call.h"
-#include "identifier.h"
-#include "inst.h"
-#include "stack.h"
+#include "include/call.h"
+#include "include/identifier.h"
+#include "include/mov.h"
+#include "include/register.h"
+#include "include/stack.h"
 #include "../../include/expr.h"
 #include "../../include/symbol.h"
 #include "../../include/token.h"
@@ -88,6 +89,11 @@ int syscall_push_arg_sym(str *s, struct symbol *sym, int index)
 		return syscall_push_arg_identifier(s, sym, index);
 	src = asf_reg_get(asf_yz_type2imm(sym->result_type));
 	dest += src;
+	if (sym->args == NULL && sym->argc > 1) {
+		if (sym->argc - 2 > asf_call_arg_regs_len)
+			return 0;
+		src += asf_call_arg_regs[sym->argc - 2];
+	}
 	tmp = asf_inst_mov(ASF_MOV_R2R, &src, &dest);
 	str_append(s, tmp->len - 1, tmp->s);
 	str_free(tmp);

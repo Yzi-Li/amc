@@ -1,8 +1,8 @@
 #ifndef AMC_BE_ASF_IMM_H
 #define AMC_BE_ASF_IMM_H
-#include "../../include/type.h"
-#include "../../utils/cint.h"
-#include "../../utils/str/str.h"
+#include "../../../include/type.h"
+#include "../../../utils/cint.h"
+#include "../../../utils/str/str.h"
 
 static const int ASF_IMM_UNSIGNED_OFFSET = 8;
 

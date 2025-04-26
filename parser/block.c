@@ -108,9 +108,16 @@ err_not_in_block:
 
 int block_parse_line(int indent, struct file *f, struct scope *scope)
 {
+	i64 orig_column = f->cur_column,
+	    orig_line = f->cur_line,
+	    orig_pos = f->pos;
 	int cur_indent = 0, ret = 0;
-	if ((cur_indent = block_get_indent(f)) <= indent)
+	if ((cur_indent = block_get_indent(f)) <= indent) {
+		f->cur_column = orig_column;
+		f->cur_line = orig_line;
+		f->pos = orig_pos;
 		return -1;
+	}
 	file_skip_space(f);
 	if (parse_comment(f))
 		return 0;

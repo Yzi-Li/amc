@@ -29,6 +29,8 @@ struct symbol {
 /**
  * if args == NULL and argc == 1 =>
  *   symbol is identifier.
+ * if args == NULL and argc > 1 =>
+ *   func_args[argc - 2] is argument.
  */
 	u8 argc;
 	enum YZ_TYPE result_type;

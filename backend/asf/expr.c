@@ -1,7 +1,7 @@
-#include "asf.h"
-#include "imm.h"
-#include "register.h"
-#include "suffix.h"
+#include "include/asf.h"
+#include "include/imm.h"
+#include "include/register.h"
+#include "include/suffix.h"
 #include "../../include/type.h"
 #include "../../include/backend/target.h"
 
@@ -40,102 +40,6 @@ int asf_op_cmp(struct object_node *node, yz_val *l, yz_val *r)
 int asf_op_and(struct expr *e)
 {
 	return 0;
-}
-
-int asf_op_eq(struct expr *e)
-{
-	struct object_node *node = NULL;
-	node = malloc(sizeof(*node));
-	node->s = str_new();
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-		goto err;
-	if (asf_op_cmp(node, e->vall, e->valr))
-		goto err;
-	return 0;
-err:
-	str_free(node->s);
-	free(node);
-	return 1;
-}
-
-int asf_op_ge(struct expr *e)
-{
-	struct object_node *node = NULL;
-	node = malloc(sizeof(*node));
-	node->s = str_new();
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-		goto err;
-	if (asf_op_cmp(node, e->vall, e->valr))
-		goto err;
-	return 0;
-err:
-	str_free(node->s);
-	free(node);
-	return 1;
-}
-
-int asf_op_gt(struct expr *e)
-{
-	struct object_node *node = NULL;
-	node = malloc(sizeof(*node));
-	node->s = str_new();
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-		goto err;
-	if (asf_op_cmp(node, e->vall, e->valr))
-		goto err;
-	return 0;
-err:
-	str_free(node->s);
-	free(node);
-	return 1;
-}
-
-int asf_op_le(struct expr *e)
-{
-	struct object_node *node = NULL;
-	node = malloc(sizeof(*node));
-	node->s = str_new();
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-		goto err;
-	if (asf_op_cmp(node, e->vall, e->valr))
-		goto err;
-	return 0;
-err:
-	str_free(node->s);
-	free(node);
-	return 1;
-}
-
-int asf_op_lt(struct expr *e)
-{
-	struct object_node *node = NULL;
-	node = malloc(sizeof(*node));
-	node->s = str_new();
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-		goto err;
-	if (asf_op_cmp(node, e->vall, e->valr))
-		goto err;
-	return 0;
-err:
-	str_free(node->s);
-	free(node);
-	return 1;
-}
-
-int asf_op_ne(struct expr *e)
-{
-	struct object_node *node = NULL;
-	node = malloc(sizeof(*node));
-	node->s = str_new();
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-		goto err;
-	if (asf_op_cmp(node, e->vall, e->valr))
-		goto err;
-	return 0;
-err:
-	str_free(node->s);
-	free(node);
-	return 1;
 }
 
 int asf_op_not(struct expr *e)

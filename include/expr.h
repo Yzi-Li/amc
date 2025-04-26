@@ -13,7 +13,6 @@ enum OP_ID {
 	OP_LT,
 	OP_MUL,
 	OP_NE,
-	OP_NONE,
 	OP_NOT,
 	OP_OR,
 	OP_SUB,

@@ -1,9 +1,10 @@
-#include "asf.h"
-#include "inst.h"
-#include "stack.h"
-#include "suffix.h"
-#include <stdio.h>
+#include "include/asf.h"
+#include "include/mov.h"
+#include "include/register.h"
+#include "include/stack.h"
+#include "include/suffix.h"
 #include "../../include/backend/target.h"
+#include <stdio.h>
 
 struct asf_stack_element *asf_stack_top = NULL;
 
@@ -48,7 +49,6 @@ str *asf_inst_pop(enum ASF_REGS dest)
 {
 	str *s = NULL;
 	s = asf_inst_mov(ASF_MOV_M2R, asf_stack_top, &dest);
-	asf_regs[dest].flags.used = 0;
 	*asf_regs[dest].purpose = ASF_REG_PURPOSE_NULL;
 	stack_element_remove();
 	return s;
@@ -65,7 +65,6 @@ str *asf_inst_push_reg(enum ASF_REGS src)
 {
 	if (stack_element_append(asf_regs[src].size))
 		return NULL;
-	asf_regs[src].flags.used = 0;
 	*asf_regs[src].purpose = ASF_REG_PURPOSE_NULL;
 	return asf_inst_mov(ASF_MOV_R2M, &src, asf_stack_top);
 }

@@ -1,4 +1,4 @@
-#include "suffix.h"
+#include "include/suffix.h"
 
 char asf_suffix_get(int bytes)
 {
