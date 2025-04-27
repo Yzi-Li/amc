@@ -40,6 +40,7 @@ int asf_inst_cmp(struct expr *e)
 			asf_suffix_get(asf_yz_type2imm(*e->sum_type)),
 			vall->s,
 			valr->s);
+	*asf_regs[ASF_REG_RAX].purpose = ASF_REG_PURPOSE_NULL;
 	return 0;
 err_free_node:
 	str_free(node->s);

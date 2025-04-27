@@ -24,6 +24,7 @@ int parse_let(struct file *f, struct symbol *sym, struct scope *scope);
 int parse_match(struct file *f, struct symbol *sym, struct scope *scope);
 int parse_struct(struct file *f, struct symbol *sym, struct scope *scope);
 int parse_var(struct file *f, struct symbol *sym, struct scope *scope);
+int parse_while(struct file *f, struct symbol *sym, struct scope *scope);
 
 int keyword_find(str *token, struct symbol **result);
 

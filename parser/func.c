@@ -1,3 +1,6 @@
+#include "expr.h"
+#include "block.h"
+#include "keywords.h"
 #include "../include/backend.h"
 #include "../include/file.h"
 #include "../include/identifier.h"
@@ -8,9 +11,6 @@
 #include "../utils/converter.h"
 #include "../utils/die.h"
 #include "../utils/utils.h"
-#include "expr.h"
-#include "block.h"
-#include "keywords.h"
 #include <stdio.h>
 
 struct func_call_handle {
@@ -380,6 +380,7 @@ int parse_func_def(struct file *f, struct symbol *sym, struct scope *scope)
 	struct scope fn_scope = {
 		.fn = result,
 		.parent = scope,
+		.status = SCOPE_IN_BLOCK,
 		.sym_groups = {}
 	};
 	if (func_def_read_name(f, result))

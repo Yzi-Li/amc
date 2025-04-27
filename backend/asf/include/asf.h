@@ -32,5 +32,7 @@ int asf_op_not(struct expr *e);
 int asf_op_or(struct expr *e);
 int asf_var_set(char *name, yz_val *val);
 int asf_var_immut_init(char *name, yz_val *val);
+int asf_while_begin();
+int asf_while_end();
 
 #endif

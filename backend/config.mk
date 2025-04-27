@@ -1,9 +1,11 @@
 BACKEND_SRC =\
 	backend.c\
+	object.c\
 	target.c
 
 BE_ASF_SRC =\
 	asf.c\
+	block.c\
 	cmp.c\
 	expr.c\
 	func.c\
@@ -11,6 +13,7 @@ BE_ASF_SRC =\
 	imm.c\
 	jmp.c\
 	label.c\
+	loop.c\
 	mov.c\
 	op.c\
 	op_add.c\

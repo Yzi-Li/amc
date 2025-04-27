@@ -43,9 +43,17 @@ struct symbol_group {
 	struct symbol **symbols;
 };
 
+enum SCOPE_TYPE {
+	SCOPE_AFTER_IF,
+	SCOPE_IN_BLOCK,
+	SCOPE_IN_LOOP,
+	SCOPE_TOP
+};
+
 struct scope {
 	struct symbol *fn;
 	struct scope *parent;
+	enum SCOPE_TYPE status;
 	struct symbol_group sym_groups[SYM_GROUPS_SIZE];
 };
 

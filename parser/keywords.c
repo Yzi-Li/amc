@@ -17,7 +17,7 @@ static struct symbol keywords[] = {
 	//{"ref",    3, parse_ref,      {0, 1, 0}},
 	{"ret",    3, parse_func_ret, {0, 1, 0}},
 	//{"struct", 6, parse_struct,   {1, 1, 0}},
-	//{"while",  5, parse_while,    {0, 1, 0}},
+	{"while",  5, parse_while,    {0, 1, 0}},
 };
 
 int keyword_find(str *token, struct symbol **result)

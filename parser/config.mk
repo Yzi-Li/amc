@@ -6,6 +6,7 @@ PARSER_SRC =\
 	identifier.c\
 	if.c\
 	keywords.c\
+	loop.c\
 	match.c\
 	parser.c
 PARSER_OBJ = $(PARSER_SRC:.c=.o)

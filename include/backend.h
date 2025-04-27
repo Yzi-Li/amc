@@ -4,6 +4,7 @@
 #include "backend/block.h"
 #include "backend/expr.h"
 #include "backend/func.h"
+#include "backend/loop.h"
 #include "backend/operator.h"
 
 #define backend_call(FUNC) backends[cur_backend]->FUNC
@@ -35,6 +36,8 @@ struct backend {
 	backend_op_cmd_f         ops[OP_LEN];
 	backend_var_set_f        var_set;
 	backend_var_immut_init_f var_immut_init;
+	backend_while_begin_f    while_begin;
+	backend_while_end_f      while_end;
 };
 
 extern struct backend *backends[];

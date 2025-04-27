@@ -1,11 +1,12 @@
 #include "block.h"
+#include "expr.h"
+#include "keywords.h"
 #include "../include/backend.h"
 #include "../include/file.h"
+#include "../include/scope.h"
 #include "../include/token.h"
 #include "../utils/die.h"
 #include "../utils/str/str.h"
-#include "expr.h"
-#include "keywords.h"
 #include <stdio.h>
 
 static int block_get_indent(struct file *f);
@@ -36,14 +37,12 @@ int block_parse_expr(int indent, struct file *f, struct scope *scope)
 	file_pos_next(f);
 	return 0;
 err_cannot_parse_expr:
-	printf("amc: block_parse_expr: Cannot parse expression!\n"
-			"| In l:%lld,c:%lld\n",
+	printf("amc: block_parse_expr: %lld,%lld: Cannot parse expression!\n",
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_cannot_apply_expr:
-	printf("amc: block_parse_expr: Cannot apply expression!\n"
-			"| In l:%lld,c:%lld\n",
+	printf("amc: block_parse_expr: %lld,%lld: Cannot apply expression!\n",
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
@@ -72,11 +71,10 @@ int block_parse_func(int indent, struct file *f, struct scope *scope)
 	return 0;
 err_func_not_found:
 	err_msg = tok2str(token.s, token.len);
-	printf("amc: block_parse_func: Function not found!\n"
-			"| Token: \"%s\"\n"
-			"| In l:%lld,c:%lld\n",
-			err_msg,
-			orig_line, orig_column);
+	printf("amc: block_parse_func: %lld,%lld: Function not found!\n"
+			"| Token: \"%s\"\n",
+			orig_line, orig_column,
+			err_msg);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	free(err_msg);
 	return 1;
@@ -135,9 +133,8 @@ int block_parse_line(int indent, struct file *f, struct scope *scope)
 		goto err_not_expr_or_symbol_call;
 	return 0;
 err_not_expr_or_symbol_call:
-	printf("amc: block_parse_line: "
-			"Line is not expression or symbol call!\n"
-			"| In l:%lld,c:%lld\n",
+	printf("amc: block_parse_line: %lld,%lld: "
+			"Line is not expression or symbol call!\n",
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
@@ -146,9 +143,16 @@ err_not_expr_or_symbol_call:
 int parse_block(int indent, struct file *f, struct scope *scope)
 {
 	int ret = 0;
-	while ((ret = block_parse_line(indent, f, scope)) != -1) {
+	struct scope cur_scope = {
+		.fn = scope->fn,
+		.parent = scope,
+		.status = SCOPE_IN_BLOCK,
+		.sym_groups = {}
+	};
+	while ((ret = block_parse_line(indent, f, &cur_scope)) != -1) {
 		if (ret > 0)
 			return 1;
 	}
+	scope_free(&cur_scope);
 	return 0;
 }

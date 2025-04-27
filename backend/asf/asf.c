@@ -33,7 +33,10 @@ struct backend backend_asf = {
 	},
 
 	.var_set        = asf_var_set,
-	.var_immut_init = asf_var_immut_init
+	.var_immut_init = asf_var_immut_init,
+
+	.while_begin = asf_while_begin,
+	.while_end   = asf_while_end
 };
 
 int asf_init(int argc, char *argv[])

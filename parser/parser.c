@@ -54,6 +54,7 @@ int parser_init(const char *path, struct file *f)
 	struct scope toplevel = {
 		.fn = NULL,
 		.parent = NULL,
+		.status = SCOPE_TOP,
 		.sym_groups = {}
 	};
 	if (file_init(path, f))
