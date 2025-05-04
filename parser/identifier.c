@@ -88,7 +88,7 @@ int let_initialize_val(struct file *f, struct symbol *sym, struct scope *scope)
 	i64 orig_column = f->cur_column,
 	    orig_line = f->cur_line;
 	yz_val *val = NULL;
-	char *name = tok2str(sym->name, sym->name_len);
+	char *name = NULL;
 	file_pos_next(f);
 	file_skip_space(f);
 	if ((expr = parse_expr(f, 1, scope)) == NULL)
@@ -97,6 +97,7 @@ int let_initialize_val(struct file *f, struct symbol *sym, struct scope *scope)
 		goto err_cannot_apply_expr;
 	if ((val = let_expr_val_handle(&expr, sym)) == NULL)
 		goto err_cannot_apply_expr;
+	name = tok2str(sym->name, sym->name_len); // don't free
 	if (sym->flags.mut) {
 		if (backend_call(var_set)(name, val))
 			return 1;
@@ -149,11 +150,10 @@ int let_read_def(struct file *f, str *name, str *type)
 	return mut;
 err_type_indicator_not_found:
 	err_msg = tok2str(name->s, name->len);
-	printf("amc: let_read_def: Type indicator not found!\n"
-			"| Name(Token): \"%s\"\n"
-			"| In l:%lld,c:%lld\n",
-			err_msg,
-			orig_line, orig_column);
+	printf("amc: let_read_def: %lld,%lld: Type indicator not found!\n"
+			"| Name(Token): \"%s\"\n",
+			orig_line, orig_column,
+			err_msg),
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	free(err_msg);
 	return 2;
@@ -181,8 +181,7 @@ struct symbol *let_reg_sym(struct file *f, str *name, int mut,
 		goto err_cannot_register_sym;
 	return result;
 err_cannot_register_sym:
-	printf("amc: let_reg_sym: Cannot register symbol!\n"
-			"| In l:%lld,c:%lld\n",
+	printf("amc: let_reg_sym: %lld,%lld: Cannot register symbol!\n",
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	free_safe(result);
@@ -215,8 +214,7 @@ err_unsupport_type:
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_syntax_err:
-	printf("amc: parse_let: Syntax error!\n"
-			"| In l:%lld,c:%lld\n",
+	printf("amc: parse_let: %lld,%lld: Syntax error!\n",
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
@@ -224,7 +222,7 @@ err_syntax_err:
 
 int parse_immut_var(struct file *f, struct symbol *sym, struct scope *scope)
 {
-	return 0;
+	return 1;
 }
 
 int parse_mut_var(struct file *f, struct symbol *sym, struct scope *scope)
