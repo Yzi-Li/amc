@@ -18,7 +18,6 @@ int cmp_and_jmp(struct expr *e, enum ASF_JMP_TYPE jmp_type)
 {
 	label_id label = -1;
 	str *label_str = NULL;
-	struct object_node *node = NULL;
 	if ((label = asf_label_alloc()) == -1)
 		goto err_label_alloc_failed;
 	if (asf_inst_cmp(e))
@@ -27,12 +26,6 @@ int cmp_and_jmp(struct expr *e, enum ASF_JMP_TYPE jmp_type)
 		goto err_label_get_str_failed;
 	if (cmp_jmp_inst_append(label, label_str, jmp_type))
 		return 1;
-	node = malloc(sizeof(*node));
-	node->s = label_str;
-	if (asf_block_append(node))
-		goto err_free_node;
-	node->s->len -= 1;
-	str_append(node->s, 2, ":\n");
 	return 0;
 err_label_alloc_failed:
 	printf("amc[backend.asf:%s]: cmp_and_jmp: Label alloc failed!\n",
@@ -41,10 +34,6 @@ err_label_alloc_failed:
 err_label_get_str_failed:
 	printf("amc[backend.asf:%s]: cmp_and_jmp: Label get str failed!\n",
 			__FILE__);
-	return 1;
-err_free_node:
-	str_free(node->s);
-	free(node);
 	return 1;
 }
 

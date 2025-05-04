@@ -10,11 +10,10 @@
 #include <stdio.h>
 
 static int block_get_indent(struct file *f);
-static int block_parse_expr(int indent, struct file *f, struct scope *scope);
-static int block_parse_func(int indent, struct file *f, struct scope *scope);
-static int block_parse_keyword(int indent, struct file *f,
-		struct scope *scope);
-static int block_parse_line(int indent, struct file *f, struct scope *scope);
+static int block_parse_expr(struct file *f, struct scope *scope);
+static int block_parse_func(struct file *f, struct scope *scope);
+static int block_parse_keyword(struct file *f, struct scope *scope);
+static int block_parse_line(struct file *f, struct scope *scope);
 
 int block_get_indent(struct file *f)
 {
@@ -26,12 +25,12 @@ int block_get_indent(struct file *f)
 	return i;
 }
 
-int block_parse_expr(int indent, struct file *f, struct scope *scope)
+int block_parse_expr(struct file *f, struct scope *scope)
 {
 	struct expr *expr = NULL;
 	if ((expr = parse_expr(f, 1, scope)) == NULL)
 		goto err_cannot_parse_expr;
-	if (expr_apply(expr) > 0)
+	if (expr_apply(expr, scope) > 0)
 		goto err_cannot_apply_expr;
 	expr_free(expr);
 	file_pos_next(f);
@@ -48,7 +47,7 @@ err_cannot_apply_expr:
 	return 1;
 }
 
-int block_parse_func(int indent, struct file *f, struct scope *scope)
+int block_parse_func(struct file *f, struct scope *scope)
 {
 	char *err_msg;
 	i64 orig_column = f->cur_column,
@@ -80,7 +79,7 @@ err_func_not_found:
 	return 1;
 }
 
-int block_parse_keyword(int indent, struct file *f, struct scope *scope)
+int block_parse_keyword(struct file *f, struct scope *scope)
 {
 	i64 orig_column = f->cur_column,
 	    orig_line = f->cur_line,
@@ -104,13 +103,13 @@ err_not_in_block:
 	return 1;
 }
 
-int block_parse_line(int indent, struct file *f, struct scope *scope)
+int block_parse_line(struct file *f, struct scope *scope)
 {
+	int indent = 0, ret = 0;
 	i64 orig_column = f->cur_column,
 	    orig_line = f->cur_line,
 	    orig_pos = f->pos;
-	int cur_indent = 0, ret = 0;
-	if ((cur_indent = block_get_indent(f)) <= indent) {
+	if ((indent = block_get_indent(f)) != scope->indent) {
 		f->cur_column = orig_column;
 		f->cur_line = orig_line;
 		f->pos = orig_pos;
@@ -122,14 +121,14 @@ int block_parse_line(int indent, struct file *f, struct scope *scope)
 	if (f->src[f->pos] == '\n')
 		return file_line_next(f);
 	if (f->src[f->pos] == '(')
-		return block_parse_expr(cur_indent, f, scope);
+		return block_parse_expr(f, scope);
 	if (f->src[f->pos] == '[')
-		return block_parse_func(cur_indent, f, scope);
-	if ((ret = block_parse_keyword(cur_indent, f, scope)) == 0)
+		return block_parse_func(f, scope);
+	if ((ret = block_parse_keyword(f, scope)) == 0)
 		return 0;
 	if (ret > 0)
 		return 1;
-	if (block_parse_expr(cur_indent, f, scope))
+	if (block_parse_expr(f, scope))
 		goto err_not_expr_or_symbol_call;
 	return 0;
 err_not_expr_or_symbol_call:
@@ -140,19 +139,23 @@ err_not_expr_or_symbol_call:
 	return 1;
 }
 
-int parse_block(int indent, struct file *f, struct scope *scope)
+int parse_block(struct file *f, struct scope *scope)
 {
 	int ret = 0;
 	struct scope cur_scope = {
 		.fn = scope->fn,
+		.indent = scope->indent + 1,
 		.parent = scope,
-		.status = SCOPE_IN_BLOCK,
+		.status = backend_call(scope_begin)(),
+		.status_type = SCOPE_IN_BLOCK,
 		.sym_groups = {}
 	};
-	while ((ret = block_parse_line(indent, f, &cur_scope)) != -1) {
+	if (scope_check_is_correct(&cur_scope))
+		return 1;
+	while ((ret = block_parse_line(f, &cur_scope)) != -1) {
 		if (ret > 0)
 			return 1;
 	}
-	scope_free(&cur_scope);
+	scope_end(&cur_scope);
 	return 0;
 }

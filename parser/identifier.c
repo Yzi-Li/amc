@@ -93,7 +93,7 @@ int let_initialize_val(struct file *f, struct symbol *sym, struct scope *scope)
 	file_skip_space(f);
 	if ((expr = parse_expr(f, 1, scope)) == NULL)
 		goto err_cannot_parse_expr;
-	if (expr_apply(expr) > 0)
+	if (expr_apply(expr, scope) > 0)
 		goto err_cannot_apply_expr;
 	if ((val = let_expr_val_handle(&expr, sym)) == NULL)
 		goto err_cannot_apply_expr;

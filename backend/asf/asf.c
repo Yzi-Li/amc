@@ -10,7 +10,9 @@ struct backend backend_asf = {
 	.init     = asf_init,
 	.stop     = asf_stop,
 
-	.block_end = asf_block_end,
+	.cond_elif = asf_cond_elif,
+	.cond_else = asf_cond_else,
+	.cond_if   = asf_cond_if,
 
 	.func_call = asf_func_call,
 	.func_def  = asf_func_def,
@@ -30,7 +32,16 @@ struct backend backend_asf = {
 		[OP_NOT] = asf_op_not,
 		[OP_OR]  = asf_op_or,
 		[OP_SUB] = asf_op_sub,
+
+		[OP_ASSIGN] = asf_op_assign,
+		[OP_ASSIGN_ADD] = asf_op_assign_add,
+		[OP_ASSIGN_DIV] = asf_op_assign_div,
+		[OP_ASSIGN_MUL] = asf_op_assign_mul,
+		[OP_ASSIGN_SUB] = asf_op_assign_sub
 	},
+
+	.scope_begin = asf_scope_begin,
+	.scope_end = asf_scope_end,
 
 	.var_set        = asf_var_set,
 	.var_immut_init = asf_var_immut_init,

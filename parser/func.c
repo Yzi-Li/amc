@@ -73,8 +73,8 @@ err_wrong_arg_type:
 
 int func_call_main(struct file *f, struct symbol *sym, struct scope *scope)
 {
-	printf("amc: You cannot call the main function!\n"
-			"| In l:%lld,c:%lld\n",
+	printf("amc: func_call_main: %lld,%lld: "
+			"You cannot call the main function!\n",
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
@@ -89,7 +89,7 @@ int func_call_read_arg(const char *se, struct file *f, void *data)
 		goto err_too_many_args;
 	if ((expr = parse_expr(f, 1, handle->scope)) == NULL)
 		goto err_cannot_parse_arg;
-	if (expr_apply(expr) > 0)
+	if (expr_apply(expr, handle->scope) > 0)
 		goto err_cannot_parse_arg;
 	if (func_call_arg_handle(expr, &result,
 				handle->fn->args[handle->index]))
@@ -105,20 +105,18 @@ int func_call_read_arg(const char *se, struct file *f, void *data)
 	handle->index += 1;
 	return 0;
 err_too_many_args:
-	printf("amc: func_call_read_arg: Too many parameters.\n"
-			"| In l:%lld,c:%lld\n",
+	printf("amc: func_call_read_arg: %lld,%lld: Too many parameters.\n",
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_cannot_parse_arg:
-	printf("amc: func_call_read_arg: Cannot parse argument.\n"
-			"| In l:%lld,c:%lld\n",
+	printf("amc: func_call_read_arg: %lld,%lld: Cannot parse argument.\n",
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_cannot_handle_arg:
-	printf("|< amc: func_call_read_arg: Cannot handle argument.\n"
-			"|< In l:%lld,c:%lld\n",
+	printf("|< amc: func_call_read_arg: %lld,%lld: "
+			"Cannot handle argument.\n",
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
@@ -149,13 +147,12 @@ err_free_result:
 	return NULL;
 err_too_few_arg:
 	err_msg = tok2str(fn->name, fn->name_len);
-	printf("amc: func_call_read_args: Too few arguments!\n"
+	printf("amc: func_call_read_args: %lld,%lld: Too few arguments!\n"
 			"| Function: \"%s\"\n"
-			"| Need %d but only has %d\n"
-			"| In l:%lld,c:%lld\n",
+			"| Need %d but only has %d\n",
+			f->cur_line, f->cur_column,
 			err_msg,
-			fn->argc, handle->index,
-			f->cur_line, f->cur_column);
+			fn->argc, handle->index);
 	free(err_msg);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	goto err_free_result;
@@ -181,13 +178,12 @@ int func_def_block_start(struct file *f)
 	return 0;
 err_not_func_def_start:
 	err_msg = tok2str(token.s, token.len);
-	printf("amc: func_def_block_start:\n"
-			"| Function define start character not found\n"
+	printf("amc: func_def_block_start: %lld,%lld:"
+			"Function define start character not found\n"
 			"| Token: \"%s\"\n"
-			"|         ^\n"
-			"| In l:%lld,c:%lld\n",
-			err_msg,
-			f->cur_line, f->cur_column);
+			"|         ^\n",
+			f->cur_line, f->cur_column,
+			err_msg);
 	free(err_msg);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
@@ -259,7 +255,7 @@ int func_def_read_block(struct file *f, struct scope *scope)
 {
 	if (func_def_block_start(f))
 		return 1;
-	return parse_block(0, f, scope);
+	return parse_block(f, scope);
 }
 
 int func_def_read_name(struct file *f, struct symbol *fn)
@@ -379,10 +375,14 @@ int parse_func_def(struct file *f, struct symbol *sym, struct scope *scope)
 	struct symbol *result = calloc(1, sizeof(*result));
 	struct scope fn_scope = {
 		.fn = result,
+		.indent = scope->indent,
 		.parent = scope,
-		.status = SCOPE_IN_BLOCK,
+		.status = backend_call(scope_begin)(),
+		.status_type = SCOPE_IN_BLOCK,
 		.sym_groups = {}
 	};
+	if (scope_check_is_correct(&fn_scope))
+		return 1;
 	if (func_def_read_name(f, result))
 		goto err_free_result;
 	if (func_def_check_main(result->name, result->name_len))
@@ -400,7 +400,7 @@ int parse_func_def(struct file *f, struct symbol *sym, struct scope *scope)
 		goto err_free_result;
 	if (func_def_read_block(f, &fn_scope))
 		goto err_free_result;
-	scope_free(&fn_scope);
+	scope_end(&fn_scope);
 	return 0;
 err_free_result:
 	free_safe(result);
@@ -414,7 +414,7 @@ int parse_func_ret(struct file *f, struct symbol *sym, struct scope *scope)
 	yz_val val = {};
 	if ((expr = parse_expr(f, 1, scope)) == NULL)
 		return 1;
-	if ((ret = expr_apply(expr)) > 0)
+	if ((ret = expr_apply(expr, scope)) > 0)
 		goto err_free_expr;
 	if (f->src[f->pos] == '\n')
 		file_line_next(f);

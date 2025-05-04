@@ -19,6 +19,11 @@ label_id asf_label_alloc()
 	return label_id_top;
 }
 
+label_id asf_label_get_last()
+{
+	return label_id_top;
+}
+
 str *asf_label_get_str(label_id id)
 {
 	str *s = NULL;

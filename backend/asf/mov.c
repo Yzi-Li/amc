@@ -10,6 +10,8 @@
 
 static str *mov_i2m(struct asf_imm *src, struct asf_stack_element *dest);
 static str *mov_i2r(struct asf_imm *src, enum ASF_REGS dest);
+static str *mov_m2m(struct asf_stack_element *src,
+		struct asf_stack_element *dest);
 static str *mov_m2r(struct asf_stack_element *src, enum ASF_REGS dest);
 static str *mov_r2m(enum ASF_REGS src, struct asf_stack_element *dest);
 static str *mov_r2r(enum ASF_REGS src, enum ASF_REGS dest);
@@ -43,6 +45,23 @@ str *mov_i2r(struct asf_imm *src, enum ASF_REGS dest)
 			asf_suffix_get(asf_regs[dest].size),
 			src->iq,
 			asf_regs[dest].name);
+	return s;
+}
+
+str *mov_m2m(struct asf_stack_element *src, struct asf_stack_element *dest)
+{
+	str *s = NULL;
+	const char *temp = "mov%c -%d(%%rbp), -%d(%%rbp)\n";
+	if (src->bytes != dest->bytes)
+		return NULL;
+	s = str_new();
+	str_expand(s, strlen(temp) - 5
+			+ ullen(src->addr)
+			+ ullen(dest->addr));
+	snprintf(s->s, s->len, temp,
+			asf_suffix_get(src->bytes),
+			src->addr,
+			dest->addr);
 	return s;
 }
 
@@ -102,6 +121,8 @@ str *asf_inst_mov(enum ASF_MOV_TYPE mt, void *l, void *r)
 		return mov_i2r((struct asf_imm*)l, *(enum ASF_REGS*)r);
 		break;
 	case ASF_MOV_M2M:
+		return mov_m2m((struct asf_stack_element*)l,
+				(struct asf_stack_element*)r);
 		break;
 	case ASF_MOV_M2R:
 		return mov_m2r((struct asf_stack_element*)l,

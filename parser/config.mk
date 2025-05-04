@@ -8,6 +8,7 @@ PARSER_SRC =\
 	keywords.c\
 	loop.c\
 	match.c\
+	op.c\
 	parser.c
 PARSER_OBJ = $(PARSER_SRC:.c=.o)
 PARSER_DEBUG_OBJ = $(PARSER_SRC:.c=.debug.o)

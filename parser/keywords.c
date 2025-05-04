@@ -4,8 +4,8 @@
 
 static struct symbol keywords[] = {
 	//{"const",  5, parse_const,    {0, 1, 0}},
-	//{"elif",   4, parse_elif,     {0, 1, 0}},
-	//{"else",   4, parse_else,     {0, 1, 0}},
+	{"elif",   4, parse_elif,     {0, 1, 0}},
+	{"else",   4, parse_else,     {0, 1, 0}},
 	{"fn",     2, parse_func_def, {1, 0, 0}},
 	//{"for",    3, parse_for,      {0, 1, 0}},
 	//{"from",   4, parse_from,     {0, 1, 0}},

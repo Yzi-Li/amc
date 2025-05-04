@@ -16,10 +16,16 @@ enum OP_ID {
 	OP_NOT,
 	OP_OR,
 	OP_SUB,
+
+	OP_ASSIGN,
+	OP_ASSIGN_ADD,
+	OP_ASSIGN_DIV,
+	OP_ASSIGN_MUL,
+	OP_ASSIGN_SUB
 };
 
-#define OP_LEN 14
-static const int OP_SPECIAL_START = 14;
+#define OP_LEN 18
+#define OP_SPECIAL_START 13
 
 struct expr_operator {
 	const char *sym;

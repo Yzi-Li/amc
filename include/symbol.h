@@ -2,6 +2,7 @@
 #define AMC_SYMBOL_H
 #include "../utils/cint.h"
 #include "../utils/str/str.h"
+#include "backend/scope.h"
 #include "file.h"
 #include "type.h"
 #include <limits.h>
@@ -43,7 +44,7 @@ struct symbol_group {
 	struct symbol **symbols;
 };
 
-enum SCOPE_TYPE {
+enum SCOPE_STATUS_TYPE {
 	SCOPE_AFTER_IF,
 	SCOPE_IN_BLOCK,
 	SCOPE_IN_LOOP,
@@ -52,8 +53,10 @@ enum SCOPE_TYPE {
 
 struct scope {
 	struct symbol *fn;
+	int indent;
 	struct scope *parent;
-	enum SCOPE_TYPE status;
+	backend_scope_status *status;
+	enum SCOPE_STATUS_TYPE status_type;
 	struct symbol_group sym_groups[SYM_GROUPS_SIZE];
 };
 

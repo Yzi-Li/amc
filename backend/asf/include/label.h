@@ -5,8 +5,8 @@
 
 typedef int label_id;
 
-int asf_block_append(struct object_node *node);
 label_id asf_label_alloc();
+label_id asf_label_get_last();
 str *asf_label_get_str(label_id id);
 
 #endif

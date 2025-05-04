@@ -61,6 +61,13 @@ str *asf_inst_push_imm(struct asf_imm *imm)
 	return asf_inst_mov(ASF_MOV_I2M, imm, asf_stack_top);
 }
 
+str *asf_inst_push_mem(struct asf_stack_element *src)
+{
+	if (stack_element_append(src->bytes))
+		return NULL;
+	return asf_inst_mov(ASF_MOV_M2M, src, asf_stack_top);
+}
+
 str *asf_inst_push_reg(enum ASF_REGS src)
 {
 	if (stack_element_append(asf_regs[src].size))

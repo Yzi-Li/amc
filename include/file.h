@@ -3,9 +3,7 @@
 #include "../utils/cint.h"
 
 struct file {
-	i64 cur_line;
-	i64 cur_column;
-	i64 pos;
+	i64 cur_column, cur_line, pos;
 	i64 len;
 
 	char *src;

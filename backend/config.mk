@@ -5,8 +5,8 @@ BACKEND_SRC =\
 
 BE_ASF_SRC =\
 	asf.c\
-	block.c\
 	cmp.c\
+	cond.c\
 	expr.c\
 	func.c\
 	identifier.c\
@@ -17,11 +17,13 @@ BE_ASF_SRC =\
 	mov.c\
 	op.c\
 	op_add.c\
+	op_assign.c\
 	op_cmp.c\
 	op_div.c\
 	op_mul.c\
 	op_sub.c\
 	register.c\
+	scope.c\
 	stack.c\
 	suffix.c\
 	syscall.c

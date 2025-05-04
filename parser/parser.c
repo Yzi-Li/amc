@@ -53,8 +53,10 @@ int parser_init(const char *path, struct file *f)
 	int ret = 0;
 	struct scope toplevel = {
 		.fn = NULL,
+		.indent = 0,
 		.parent = NULL,
-		.status = SCOPE_TOP,
+		.status = NULL,
+		.status_type = SCOPE_TOP,
 		.sym_groups = {}
 	};
 	if (file_init(path, f))

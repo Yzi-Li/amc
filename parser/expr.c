@@ -1,8 +1,8 @@
 /**
  * TODO: 1. unary operator support.
- *       2. special operator support
  */
 #include "expr.h"
+#include "op.h"
 #include "../include/backend.h"
 #include "../include/token.h"
 #include "../utils/converter.h"
@@ -12,22 +12,27 @@
 
 static const char *TERM_END = ";),] \t\n";
 
-// some operator need to be parsed in frontend first
 static const struct expr_operator operators[] = {
-	{"*",   1, OP_MUL  },
-	{"/",   1, OP_DIV  },
-	{"+",   2, OP_ADD  },
-	{"-",   2, OP_SUB  },
+	{"*",   1, OP_MUL},
+	{"/",   1, OP_DIV},
+	{"+",   2, OP_ADD},
+	{"-",   2, OP_SUB},
 
-	{"==",  3, OP_EQ   },
-	{"!=",  3, OP_NE   },
-	{"<",   3, OP_LT   },
-	{"<=",  3, OP_LE   },
-	{">",   3, OP_GT   },
-	{">=",  3, OP_GE   },
+	{"==",  3, OP_EQ},
+	{"!=",  3, OP_NE},
+	{"<",   3, OP_LT},
+	{"<=",  3, OP_LE},
+	{">",   3, OP_GT},
+	{">=",  3, OP_GE},
 
-	{"and", 4, OP_AND  },
-	{"or",  4, OP_OR   },
+	{"and", 4, OP_AND},
+	{"or",  4, OP_OR },
+
+	{"=",   5, OP_ASSIGN    },
+	{"+=",  5, OP_ASSIGN_ADD},
+	{"/=",  5, OP_ASSIGN_DIV},
+	{"*=",  5, OP_ASSIGN_MUL},
+	{"-=",  5, OP_ASSIGN_SUB},
 };
 
 static int expr_binary(struct file *f, struct expr *e, int top,
@@ -82,8 +87,7 @@ int expr_binary(struct file *f, struct expr *e, int top, struct scope *scope)
 		return -1;
 	return 0;
 err_valr_not_found:
-	printf("amc: expr_binary: Value right not found!\n"
-			"| In l:%lld,c:%lld\n",
+	printf("amc: expr_binary: %lld,%lld: Value right not found!\n",
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
@@ -177,8 +181,7 @@ int expr_read_token(struct file *f, str *token, int top)
 	file_skip_space(f);
 	return end;
 err_empty_token:
-	printf("amc: expr_read_token: Empty token\n"
-			"| In l:%lld,c:%lld\n",
+	printf("amc: expr_read_token: %lld,%lld: Empty token\n",
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 2;
@@ -291,8 +294,7 @@ int expr_term_expr(struct file *f, yz_val *v, int top, struct scope *scope)
 	}
 	return 0;
 err_cannot_parse_expr:
-	printf("amc: expr_term_expr: Cannot parse expression!\n"
-			"| In l:%lld,c:%lld\n",
+	printf("amc: expr_term_expr: %lld,%lld: Cannot parse expression!\n",
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
@@ -330,24 +332,22 @@ int expr_term_func(struct file *f, yz_val *v, int top, struct scope *scope)
 	return end == 1 ? -1 : 0;
 err_func_not_found:
 	err_msg = tok2str(token.s, token.len);
-	printf("amc: expr_term_func: Function not found!\n"
+	printf("amc: expr_term_func: %lld,%lld: Function not found!\n"
 			"| Token: \"%s\"\n"
-			"|         ^\n"
-			"| In l:%lld,c:%lld\n",
-			err_msg,
-			f->cur_line,
-			f->cur_column);
+			"|         ^\n",
+			f->cur_line, f->cur_column,
+			err_msg);
 	free(err_msg);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_func_not_in_block:
 	err_msg = tok2str(token.s, token.len);
-	printf("amc: expr_term_func: Function cannot be called in block!\n"
+	printf("amc: expr_term_func: %lld,%lld: "
+			"Function cannot be called in block!\n"
 			"| Token: \"%s\"\n"
-			"|         ^\n"
-			"| In l:%lld,c:%lld\n",
-			err_msg,
-			f->cur_line, f->cur_column);
+			"|         ^\n",
+			f->cur_line, f->cur_column,
+			err_msg);
 	free(err_msg);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
@@ -374,11 +374,10 @@ err_eoe:
 	return 1;
 err_identifier_not_found:
 	err_msg = tok2str(token.s, token.len);
-	printf("amc: expr_term_identifier: Identifier not found!\n"
-			"| Token: \"%s\"\n"
-			"| In l:%lld,c:%lld\n",
-			err_msg,
-			f->cur_line, f->cur_column);
+	printf("amc: expr_term_identifier: %lld,%lld: Identifier not found!\n"
+			"| Token: \"%s\"\n",
+			f->cur_line, f->cur_column,
+			err_msg);
 	free(err_msg);
 	return 1;
 }
@@ -407,23 +406,25 @@ err_not_num:
 	return 1;
 }
 
-int expr_apply(struct expr *e)
+int expr_apply(struct expr *e, struct scope *scope)
 {
 	if (e->op == NULL && e->valr == NULL) {
 		if (e->vall->type == AMC_EXPR)
-			return expr_apply(e->vall->v);
+			return expr_apply(e->vall->v, scope);
 		free_safe(e->op);
 		free_safe(e->valr);
 		return -1;
 	}
 	if (e->vall->type == AMC_EXPR) {
-		if (expr_apply(e->vall->v) > 0)
+		if (expr_apply(e->vall->v, scope) > 0)
 			return 1;
 	}
 	if (e->valr->type == AMC_EXPR) {
-		if (expr_apply(e->valr->v) > 0)
+		if (expr_apply(e->valr->v, scope) > 0)
 			return 1;
 	}
+	if (e->op->id >= OP_SPECIAL_START)
+		return op_apply_special(e, scope);
 	if (backend_call(ops[e->op->id])(e))
 		goto err_backend_call;
 	return 0;
