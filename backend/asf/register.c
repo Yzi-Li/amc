@@ -65,7 +65,9 @@ enum ASF_REGS asf_reg_get(enum ASF_IMM_TYPE type)
 		return ASF_REG_RAX;
 		break;
 	default:
-		printf("amc: reg_get: unsupport type");
+		printf("amc[backend.asf]: asf_reg_get: "
+				"Unsupport type: \"%d\"\n",
+				type);
 		backend_stop(BE_STOP_SIGNAL_ERR);
 		break;
 	}

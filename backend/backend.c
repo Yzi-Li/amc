@@ -6,26 +6,19 @@
 #include "asf/include/asf.h"
 #endif
 
-enum FLAG {
-	FLAG_INITED = 1 << 0,
-	FLAG_STOPED = 1 << 1,
-	FLAG_ENDED  = 1 << 2,
-};
-
 extern struct backend backend_asf;
-
-static int flag = 0;
 
 struct backend *backends[] = {
 	NULL,
 	&backend_asf
 };
 
+int backend_flag = 0;
 enum BACKENDS cur_backend;
 
 int backend_init(int argc, char *argv[])
 {
-	if (flag & FLAG_INITED)
+	if (backend_flag & BE_FLAG_INITED)
 		return 0;
 	if (cur_backend == BE_NONE)
 		cur_backend = default_backend;
@@ -39,17 +32,17 @@ int backend_file_new(struct file *f)
 
 int backend_stop(enum BE_STOP_SIGNAL bess)
 {
-	if (flag & FLAG_STOPED)
+	if (backend_flag & BE_FLAG_STOPED)
 		return 0;
 	if (backends[cur_backend]->stop(bess))
 		return 1;
-	flag |= FLAG_STOPED;
+	backend_flag |= BE_FLAG_STOPED;
 	return 0;
 }
 
 int backend_end()
 {
-	if (flag & FLAG_ENDED)
+	if (backend_flag & BE_FLAG_ENDED)
 		return 0;
 	return backends[cur_backend]->end();
 }

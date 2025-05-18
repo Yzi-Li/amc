@@ -10,7 +10,7 @@
 #include <string.h>
 
 static int let_check_defined(struct file *f, str *name, struct scope *scope);
-static int let_check_val_type(yz_val *src, enum YZ_TYPE dest);
+static int let_check_val_type(yz_val *src, yz_val *dest);
 static yz_val *let_expr_val_handle(struct expr **e, struct symbol *sym);
 static int let_initialize_val(struct file *f, struct symbol *sym,
 		struct scope *scope);
@@ -26,7 +26,7 @@ int let_check_defined(struct file *f, str *name, struct scope *scope)
 		goto err_sym_defined;
 	return 0;
 err_sym_defined:
-	err_msg = tok2str(name->s, name->len);
+	err_msg = str2chr(name->s, name->len);
 	printf("amc: parse_let: Symbol defined!\n"
 			"| Token: \"%s\"\n"
 			"| In l:%lld\n",
@@ -37,23 +37,18 @@ err_sym_defined:
 	return 1;
 }
 
-int let_check_val_type(yz_val *src, enum YZ_TYPE dest)
+int let_check_val_type(yz_val *src, yz_val *dest)
 {
-	enum YZ_TYPE type = src->type;
-	if (src->type == AMC_EXPR) {
-		type = *((struct expr*)src->v)->sum_type;
-	} else if (src->type == AMC_SYM) {
-		type = ((struct symbol*)src->v)->result_type;
-	}
-	if (type == dest)
-		return 0;
-	if (YZ_IS_DIGIT(type) && YZ_IS_DIGIT(dest))
-		return 0;
+	yz_val *val = NULL;
+	if ((val = yz_type_max(src, dest)) == NULL)
+		goto err_wrong_type;
+	return 0;
+err_wrong_type:
 	printf("amc: let_check_val_type: Wrong type!\n"
 			"| Symbol type: \"%s\"\n"
 			"| Value type:  \"%s\"\n",
 			yz_get_type_name(dest),
-			yz_get_type_name(src->type));
+			yz_get_type_name(src));
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
@@ -66,17 +61,17 @@ yz_val *let_expr_val_handle(struct expr **e, struct symbol *sym)
 		free_safe((*e)->op);
 		free_safe((*e)->valr);
 		free_safe(*e);
-		if (let_check_val_type(val, sym->result_type))
-			goto err_get_line;
+		if (let_check_val_type(val, &sym->result_type))
+			goto err_get_type;
 		return val;
 	}
 	val = calloc(1, sizeof(*val));
 	val->type = AMC_EXPR;
 	val->v = *e;
-	if (let_check_val_type(val, sym->result_type))
-		goto err_get_line;
+	if (let_check_val_type(val, &sym->result_type))
+		goto err_get_type;
 	return val;
-err_get_line:
+err_get_type:
 	printf("|< amc: let_expr_val_handle\n");
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return NULL;
@@ -97,7 +92,7 @@ int let_initialize_val(struct file *f, struct symbol *sym, struct scope *scope)
 		goto err_cannot_apply_expr;
 	if ((val = let_expr_val_handle(&expr, sym)) == NULL)
 		goto err_cannot_apply_expr;
-	name = tok2str(sym->name, sym->name_len); // don't free
+	name = str2chr(sym->name, sym->name_len); // don't free
 	if (sym->flags.mut) {
 		if (backend_call(var_set)(name, val))
 			return 1;
@@ -149,7 +144,7 @@ int let_read_def(struct file *f, str *name, str *type)
 		return 2;
 	return mut;
 err_type_indicator_not_found:
-	err_msg = tok2str(name->s, name->len);
+	err_msg = str2chr(name->s, name->len);
 	printf("amc: let_read_def: %lld,%lld: Type indicator not found!\n"
 			"| Name(Token): \"%s\"\n",
 			orig_line, orig_column,
@@ -170,11 +165,10 @@ struct symbol *let_reg_sym(struct file *f, str *name, int mut,
 	result->args = NULL;
 	result->name = name->s;
 	result->name_len = name->len;
+	result->flags.mut = mut;
 	if (mut) {
-		result->flags.mut = 1;
 		result->parse_function = parse_mut_var;
 	} else {
-		result->flags.mut = 0;
 		result->parse_function = parse_immut_var;
 	}
 	if (symbol_register(result, &scope->sym_groups[SYMG_SYM]))
@@ -190,14 +184,14 @@ err_cannot_register_sym:
 
 int parse_let(struct file *f, struct symbol *sym, struct scope *scope)
 {
-	int mut = 0, ret = 0;
+	int mut = 0;
 	str name_tok = TOKEN_NEW,
 	    type_tok = TOKEN_NEW;
-	enum YZ_TYPE type = AMC_ERR_TYPE;
+	yz_val type = {};
 	struct symbol *result = NULL;
 	if ((mut = let_read_def(f, &name_tok, &type_tok)) > 1)
 		return 1;
-	if ((ret = parse_type(&type_tok, &type)))
+	if (parse_type(&type_tok, &type))
 		goto err_unsupport_type;
 	if ((result = let_reg_sym(f, &name_tok, mut, scope)) == NULL)
 		return 1;

@@ -5,7 +5,6 @@
 #include "../../../include/backend/target.h"
 
 int asf_op_clean_reg(struct object_node *parent, enum ASF_REGS reg);
-int asf_op_cmp(struct object_node *node, yz_val *l, yz_val *r);
 str *asf_op_get_val_left(struct object_node *parent, struct expr *e);
 str *asf_op_get_val_right(struct object_node *parent, struct expr *e,
 		enum ASF_REGS dest);

@@ -4,19 +4,18 @@
 #include "../utils/str/str.h"
 #include "../utils/utils.h"
 
-// TODO: AMC_ERR_TYPE and AMC_USER_TYPE name improvement.
-//       And pointer support.
 enum YZ_TYPE {
 	AMC_ERR_TYPE, AMC_USER_TYPE,
 	AMC_SYM, AMC_EXPR,
 	YZ_VOID, YZ_CHAR,
 	YZ_I8, YZ_I16, YZ_I32, YZ_I64,
 	YZ_U8, YZ_U16, YZ_U32, YZ_U64,
-	YZ_PTR // ptr start
+	YZ_PTR
 };
 
 #define YZ_IS_DIGIT(X) (REGION_INT((X), YZ_I8, YZ_U64))
 #define YZ_IS_UNSIGNED_DIGIT(X) (REGION_INT((X), YZ_U8, YZ_U64))
+#define YZ_UNSIGNED_TO_SIGNED(X) ((X) - 4)
 
 static const unsigned int YZ_TYPE_OFFSET = 4;
 
@@ -57,8 +56,10 @@ static const struct yz_type_group yz_type_table[] = {
 };
 
 enum YZ_TYPE yz_get_int_size(long long l);
-const char *yz_get_type_name(enum YZ_TYPE type);
+enum YZ_TYPE *yz_get_raw_type(yz_val *val);
+const char *yz_get_type_name(yz_val *val);
 enum YZ_TYPE yz_type_get(str *s);
-int parse_type(str *token, enum YZ_TYPE *type);
+yz_val *yz_type_max(yz_val *l, yz_val *r);
+int parse_type(str *token, yz_val *type);
 
 #endif

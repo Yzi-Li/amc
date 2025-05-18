@@ -19,8 +19,8 @@ int asf_cond_elif(backend_scope_status *raw_status);
 int asf_cond_else(backend_scope_status *raw_status);
 int asf_cond_if(backend_scope_status *raw_status);
 
-int asf_func_call(const char *name, enum YZ_TYPE type, yz_val **v, int vlen);
-int asf_func_def(const char *name, int len, enum YZ_TYPE type);
+int asf_func_call(const char *name, yz_val *type, yz_val **v, int vlen);
+int asf_func_def(const char *name, int len, yz_val *type);
 int asf_func_ret(yz_val *v, int is_main);
 
 backend_scope_status *asf_scope_begin();
@@ -45,6 +45,9 @@ int asf_op_assign_add(struct expr *e);
 int asf_op_assign_div(struct expr *e);
 int asf_op_assign_mul(struct expr *e);
 int asf_op_assign_sub(struct expr *e);
+
+int asf_op_extract_val(struct expr *e);
+int asf_op_get_addr(struct expr *e);
 
 int asf_var_set(char *name, yz_val *val);
 int asf_var_immut_init(char *name, yz_val *val);

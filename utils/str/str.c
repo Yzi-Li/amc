@@ -1,6 +1,14 @@
 #include "str.h"
 #include <stdio.h>
 
+char *str2chr(const char *s, int len)
+{
+	char *result = malloc(len + 1);
+	result[len] = '\0';
+	memcpy(result, s, len);
+	return result;
+}
+
 int str_append(str *src, int len, const char *s)
 {
 	int last;

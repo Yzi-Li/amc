@@ -69,7 +69,7 @@ int block_parse_func(struct file *f, struct scope *scope)
 		return file_line_next(f);
 	return 0;
 err_func_not_found:
-	err_msg = tok2str(token.s, token.len);
+	err_msg = str2chr(token.s, token.len);
 	printf("amc: block_parse_func: %lld,%lld: Function not found!\n"
 			"| Token: \"%s\"\n",
 			orig_line, orig_column,

@@ -1,6 +1,3 @@
-/**
- * TODO: 1. unary operator support.
- */
 #include "expr.h"
 #include "op.h"
 #include "../include/backend.h"
@@ -9,6 +6,10 @@
 #include "../utils/die.h"
 #include "../utils/utils.h"
 #include <string.h>
+
+#define EXPR_END -1
+#define EXPR_OP_EMPTY -2
+#define EXPR_TERM_END -1
 
 static const char *TERM_END = ";),] \t\n";
 
@@ -32,7 +33,12 @@ static const struct expr_operator operators[] = {
 	{"+=",  5, OP_ASSIGN_ADD},
 	{"/=",  5, OP_ASSIGN_DIV},
 	{"*=",  5, OP_ASSIGN_MUL},
-	{"-=",  5, OP_ASSIGN_SUB},
+	{"-=",  5, OP_ASSIGN_SUB}
+};
+
+static const struct expr_operator unary_ops[] = {
+	{"*", 0, OP_EXTRACT_VAL},
+	{"&", 0, OP_GET_ADDR   }
 };
 
 static int expr_binary(struct file *f, struct expr *e, int top,
@@ -41,6 +47,7 @@ static int expr_check_end(char *endc, struct file *f, int top);
 static enum YZ_TYPE *expr_get_sum_type(yz_val *l, yz_val *r);
 static int expr_operator(struct file *f, struct expr_operator **op, int top);
 static int expr_read_token(struct file *f, str *token, int top);
+static int expr_single_term(struct expr *e);
 static int expr_sub(struct file *f, struct expr **e, int top,
 		struct scope *scope);
 static int expr_term(struct file *f, yz_val *v, int top, struct scope *scope);
@@ -52,39 +59,33 @@ static int expr_term_func(struct file *f, yz_val *v, int top,
 static int expr_term_identifier(struct file *f, yz_val *v, int top,
 		struct scope *scope);
 static int expr_term_int(struct file *f, yz_val *v, int top);
+static int expr_unary(struct file *f, yz_val *v, struct expr_operator *op,
+		int top, struct scope *scope);
+static struct expr_operator *expr_unary_get_op(char c);
 
 int expr_binary(struct file *f, struct expr *e, int top, struct scope *scope)
 {
 	int ret = 0;
 	if ((ret = expr_term(f, e->vall, top, scope)) > 0)
 		return 1;
-	if (ret == -1) {
-		if (e->vall->type == AMC_EXPR) {
-			e->sum_type = ((struct expr*)e->vall->v)->sum_type;
-		} else if (e->vall->type == AMC_SYM) {
-			e->sum_type =
-				&((struct symbol*)e->vall->v)->result_type;
-		} else {
-			e->sum_type = &e->vall->type;
-		}
-		free_safe(e->valr);
-		return -1;
-	}
+	if (ret == EXPR_TERM_END)
+		return expr_single_term(e);
 
 	if ((ret = expr_operator(f, &e->op, top)) > 0)
 		return 1;
-	if (ret == -1)
+	if (ret == EXPR_TERM_END)
 		goto err_valr_not_found;
-	if (ret == -2)
-		return -1;
+	if (ret == EXPR_OP_EMPTY)
+		return EXPR_TERM_END;
 	if (!top)
 		e->op->priority = -1;
 
 	if ((ret = expr_term(f, e->valr, top, scope)) > 0)
 		return 1;
-	e->sum_type = expr_get_sum_type(e->vall, e->valr);
-	if (ret == -1)
-		return -1;
+	if ((e->sum_type = expr_get_sum_type(e->vall, e->valr)) == NULL)
+		return 1;
+	if (ret == EXPR_TERM_END)
+		return EXPR_TERM_END;
 	return 0;
 err_valr_not_found:
 	printf("amc: expr_binary: %lld,%lld: Value right not found!\n",
@@ -110,32 +111,10 @@ int expr_check_end(char *endc, struct file *f, int top)
 
 enum YZ_TYPE *expr_get_sum_type(yz_val *l, yz_val *r)
 {
-	enum YZ_TYPE *sum_type_left = &l->type,
-	             *sum_type_right = &r->type,
-	             sign_left_type = l->type,
-	             sign_right_type = r->type;
-	if (YZ_IS_UNSIGNED_DIGIT(l->type) && YZ_IS_UNSIGNED_DIGIT(r->type))
-		return MAX(&l->type, &r->type);
-	if (l->type == AMC_EXPR) {
-		sum_type_left = ((struct expr*)l->v)->sum_type;
-		sign_left_type = *sum_type_left;
-	} else if (l->type == AMC_SYM) {
-		sum_type_left = &((struct symbol*)l->v)->result_type;
-		sign_left_type = *sum_type_left;
-	}
-	if (r->type == AMC_EXPR) {
-		sum_type_right = ((struct expr*)r->v)->sum_type;
-		sign_right_type = *sum_type_right;
-	} else if (r->type == AMC_SYM) {
-		sum_type_right = &((struct symbol*)r->v)->result_type;
-		sign_right_type = *sum_type_right;
-	}
-	if (YZ_IS_UNSIGNED_DIGIT(sign_left_type))
-		sign_left_type -= 4;
-	if (YZ_IS_UNSIGNED_DIGIT(sign_right_type))
-		sign_right_type -= 4;
-	return sign_left_type > sign_right_type
-		? sum_type_left : sum_type_right;
+	yz_val *val = NULL;
+	if ((val = yz_type_max(l, r)) == NULL)
+		return NULL;
+	return yz_get_raw_type(val);
 }
 
 int expr_operator(struct file *f, struct expr_operator **op, int top)
@@ -146,7 +125,7 @@ int expr_operator(struct file *f, struct expr_operator **op, int top)
 	if ((end = expr_read_token(f, &token, top)) == 2)
 		goto err_eoe;
 	if (end == 3)
-		return -2;
+		return EXPR_OP_EMPTY;
 	str_append(tmp, token.len, token.s);
 	str_append(tmp, 1, "\0");
 	for (int i = 0; i < LENGTH(operators); i++) {
@@ -154,7 +133,7 @@ int expr_operator(struct file *f, struct expr_operator **op, int top)
 			*op = malloc(sizeof(**op));
 			memcpy(*op, &operators[i], sizeof(**op));
 			str_free(tmp);
-			return end == 1 ? -1 : 0;
+			return end == 1 ? EXPR_TERM_END : 0;
 		}
 	}
 	str_free(tmp);
@@ -187,6 +166,20 @@ err_empty_token:
 	return 2;
 }
 
+int expr_single_term(struct expr *e)
+{
+	if (e->vall->type == AMC_EXPR) {
+		e->sum_type = ((struct expr*)e->vall->v)->sum_type;
+	} else if (e->vall->type == AMC_SYM) {
+		e->sum_type = &((struct symbol*)e->vall->v)->result_type.type;
+	} else {
+		e->sum_type = &e->vall->type;
+	}
+	free_safe(e->valr);
+	free_safe(e->op);
+	return EXPR_END;
+}
+
 int expr_sub(struct file *f, struct expr **e, int top, struct scope *scope)
 {
 	struct expr *expr = calloc(1, sizeof(*expr));
@@ -195,36 +188,39 @@ int expr_sub(struct file *f, struct expr **e, int top, struct scope *scope)
 	expr->valr = calloc(1, sizeof(*expr->valr));
 	if ((end = expr_operator(f, &expr->op, top)) > 0)
 		return 1;
-	if (end == -1)
+	if (end == EXPR_TERM_END)
 		goto err_valr_not_found;
-	if (end == -2)
-		return -1;
+	if (end == EXPR_OP_EMPTY)
+		return EXPR_END;
 	if ((end = expr_term(f, expr->valr, top, scope)) > 0)
 		return 1;
 	if (expr->op->priority < (*e)->op->priority) {
 		// 1 + 2 * 3
 		expr->vall->type = (*e)->valr->type;
 		expr->vall->v = (*e)->valr->v;
-		expr->sum_type = expr_get_sum_type(
+		if ((expr->sum_type = expr_get_sum_type(
 				expr->vall,
-				expr->valr);
+				expr->valr)) == NULL)
+			return 1;
 		(*e)->valr->type = AMC_EXPR;
 		(*e)->valr->v = expr;
-		(*e)->sum_type = expr_get_sum_type(
+		if (((*e)->sum_type = expr_get_sum_type(
 				(*e)->vall,
-				(*e)->valr);
+				(*e)->valr)) == NULL)
+			return 1;
 	} else {
 		// 1 * 2 + 3
 		expr->vall->type = AMC_EXPR;
 		expr->vall->v = *e;
-		expr->sum_type = expr_get_sum_type(
+		if ((expr->sum_type = expr_get_sum_type(
 				expr->vall,
-				expr->valr);
+				expr->valr)) == NULL)
+			return 1;
 		*e = expr;
 	}
 	if (end == 0) {
 		if (top && (f->src[f->pos] == '\n' || f->src[f->pos] == ';'))
-			return -1;
+			return EXPR_END;
 	}
 	return end;
 err_valr_not_found:
@@ -235,7 +231,8 @@ err_valr_not_found:
 
 int expr_term(struct file *f, yz_val *v, int top, struct scope *scope)
 {
-	if (REGION_INT(f->src[f->pos], '0', '9')) {
+	struct expr_operator *unary = NULL;
+	if (CHR_IS_NUM(f->src[f->pos])) {
 		return expr_term_int(f, v, top);
 	} else if (f->src[f->pos] == '\'') {
 		return expr_term_chr(f, v, top);
@@ -243,6 +240,8 @@ int expr_term(struct file *f, yz_val *v, int top, struct scope *scope)
 		return expr_term_expr(f, v, top, scope);
 	} else if (f->src[f->pos] == '[') {
 		return expr_term_func(f, v, top, scope);
+	} else if ((unary = expr_unary_get_op(f->src[f->pos])) != NULL) {
+		return expr_unary(f, v, unary, top, scope);
 	}
 	return expr_term_identifier(f, v, top, scope);
 }
@@ -254,7 +253,7 @@ int expr_term_chr(struct file *f, yz_val *v, int top)
 	if ((end = expr_read_token(f, &token, top)) == 2)
 		goto err_eoe;
 	if (end == 3)
-		return -1;
+		return EXPR_TERM_END;
 	token.s = &token.s[1];
 	token.len -= 2;
 	if (token.s[token.len] != '\'')
@@ -262,7 +261,7 @@ int expr_term_chr(struct file *f, yz_val *v, int top)
 	v->type = YZ_CHAR;
 	token.s = &token.s[1];
 	token.len -= 2;
-	return end == 1 ? -1 : 0;
+	return end == 1 ? EXPR_TERM_END : 0;
 err_eoe:
 	printf("|< amc: expr_term_chr: End of expression!\n");
 	return 1;
@@ -285,12 +284,12 @@ int expr_term_expr(struct file *f, yz_val *v, int top, struct scope *scope)
 				&& f->src[f->pos] != ']'
 				&& f->src[f->pos] != ',')
 			return 0;
-		return -1;
+		return EXPR_TERM_END;
 	}
 	if (f->src[f->pos] == ')') {
 		file_pos_next(f);
 		file_skip_space(f);
-		return -1;
+		return EXPR_TERM_END;
 	}
 	return 0;
 err_cannot_parse_expr:
@@ -309,7 +308,7 @@ int expr_term_func(struct file *f, yz_val *v, int top, struct scope *scope)
 	if ((end = expr_read_token(f, &token, top)) == 2)
 		return 1;
 	if (end == 3)
-		return -1;
+		return EXPR_TERM_END;
 	token.s = &token.s[1];
 	token.len -= 1;
 	if (!symbol_find_in_group_in_scope(&token, &callee, scope, SYMG_FUNC))
@@ -323,15 +322,15 @@ int expr_term_func(struct file *f, yz_val *v, int top, struct scope *scope)
 		file_skip_space(f);
 		if (expr_check_end(&f->src[f->pos], f, top)) {
 			file_pos_next(f);
-			return -1;
+			return EXPR_TERM_END;
 		}
 		return 0;
 	}
 	if (ret > 0)
 		return 1;
-	return end == 1 ? -1 : 0;
+	return end == 1 ? EXPR_TERM_END : 0;
 err_func_not_found:
-	err_msg = tok2str(token.s, token.len);
+	err_msg = str2chr(token.s, token.len);
 	printf("amc: expr_term_func: %lld,%lld: Function not found!\n"
 			"| Token: \"%s\"\n"
 			"|         ^\n",
@@ -341,7 +340,7 @@ err_func_not_found:
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_func_not_in_block:
-	err_msg = tok2str(token.s, token.len);
+	err_msg = str2chr(token.s, token.len);
 	printf("amc: expr_term_func: %lld,%lld: "
 			"Function cannot be called in block!\n"
 			"| Token: \"%s\"\n"
@@ -363,17 +362,17 @@ int expr_term_identifier(struct file *f, yz_val *v, int top,
 	if ((end = expr_read_token(f, &token, top)) == 2)
 		goto err_eoe;
 	if (end == 3)
-		return -1;
+		return EXPR_TERM_END;
 	if (!symbol_find_in_group_in_scope(&token, &sym, scope, SYMG_SYM))
 		goto err_identifier_not_found;
 	v->type = AMC_SYM;
 	v->v = sym;
-	return end == 1 ? -1 : 0;
+	return end == 1 ? EXPR_TERM_END : 0;
 err_eoe:
 	printf("|< amc: expr_term_identifier: End of expression!\n");
 	return 1;
 err_identifier_not_found:
-	err_msg = tok2str(token.s, token.len);
+	err_msg = str2chr(token.s, token.len);
 	printf("amc: expr_term_identifier: %lld,%lld: Identifier not found!\n"
 			"| Token: \"%s\"\n",
 			f->cur_line, f->cur_column,
@@ -390,31 +389,70 @@ int expr_term_int(struct file *f, yz_val *v, int top)
 	if ((end = expr_read_token(f, &token, top)) == 2)
 		goto err_eoe;
 	if (end == 3)
-		return -1;
+		return EXPR_TERM_END;
 	if (str2int(&token, &v->l))
 		goto err_not_num;
 	v->type = yz_get_int_size(v->l);
-	return end == 1 ? -1 : 0;
+	return end == 1 ? EXPR_TERM_END : 0;
 err_eoe:
 	printf("|< amc: expr_term_int: End of expression!\n");
+	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_not_num:
-	err_msg = tok2str(token.s, token.len);
+	err_msg = str2chr(token.s, token.len);
 	printf("amc: expr_term_int: Token: \"%s\" is not number!\n", err_msg);
 	free(err_msg);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
 
+int expr_unary(struct file *f, yz_val *v, struct expr_operator *op, int top,
+		struct scope *scope)
+{
+	int ret = 0;
+	struct expr *unary = NULL;
+	file_pos_next(f);
+	if (!file_try_skip_space(f))
+		goto err_eou;
+	v->type = AMC_EXPR;
+	unary = malloc(sizeof(*unary));
+	unary->vall = NULL;
+	unary->valr = malloc(sizeof(*unary->valr));
+	unary->op = op;
+	v->v = unary;
+	if ((ret = expr_term(f, unary->valr, top, scope)) > 0)
+		return 1;
+	unary->sum_type = yz_get_raw_type(unary->valr);
+	return ret;
+err_eou:
+	printf("amc: expr_unary: %lld,%lld: Unary expression is empty!\n",
+			f->cur_line, f->cur_column);
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 1;
+}
+
+struct expr_operator *expr_unary_get_op(char c)
+{
+	struct expr_operator *result = NULL;
+	for (int i = 0; i < LENGTH(unary_ops); i++) {
+		if (c != unary_ops[i].sym[0])
+			continue;
+		result = malloc(sizeof(*result));
+		memcpy(result, &unary_ops[i], sizeof(*result));
+		return result;
+	}
+	return NULL;
+}
+
 int expr_apply(struct expr *e, struct scope *scope)
 {
-	if (e->op == NULL && e->valr == NULL) {
+	if (EXPR_IS_SINGLE_TERM(e)) {
 		if (e->vall->type == AMC_EXPR)
 			return expr_apply(e->vall->v, scope);
-		free_safe(e->op);
-		free_safe(e->valr);
 		return -1;
 	}
+	if (EXPR_IS_UNARY(e))
+		return op_apply_special(e, scope);
 	if (e->vall->type == AMC_EXPR) {
 		if (expr_apply(e->vall->v, scope) > 0)
 			return 1;
@@ -436,18 +474,19 @@ err_backend_call:
 
 void expr_free(struct expr *e)
 {
-	if (e->vall != NULL) {
-		if (e->vall->type == AMC_EXPR)
-			expr_free(e->vall->v);
-		free(e->vall);
-	}
+	expr_free_val(e->vall);
+	expr_free_val(e->valr);
 	free_safe(e->op);
-	if (e->valr != NULL) {
-		if (e->valr->type == AMC_EXPR)
-			expr_free(e->valr->v);
-		free(e->valr);
-	}
 	free(e);
+}
+
+void expr_free_val(yz_val *v)
+{
+	if (v == NULL)
+		return;
+	if (v->type == AMC_EXPR)
+		expr_free(v->v);
+	free(v);
 }
 
 struct expr *parse_expr(struct file *f, int top, struct scope *scope)
@@ -458,9 +497,9 @@ struct expr *parse_expr(struct file *f, int top, struct scope *scope)
 	expr->valr = calloc(1, sizeof(*expr->valr));
 	if ((ret = expr_binary(f, expr, top, scope)) > 0)
 		goto err_free_expr;
-	if (ret == -1)
+	if (ret == EXPR_END)
 		return expr;
-	while ((ret = expr_sub(f, &expr, top, scope)) != -1) {
+	while ((ret = expr_sub(f, &expr, top, scope)) != EXPR_END) {
 		if (ret > 0)
 			goto err_free_expr;
 	}

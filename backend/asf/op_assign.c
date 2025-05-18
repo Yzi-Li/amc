@@ -4,7 +4,6 @@
 #include "include/register.h"
 #include "include/stack.h"
 #include "../../include/symbol.h"
-#include "../../include/token.h"
 
 static int op_assign_get_val(struct expr *e, int (*op_func)(struct expr *e));
 
@@ -20,7 +19,7 @@ int op_assign_get_val(struct expr *e, int (*op_func)(struct expr *e))
 	node = malloc(sizeof(*node));
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
-	name = tok2str(sym->name, sym->name_len);
+	name = str2chr(sym->name, sym->name_len);
 	dest = asf_identifier_get(name);
 	free(name);
 	src = asf_reg_get(dest->bytes);
@@ -39,7 +38,7 @@ int asf_op_assign(struct expr *e)
 {
 	char *name = NULL;
 	struct symbol *sym = e->vall->v;
-	name = tok2str(sym->name, sym->name_len);
+	name = str2chr(sym->name, sym->name_len);
 	if (asf_var_set(name, e->valr))
 		goto err_call_failed;
 	free(name);

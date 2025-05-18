@@ -1,7 +1,39 @@
+#include "../include/expr.h"
+#include "../include/symbol.h"
 #include "../include/type.h"
+#include "../include/ptr.h"
 #include "../utils/utils.h"
 #include "../utils/die.h"
 #include <limits.h>
+
+static yz_val *yz_type_max_raw(enum YZ_TYPE ltype, enum YZ_TYPE rtype,
+		yz_val *l, yz_val *r);
+static yz_val *yz_type_ptr_max(yz_val *l, yz_val *r);
+
+yz_val *yz_type_max_raw(enum YZ_TYPE ltype, enum YZ_TYPE rtype,
+		yz_val *l, yz_val *r)
+{
+	if (!YZ_IS_DIGIT(ltype) || !YZ_IS_DIGIT(rtype))
+		return NULL;
+	if (YZ_IS_UNSIGNED_DIGIT(ltype)
+			&& YZ_IS_UNSIGNED_DIGIT(rtype))
+		return ltype > rtype ? l : r;
+	if (YZ_IS_UNSIGNED_DIGIT(ltype))
+		ltype = YZ_UNSIGNED_TO_SIGNED(ltype);
+	if (YZ_IS_UNSIGNED_DIGIT(rtype))
+		rtype = YZ_UNSIGNED_TO_SIGNED(rtype);
+	return ltype > rtype ? l : r;
+}
+
+yz_val *yz_type_ptr_max(yz_val *l, yz_val *r)
+{
+	yz_ptr *lptr, *rptr;
+	if ((lptr = yz_ptr_get_from_val(l)) == NULL)
+		return NULL;
+	if ((rptr = yz_ptr_get_from_val(r)) == NULL)
+		return NULL;
+	return yz_ptr_is_equal(lptr, rptr) ? l : NULL;
+}
 
 enum YZ_TYPE yz_get_int_size(long long l)
 {
@@ -16,26 +48,47 @@ enum YZ_TYPE yz_get_int_size(long long l)
 	return AMC_ERR_TYPE;
 }
 
-const char *yz_get_type_name(enum YZ_TYPE type)
+enum YZ_TYPE *yz_get_raw_type(yz_val *val)
 {
-	int index = type - YZ_TYPE_OFFSET;
-	if (type < YZ_TYPE_OFFSET || index > LENGTH(yz_type_table)) {
-		switch (type) {
-		case AMC_ERR_TYPE:
-			return "AMC_ERR_TYPE";
-			break;
-		case AMC_SYM:
-			return "AMC_SYM";
-			break;
-		case AMC_EXPR:
-			return "AMC_EXPR";
-			break;
-		default:
-			return "(Cannot get type)";
-		}
-		return NULL;
+	struct expr *e = NULL;
+	if (val->type == AMC_EXPR) {
+		e = val->v;
+		if (e->op->id == OP_EXTRACT_VAL)
+			return &((yz_ptr*)
+					((struct symbol*)e->valr->v)
+						->result_type.v)
+				->ref.type;
+		return e->sum_type;
 	}
-	return yz_type_table[index].name;
+	if (val->type == AMC_SYM)
+		return yz_get_raw_type(
+				&((struct symbol*)val->v)->result_type);
+	return &val->type;
+}
+
+const char *yz_get_type_name(yz_val *val)
+{
+	enum YZ_TYPE type = *yz_get_raw_type(val);
+	int index = type - YZ_TYPE_OFFSET;
+	if (type >= YZ_TYPE_OFFSET && index < LENGTH(yz_type_table))
+		return yz_type_table[index].name;
+	switch (type) {
+	case AMC_ERR_TYPE:
+		return "AMC_ERR_TYPE";
+		break;
+	case AMC_SYM:
+		return "AMC_SYM";
+		break;
+	case AMC_EXPR:
+		return "AMC_EXPR";
+		break;
+	case YZ_PTR:
+		return yz_err_ptr_type(val);
+		break;
+	default:
+		return "(Cannot get type)";
+	}
+	return NULL;
 }
 
 enum YZ_TYPE yz_type_get(str *s)
@@ -48,20 +101,54 @@ enum YZ_TYPE yz_type_get(str *s)
 	return AMC_ERR_TYPE;
 }
 
-int parse_type(str *token, enum YZ_TYPE *type)
+yz_val *yz_type_max(yz_val *l, yz_val *r)
 {
-	if (token->s[0] == '*')
-		die("amc: unsupport type: pointer.");
+	yz_val *result_vall = l, *result_valr = r;
+	enum YZ_TYPE lraw = l->type, rraw = r->type;
+	if (l->type == YZ_PTR && r->type == YZ_PTR)
+		return yz_type_ptr_max(l, r);
+	if ((lraw = *yz_get_raw_type(l)) == AMC_ERR_TYPE)
+		return NULL;
+	if ((rraw = *yz_get_raw_type(r)) == AMC_ERR_TYPE)
+		return NULL;
+	if (lraw == YZ_PTR && rraw == YZ_PTR)
+		return yz_type_ptr_max(l, r);
+	if (lraw == YZ_PTR || rraw == YZ_PTR)
+		return NULL;
+	if (l->type == AMC_SYM)
+		result_vall = &((struct symbol*)l->v)->result_type;
+	if (r->type == AMC_SYM)
+		result_vall = &((struct symbol*)r->v)->result_type;
+	return yz_type_max_raw(lraw, rraw, result_vall, result_valr);
+}
 
+int parse_type(str *token, yz_val *type)
+{
+	char *err_msg = NULL;
+	if (type == NULL)
+		goto err_type_null;
+	if (token->s[0] == '*') {
+		token->len -= 1;
+		token->s = &token->s[1];
+		return parse_ptr(token, type);
+	}
 	for (int i = 0; i < token->len; i++) {
 		switch (token->s[i]) {
 		case '(':
 		case '[':
-			return i;
+			goto err_unsupport_type;
 			break;
 		}
 	}
-
-	*type = yz_type_get(token);
+	type->type = yz_type_get(token);
+	type->v = NULL;
 	return 0;
+err_type_null:
+	printf("amc: parse_type: ARG is empty!\n");
+	return 1;
+err_unsupport_type:
+	err_msg = str2chr(token->s, token->len);
+	printf("amc: parse_type: Type: \"%s\" is unsupport!\n", err_msg);
+	free(err_msg);
+	return 1;
 }

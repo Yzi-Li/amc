@@ -7,7 +7,6 @@
 #include "include/stack.h"
 #include "../../include/expr.h"
 #include "../../include/symbol.h"
-#include "../../include/token.h"
 
 static str *op_get_val_from_mem(struct object_node *parent,
 		enum ASF_REGS dest);
@@ -19,6 +18,8 @@ static str *op_get_vall_from_mem_or_reg(struct object_node *parent,
 		struct expr *e, enum ASF_REGS dest);
 static str *op_get_vall_identifier(struct object_node *parent,
 		struct symbol *src, enum ASF_REGS dest);
+static str *op_get_vall_imm(struct object_node *parent, struct expr *e,
+		enum ASF_REGS dest);
 static str *op_get_vall_sym(struct object_node *parent, struct expr *e,
 		enum ASF_REGS dest);
 static str *op_get_valr_expr(struct object_node *parent, struct expr *src,
@@ -79,7 +80,7 @@ str *op_get_val_imm(struct object_node *parent, yz_val *src,
 		enum ASF_REGS dest)
 {
 	struct asf_imm imm = {
-		.type = asf_yz_type2imm(src->type),
+		.type = asf_yz_type2imm(src),
 		.iq = src->l
 	};
 	struct object_node *node = NULL;
@@ -106,14 +107,14 @@ str *op_get_vall_from_mem_or_reg(struct object_node *parent, struct expr *e,
 	enum ASF_REGS src = ASF_REG_RAX;
 	if (e->valr->type == AMC_EXPR)
 		return op_get_val_from_mem(parent, dest);
-	src = asf_reg_get(asf_yz_type2imm(*e->sum_type));
+	src = asf_reg_get(asf_yz_type_raw2imm(*e->sum_type));
 	return op_get_val_from_reg(parent, src, dest);
 }
 
 str *op_get_vall_identifier(struct object_node *parent, struct symbol *src,
 		enum ASF_REGS dest)
 {
-	char *name = tok2str(src->name, src->name_len);
+	char *name = str2chr(src->name, src->name_len);
 	struct asf_stack_element *identifier = asf_identifier_get(name);
 	struct object_node *node = NULL;
 	if (identifier == NULL)
@@ -139,6 +140,19 @@ err_inst_failed:
 	goto err_free_node;
 }
 
+str *op_get_vall_imm(struct object_node *parent, struct expr *e,
+		enum ASF_REGS dest)
+{
+	if (*asf_regs[dest].purpose != ASF_REG_PURPOSE_NULL
+			&& !(e->valr->type == AMC_EXPR
+				|| e->valr->type == AMC_SYM)) {
+		if (asf_op_save_reg(parent, dest))
+			return NULL;
+	}
+	*asf_regs[dest].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
+	return op_get_val_imm(parent, e->vall, dest);
+}
+
 str *op_get_vall_sym(struct object_node *parent, struct expr *e,
 		enum ASF_REGS dest)
 {
@@ -158,7 +172,7 @@ str *op_get_vall_sym(struct object_node *parent, struct expr *e,
 		if (src->argc - 2 > asf_call_arg_regs_len)
 			return NULL;
 		reg = asf_call_arg_regs[src->argc - 2]
-			+ asf_reg_get(asf_yz_type2imm(*e->sum_type));
+			+ asf_reg_get(asf_yz_type_raw2imm(*e->sum_type));
 		return op_get_val_from_reg(parent, reg, dest);
 	}
 	return op_get_vall_from_mem_or_reg(parent, e, dest);
@@ -167,7 +181,7 @@ str *op_get_vall_sym(struct object_node *parent, struct expr *e,
 str *op_get_valr_expr(struct object_node *parent, struct expr *src,
 		enum ASF_REGS dest)
 {
-	enum ASF_REGS reg = asf_reg_get(asf_yz_type2imm(*src->sum_type));
+	enum ASF_REGS reg = asf_reg_get(asf_yz_type_raw2imm(*src->sum_type));
 	if (dest == -1)
 		dest = ASF_REG_RCX + reg;
 	return op_get_val_from_reg(parent, reg, dest);
@@ -175,7 +189,7 @@ str *op_get_valr_expr(struct object_node *parent, struct expr *src,
 
 str *op_get_valr_identifier(struct object_node *parent, struct symbol *src)
 {
-	char *name = tok2str(src->name, src->name_len);
+	char *name = str2chr(src->name, src->name_len);
 	struct asf_stack_element *identifier = asf_identifier_get(name);
 	if (identifier == NULL)
 		goto err_identifier_not_found;
@@ -220,7 +234,7 @@ str *op_get_valr_sym(struct object_node *parent, struct expr *e,
 		enum ASF_REGS dest)
 {
 	struct symbol *src = e->valr->v;
-	enum ASF_REGS reg = asf_reg_get(asf_yz_type2imm(src->result_type));
+	enum ASF_REGS reg = asf_reg_get(asf_yz_type2imm(&src->result_type));
 	if (src->args == NULL && src->argc == 1)
 		return op_get_valr_identifier(parent, src);
 	if (src->args == NULL && src->argc > 1) {
@@ -270,20 +284,14 @@ err_inst_failed:
 str *asf_op_get_val_left(struct object_node *parent, struct expr *e)
 {
 	enum ASF_REGS dest = ASF_REG_RAX;
-	dest += asf_reg_get(asf_yz_type2imm(*e->sum_type));
+	dest += asf_reg_get(asf_yz_type_raw2imm(*e->sum_type));
 	if (e->vall->type == AMC_EXPR) {
 		*asf_regs[dest].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
 		return op_get_vall_from_mem_or_reg(parent, e, dest);
 	} else if (e->vall->type == AMC_SYM) {
 		return op_get_vall_sym(parent, e, dest);
 	} else if (YZ_IS_DIGIT(e->vall->type)) {
-		if (*asf_regs[dest].purpose != ASF_REG_PURPOSE_NULL
-				&& (e->valr->type == AMC_EXPR
-				|| e->valr->type == AMC_SYM))
-			if (asf_op_save_reg(parent, dest))
-				return NULL;
-		*asf_regs[dest].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
-		return op_get_val_imm(parent, e->vall, dest);
+		return op_get_vall_imm(parent, e, dest);
 	}
 	return NULL;
 }
@@ -292,7 +300,7 @@ str *asf_op_get_val_right(struct object_node *parent, struct expr *e,
 		enum ASF_REGS dest)
 {
 	if (dest != -1 && dest <= ASF_REG_RSP)
-		dest += asf_reg_get(asf_yz_type2imm(*e->sum_type));
+		dest += asf_reg_get(asf_yz_type_raw2imm(*e->sum_type));
 	if (e->valr->type == AMC_EXPR) {
 		return op_get_valr_expr(parent, e, dest);
 	} else if (e->valr->type == AMC_SYM) {

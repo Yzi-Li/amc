@@ -28,7 +28,7 @@ int parse_line(struct file *f, struct scope *scope)
 		goto err_not_toplevel;
 	return sym->parse_function(f, sym, scope);
 err_sym_not_found:
-	err_msg = tok2str(token.s, token.len);
+	err_msg = str2chr(token.s, token.len);
 	printf("amc: parser.parse_line: symbol not found from token\n"
 			"| Token: \"%s\"\n"
 			"| In l:%lld,c:%lld\n",
@@ -38,7 +38,7 @@ err_sym_not_found:
 	free(err_msg);
 	return 2;
 err_not_toplevel:
-	err_msg = tok2str(token.s, token.len);
+	err_msg = str2chr(token.s, token.len);
 	printf("amc: parser.parse_line: token is not toplevel.\n"
 			"| Token: \"%s\"\n"
 			"| In l:%lld,c:%lld\n",

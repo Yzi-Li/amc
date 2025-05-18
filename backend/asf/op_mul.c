@@ -29,7 +29,7 @@ int asf_op_mul(struct expr *e)
 			+ multiplicand_str->len);
 	str_append(multiplicand_str, 1, "\0");
 	snprintf(node->s->s, node->s->len, temp,
-			asf_suffix_get(asf_yz_type2imm(*e->sum_type)),
+			asf_suffix_get(asf_yz_type_raw2imm(*e->sum_type)),
 			multiplicand_str->s);
 	str_free(multiplicand_str);
 	return 0;

@@ -2,6 +2,16 @@
 #define AMC_EXPR_H
 #include "../include/type.h"
 
+#define EXPR_IS_SINGLE_TERM(EXPR) (\
+		(EXPR)->op == NULL\
+		&& (EXPR)->vall != NULL\
+		&& (EXPR)->valr == NULL)
+
+#define EXPR_IS_UNARY(EXPR) (\
+		(EXPR)->op != NULL\
+		&& (EXPR)->vall == NULL\
+		&& (EXPR)->valr != NULL)
+
 enum OP_ID {
 	OP_ADD,
 	OP_AND,
@@ -21,10 +31,13 @@ enum OP_ID {
 	OP_ASSIGN_ADD,
 	OP_ASSIGN_DIV,
 	OP_ASSIGN_MUL,
-	OP_ASSIGN_SUB
+	OP_ASSIGN_SUB,
+
+	OP_EXTRACT_VAL,
+	OP_GET_ADDR
 };
 
-#define OP_LEN 18
+#define OP_LEN 20
 #define OP_SPECIAL_START 13
 
 struct expr_operator {

@@ -13,7 +13,6 @@ static struct symbol keywords[] = {
 	//{"import", 6, parse_import,   {1, 0, 0}},
 	{"let",    3, parse_let,      {1, 1, 0}},
 	//{"module", 6, parse_module,   {1, 0, 0}},
-	//{"mut",    3, parse_mut,      {0, 1, 0}},
 	//{"ref",    3, parse_ref,      {0, 1, 0}},
 	{"ret",    3, parse_func_ret, {0, 1, 0}},
 	//{"struct", 6, parse_struct,   {1, 1, 0}},

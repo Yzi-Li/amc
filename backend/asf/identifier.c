@@ -6,7 +6,6 @@
 #include "include/register.h"
 #include "include/stack.h"
 #include "../../include/symbol.h"
-#include "../../include/token.h"
 #include "../../include/backend/target.h"
 
 typedef int sym_id_t;
@@ -63,7 +62,7 @@ int set_expr(char *name, struct expr *expr)
 {
 	sym_id_t id = -1;
 	struct object_node *node = calloc(1, sizeof(*node));
-	enum ASF_REGS src = asf_reg_get(asf_yz_type2imm(*expr->sum_type));
+	enum ASF_REGS src = asf_reg_get(asf_yz_type_raw2imm(*expr->sum_type));
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	if ((id = get_id(name)) == -1) {
@@ -95,7 +94,7 @@ int set_identifier(char *name, struct symbol *sym)
 	char *src_name = NULL;
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
-	src_name = tok2str(sym->name, sym->name_len);
+	src_name = str2chr(sym->name, sym->name_len);
 	if ((src_id = get_id(src_name)) == -1)
 		goto err_id_not_exists;
 	free(src_name);
@@ -131,7 +130,7 @@ int set_imm(char *name, yz_val *val)
 {
 	sym_id_t id = -1;
 	struct asf_imm imm = {
-		.type = asf_yz_type2imm(val->type),
+		.type = asf_yz_type2imm(val),
 		.iq = val->l
 	};
 	struct object_node *node = calloc(1, sizeof(*node));
@@ -162,7 +161,7 @@ int set_sym(char *name, struct symbol *sym)
 {
 	sym_id_t id = -1;
 	struct object_node *node = NULL;
-	enum ASF_REGS src = asf_reg_get(asf_yz_type2imm(sym->result_type));
+	enum ASF_REGS src = asf_reg_get(asf_yz_type2imm(&sym->result_type));
 	if (sym->args == NULL && sym->argc == 1)
 		return set_identifier(name, sym);
 	if (sym->args == NULL && sym->argc > 1) {
@@ -205,7 +204,7 @@ int asf_var_set(char *name, yz_val *val)
 	}
 	printf("amc[backend.asf]: asf_var_immut_init: Unsupport type: "
 			"\"%s\"\n",
-			yz_get_type_name(val->type));
+			yz_get_type_name(val));
 	return 1;
 }
 

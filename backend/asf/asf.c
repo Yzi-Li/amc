@@ -37,7 +37,10 @@ struct backend backend_asf = {
 		[OP_ASSIGN_ADD] = asf_op_assign_add,
 		[OP_ASSIGN_DIV] = asf_op_assign_div,
 		[OP_ASSIGN_MUL] = asf_op_assign_mul,
-		[OP_ASSIGN_SUB] = asf_op_assign_sub
+		[OP_ASSIGN_SUB] = asf_op_assign_sub,
+
+		[OP_EXTRACT_VAL] = asf_op_extract_val,
+		[OP_GET_ADDR] = asf_op_get_addr
 	},
 
 	.scope_begin = asf_scope_begin,

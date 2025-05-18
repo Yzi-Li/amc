@@ -1,10 +1,15 @@
 #include "../include/backend/object.h"
+#include "../include/backend.h"
+
+extern int backend_flag;
 
 struct object_head **objs = NULL;
 int cur_obj = -1;
 
 int object_append(struct object_head *h, struct object_node *n)
 {
+	if (backend_flag & BE_FLAG_STOPED)
+		return 0;
 	if (h == NULL || n == NULL)
 		return 1;
 	if (h->head == NULL) {
@@ -24,6 +29,8 @@ int object_append(struct object_head *h, struct object_node *n)
 int object_insert(struct object_node *src, struct object_node *n1,
 		struct object_node *n2)
 {
+	if (backend_flag & BE_FLAG_STOPED)
+		return 0;
 	if (src == NULL)
 		return 1;
 	if (n1 != NULL)
@@ -37,6 +44,8 @@ int object_insert(struct object_node *src, struct object_node *n1,
 
 int object_swap(struct object_node *n1, struct object_node *n2)
 {
+	if (backend_flag & BE_FLAG_STOPED)
+		return 0;
 	struct object_node *tmp = NULL;
 	if (n1 == NULL || n2 == NULL)
 		return 1;

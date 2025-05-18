@@ -49,7 +49,6 @@ str *asf_inst_pop(enum ASF_REGS dest)
 {
 	str *s = NULL;
 	s = asf_inst_mov(ASF_MOV_M2R, asf_stack_top, &dest);
-	*asf_regs[dest].purpose = ASF_REG_PURPOSE_NULL;
 	stack_element_remove();
 	return s;
 }

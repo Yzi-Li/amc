@@ -6,8 +6,6 @@
 
 #define TOKEN_NEW {.len = 0}
 
-char *tok2str(const char *tok, int tok_len);
-
 int token_clean_head_space(str *token);
 int token_clean_tail_space(str *token);
 

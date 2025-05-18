@@ -1,12 +1,11 @@
 #include "../include/symbol.h"
 #include <stdlib.h>
 
-int symbol_args_append(struct symbol *self, enum YZ_TYPE type)
+int symbol_args_append(struct symbol *self, yz_val *type)
 {
 	self->argc += 1;
-	self->args = realloc(self->args, sizeof(enum YZ_TYPE) * self->argc);
+	self->args = realloc(self->args, sizeof(yz_val*) * self->argc);
 	self->args[self->argc - 1] = type;
-
 	return 0;
 }
 

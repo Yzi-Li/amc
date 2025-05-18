@@ -34,8 +34,8 @@ struct symbol {
  *   func_args[argc - 2] is argument.
  */
 	u8 argc;
-	enum YZ_TYPE result_type;
-	enum YZ_TYPE *args;
+	yz_val result_type;
+	yz_val **args;
 };
 
 struct symbol_group {
@@ -60,7 +60,7 @@ struct scope {
 	struct symbol_group sym_groups[SYM_GROUPS_SIZE];
 };
 
-int symbol_args_append(struct symbol *self, enum YZ_TYPE type);
+int symbol_args_append(struct symbol *self, yz_val *type);
 int symbol_find(str *token, struct symbol **result, struct scope *scope);
 int symbol_find_in_group(str *token, struct symbol_group *group,
 		struct symbol **result);

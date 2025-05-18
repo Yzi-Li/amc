@@ -21,7 +21,7 @@ int asf_op_add(struct expr *e)
 			+ addend->len - 1
 			+ augend->len - 1);
 	snprintf(node->s->s, node->s->len, temp,
-			asf_suffix_get(asf_yz_type2imm(*e->sum_type)),
+			asf_suffix_get(asf_yz_type_raw2imm(*e->sum_type)),
 			addend->s,
 			augend->s);
 	str_free(addend);

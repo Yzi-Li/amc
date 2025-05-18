@@ -1,6 +1,7 @@
 #ifndef AMC_UTILS_H
 #define AMC_UTILS_H
 
+#define CHR_IS_NUM(x)         (REGION_INT((x), '0', '9'))
 #define LENGTH(x)             (sizeof((x)) / (sizeof((x)[0])))
 #define MAX(a, b)             ((a) > (b) ? (a) : (b))
 #define MIN(a, b)             ((a) < (b) ? (a) : (b))

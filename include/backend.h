@@ -15,6 +15,12 @@ enum BACKENDS {
 	BE_ASF
 };
 
+enum BE_FLAG {
+	BE_FLAG_INITED = 1 << 0,
+	BE_FLAG_STOPED = 1 << 1,
+	BE_FLAG_ENDED  = 1 << 2,
+};
+
 enum BE_STOP_SIGNAL {
 	BE_STOP_SIGNAL_ERR,  // stop backend and notify backend has errors
 	BE_STOP_SIGNAL_NULL, // no reason stop backend

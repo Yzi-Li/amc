@@ -9,6 +9,7 @@ typedef struct str {
     char *s;
 } str;
 
+char *str2chr(const char *s, int len);
 int str_append(str *src, int len, const char *s);
 int str_expand(str *src, int len);
 void str_free(str *src);

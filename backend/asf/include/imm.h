@@ -18,6 +18,8 @@ enum ASF_IMM_TYPE {
 	ASF_IMMU16 = 8 + 2,
 	ASF_IMMU32 = 8 + 4,
 	ASF_IMMU64 = 8 + 8,
+
+	ASF_IMM_PTR = 8 + 9
 };
 
 struct asf_imm {
@@ -30,7 +32,8 @@ struct asf_imm {
 	enum ASF_IMM_TYPE type;
 };
 
-enum ASF_IMM_TYPE asf_yz_type2imm(enum YZ_TYPE type);
+enum ASF_IMM_TYPE asf_yz_type_raw2imm(enum YZ_TYPE type);
+enum ASF_IMM_TYPE asf_yz_type2imm(yz_val *type);
 str *asf_imm_str_new(struct asf_imm *imm);
 
 #endif
