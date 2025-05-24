@@ -9,6 +9,25 @@ int symbol_args_append(struct symbol *self, yz_val *type)
 	return 0;
 }
 
+int symbol_check_name(const char *name, int len)
+{
+	char *c = NULL;
+	if (CHR_IS_NUM(name[0]))
+		goto err_num_in_name_begin;
+	for (int i = 0; i < len; i++) {
+		if ((c = strchr("!@#$%^&*()", name[i])) != NULL)
+			goto err_c_in_name;
+	}
+	return 0;
+err_num_in_name_begin:
+	printf("amc: symbol_check_name: Number '%c' in symbol name begin!\n",
+			name[0]);
+	return 1;
+err_c_in_name:
+	printf("amc: symbol_check_name: '%c' in symbol name!\n", *c);
+	return 1;
+}
+
 int symbol_find(str *token, struct symbol **result, struct scope *scope)
 {
 	for (int i = 0; i < SYM_GROUPS_SIZE; i++) {
@@ -50,13 +69,18 @@ int symbol_find_in_group_in_scope(str *token, struct symbol **result,
 
 void symbol_group_free(struct symbol_group *group)
 {
-	for (int i = 0; i < group->size; i++)
+	for (int i = 0; i < group->size; i++) {
+		if (group->symbols[i] == NULL)
+			continue;
 		free(group->symbols[i]);
+	}
 	free(group->symbols);
 }
 
 int symbol_register(struct symbol *symbol, struct symbol_group *group)
 {
+	if (symbol_check_name(symbol->name, symbol->name_len))
+		return 1;
 	group->size += 1;
 	group->symbols = realloc(group->symbols,
 			sizeof(struct symbol*) * group->size);

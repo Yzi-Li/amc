@@ -8,8 +8,6 @@
 #include "../include/scope.h"
 #include "../include/token.h"
 #include "../include/type.h"
-#include "../utils/converter.h"
-#include "../utils/die.h"
 #include "../utils/utils.h"
 #include <stdio.h>
 
@@ -30,6 +28,7 @@ static yz_val **func_call_read_args(struct file *f, struct symbol *fn,
 		struct scope *scope);
 static int func_def_block_start(struct file *f);
 static int func_def_check_main(const char *name, int len);
+static int func_def_end_scope(struct symbol *fn, struct scope *scope);
 static int func_def_main(struct file *f, struct scope *fn_scope);
 static int func_def_read_arg(const char *se, struct file *f, void *data);
 static int func_def_read_args(struct file *f, struct symbol *fn,
@@ -49,8 +48,11 @@ yz_val *func_call_arg_handle(struct expr *expr, yz_val *arg)
 		goto err_wrong_arg_type;
 	return val;
 err_wrong_arg_type:
-	printf("amc: func_call_read_arg: Wrong argument type: \"%s\"\n",
-			yz_get_type_name(type));
+	printf("amc: func_call_read_arg: Wrong argument type\n"
+			"| Val type: \"%s\"\n"
+			"| Arg type: \"%s\"\n",
+			yz_get_type_name(val),
+			yz_get_type_name(arg));
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return NULL;
 }
@@ -60,7 +62,6 @@ yz_val *func_call_arg_val_get(struct expr *expr, yz_val *arg)
 	yz_val *result = NULL;
 	if (expr->op == NULL && expr->valr == NULL) {
 		result = expr->vall;
-		free_safe(expr);
 		return result;
 	}
 	result = malloc(sizeof(*result));
@@ -189,14 +190,18 @@ err_not_func_def_start:
 
 int func_def_check_main(const char *name, int len)
 {
-	const char *template = "main";
-	const int template_len = 4;
-
-	if (len != template_len)
+	if (len != 4)
 		return 0;
-	if (strncmp(name, template, len) == 0)
+	if (strncmp(name, "main", len) == 0)
 		return 1;
+	return 0;
+}
 
+int func_def_end_scope(struct symbol *fn, struct scope *scope)
+{
+	for (int i = 0; i < fn->argc; i++)
+		scope->sym_groups[SYMG_SYM].symbols[i] = NULL;
+	scope_end(scope);
 	return 0;
 }
 
@@ -412,8 +417,7 @@ int parse_func_def(struct file *f, struct symbol *sym, struct scope *scope)
 		goto err_free_result;
 	if (func_def_read_block(f, &fn_scope))
 		goto err_free_result;
-	scope_end(&fn_scope);
-	return 0;
+	return func_def_end_scope(result, &fn_scope);
 err_free_result:
 	free_safe(result);
 	return 1;
