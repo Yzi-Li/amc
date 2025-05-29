@@ -37,7 +37,7 @@ int syscall_push_arg_expr(str *s, struct expr *expr, int index)
 	str *tmp = NULL;
 	if (!YZ_IS_DIGIT(*expr->sum_type))
 		return 1;
-	src = asf_reg_get(asf_yz_type_raw2imm(*expr->sum_type));
+	src = asf_reg_get(asf_yz_type_raw2bytes(*expr->sum_type));
 	dest += src;
 	tmp = asf_inst_mov(ASF_MOV_R2R, &src, &dest);
 	str_append(s, tmp->len - 1, tmp->s);
@@ -69,7 +69,7 @@ err_identifier_not_found:
 int syscall_push_arg_imm(str *s, yz_val *v, int index)
 {
 	struct asf_imm imm = {
-		.type = asf_yz_type_raw2imm(v->type),
+		.type = asf_yz_type_raw2bytes(v->type),
 		.iq = v->l
 	};
 	enum ASF_REGS reg = asf_call_arg_regs[index] + asf_reg_get(imm.type);
@@ -86,7 +86,7 @@ int syscall_push_arg_sym(str *s, struct symbol *sym, int index)
 	str *tmp = NULL;
 	if (sym->args == NULL && sym->argc == 1)
 		return syscall_push_arg_identifier(s, sym, index);
-	src = asf_reg_get(asf_yz_type2imm(&sym->result_type));
+	src = asf_reg_get(asf_yz_type2bytes(&sym->result_type));
 	dest += src;
 	if (sym->args == NULL && sym->argc > 1) {
 		if (sym->argc - 2 > asf_call_arg_regs_len)

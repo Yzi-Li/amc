@@ -1,11 +1,6 @@
 #include "../include/backend.h"
 #include "../include/config.h"
 
-/* built backends import */
-#ifdef AMC_BUILT_BACKEND
-#include "asf/include/asf.h"
-#endif
-
 extern struct backend backend_asf;
 
 struct backend *backends[] = {

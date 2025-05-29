@@ -4,7 +4,9 @@ BACKEND_SRC =\
 	target.c
 
 BE_ASF_SRC =\
+	array.c\
 	asf.c\
+	bytes.c\
 	cmp.c\
 	cond.c\
 	expr.c\

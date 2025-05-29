@@ -1,5 +1,5 @@
-#include "expr.h"
-#include "op.h"
+#include "include/expr.h"
+#include "include/op.h"
 #include "../include/backend.h"
 #include "../include/ptr.h"
 #include "../utils/utils.h"
@@ -7,7 +7,7 @@
 static int op_unary_extract_val(struct expr *e, struct scope *scope);
 static int op_unary_get_addr(struct expr *e, struct scope *scope);
 
-static int (*op_special_f[])() = {
+static int (*op_special_f[])(struct expr *e, struct scope *scope) = {
 	op_unary_extract_val,
 	op_unary_get_addr
 };
@@ -24,6 +24,8 @@ int op_unary_extract_val(struct expr *e, struct scope *scope)
 {
 	if (!EXPR_IS_UNARY(e))
 		return 1;
+	if (e->op->sym == NULL)
+		return 0;
 	if (op_extract_val_check_type(e->valr))
 		goto err_check_failed;
 	if (backend_call(ops[e->op->id])(e))

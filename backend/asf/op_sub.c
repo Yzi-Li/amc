@@ -21,7 +21,7 @@ int asf_op_sub(struct expr *e)
 			+ subtrahend->len - 1
 			+ minuend->len - 1);
 	snprintf(node->s->s, node->s->len, temp,
-			asf_suffix_get(asf_yz_type_raw2imm(*e->sum_type)),
+			asf_suffix_get(asf_yz_type_raw2bytes(*e->sum_type)),
 			subtrahend->s,
 			minuend->s);
 	str_free(minuend);

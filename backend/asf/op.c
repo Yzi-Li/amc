@@ -80,7 +80,7 @@ str *op_get_val_imm(struct object_node *parent, yz_val *src,
 		enum ASF_REGS dest)
 {
 	struct asf_imm imm = {
-		.type = asf_yz_type2imm(src),
+		.type = asf_yz_type2bytes(src),
 		.iq = src->l
 	};
 	struct object_node *node = NULL;
@@ -107,7 +107,7 @@ str *op_get_vall_from_mem_or_reg(struct object_node *parent, struct expr *e,
 	enum ASF_REGS src = ASF_REG_RAX;
 	if (e->valr->type == AMC_EXPR)
 		return op_get_val_from_mem(parent, dest);
-	src = asf_reg_get(asf_yz_type_raw2imm(*e->sum_type));
+	src = asf_reg_get(asf_yz_type_raw2bytes(*e->sum_type));
 	return op_get_val_from_reg(parent, src, dest);
 }
 
@@ -172,7 +172,7 @@ str *op_get_vall_sym(struct object_node *parent, struct expr *e,
 		if (src->argc - 2 > asf_call_arg_regs_len)
 			return NULL;
 		reg = asf_call_arg_regs[src->argc - 2]
-			+ asf_reg_get(asf_yz_type_raw2imm(*e->sum_type));
+			+ asf_reg_get(asf_yz_type_raw2bytes(*e->sum_type));
 		return op_get_val_from_reg(parent, reg, dest);
 	}
 	return op_get_vall_from_mem_or_reg(parent, e, dest);
@@ -181,7 +181,7 @@ str *op_get_vall_sym(struct object_node *parent, struct expr *e,
 str *op_get_valr_expr(struct object_node *parent, struct expr *src,
 		enum ASF_REGS dest)
 {
-	enum ASF_REGS reg = asf_reg_get(asf_yz_type_raw2imm(*src->sum_type));
+	enum ASF_REGS reg = asf_reg_get(asf_yz_type_raw2bytes(*src->sum_type));
 	if (dest == -1)
 		dest = ASF_REG_RCX + reg;
 	return op_get_val_from_reg(parent, reg, dest);
@@ -234,7 +234,7 @@ str *op_get_valr_sym(struct object_node *parent, struct expr *e,
 		enum ASF_REGS dest)
 {
 	struct symbol *src = e->valr->v;
-	enum ASF_REGS reg = asf_reg_get(asf_yz_type2imm(&src->result_type));
+	enum ASF_REGS reg = asf_reg_get(asf_yz_type2bytes(&src->result_type));
 	if (src->args == NULL && src->argc == 1)
 		return op_get_valr_identifier(parent, src);
 	if (src->args == NULL && src->argc > 1) {
@@ -284,7 +284,7 @@ err_inst_failed:
 str *asf_op_get_val_left(struct object_node *parent, struct expr *e)
 {
 	enum ASF_REGS dest = ASF_REG_RAX;
-	dest += asf_reg_get(asf_yz_type_raw2imm(*e->sum_type));
+	dest += asf_reg_get(asf_yz_type_raw2bytes(*e->sum_type));
 	if (e->vall->type == AMC_EXPR) {
 		*asf_regs[dest].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
 		return op_get_vall_from_mem_or_reg(parent, e, dest);
@@ -300,7 +300,7 @@ str *asf_op_get_val_right(struct object_node *parent, struct expr *e,
 		enum ASF_REGS dest)
 {
 	if (dest != -1 && dest <= ASF_REG_RSP)
-		dest += asf_reg_get(asf_yz_type_raw2imm(*e->sum_type));
+		dest += asf_reg_get(asf_yz_type_raw2bytes(*e->sum_type));
 	if (e->valr->type == AMC_EXPR) {
 		return op_get_valr_expr(parent, e, dest);
 	} else if (e->valr->type == AMC_SYM) {

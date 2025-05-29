@@ -1,9 +1,9 @@
+#include "../include/array.h"
 #include "../include/expr.h"
 #include "../include/symbol.h"
 #include "../include/type.h"
 #include "../include/ptr.h"
 #include "../utils/utils.h"
-#include "../utils/die.h"
 #include <limits.h>
 
 static yz_val *yz_type_max_raw(enum YZ_TYPE ltype, enum YZ_TYPE rtype,
@@ -83,7 +83,10 @@ const char *yz_get_type_name(yz_val *val)
 		return "AMC_EXPR";
 		break;
 	case YZ_PTR:
-		return yz_err_ptr_type(val);
+		return yz_type_err_ptr(val);
+		break;
+	case YZ_ARRAY:
+		return yz_type_err_array(val);
 		break;
 	default:
 		return "(Cannot get type)";
@@ -120,35 +123,4 @@ yz_val *yz_type_max(yz_val *l, yz_val *r)
 	if (r->type == AMC_SYM)
 		result_vall = &((struct symbol*)r->v)->result_type;
 	return yz_type_max_raw(lraw, rraw, result_vall, result_valr);
-}
-
-int parse_type(str *token, yz_val *type)
-{
-	char *err_msg = NULL;
-	if (type == NULL)
-		goto err_type_null;
-	if (token->s[0] == '*') {
-		token->len -= 1;
-		token->s = &token->s[1];
-		return parse_ptr(token, type);
-	}
-	for (int i = 0; i < token->len; i++) {
-		switch (token->s[i]) {
-		case '(':
-		case '[':
-			goto err_unsupport_type;
-			break;
-		}
-	}
-	type->type = yz_type_get(token);
-	type->v = NULL;
-	return 0;
-err_type_null:
-	printf("amc: parse_type: ARG is empty!\n");
-	return 1;
-err_unsupport_type:
-	err_msg = str2chr(token->s, token->len);
-	printf("amc: parse_type: Type: \"%s\" is unsupport!\n", err_msg);
-	free(err_msg);
-	return 1;
 }

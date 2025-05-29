@@ -1,0 +1,8 @@
+#ifndef AMC_PARSER_OP_H
+#define AMC_PARSER_OP_H
+#include "../../include/expr.h"
+#include "../../include/symbol.h"
+
+int op_apply_special(struct expr *e, struct scope *scope);
+
+#endif

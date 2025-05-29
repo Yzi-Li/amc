@@ -1,5 +1,4 @@
 #include "../include/token.h"
-#include "../utils/die.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -82,13 +81,24 @@ int token_get_token(str *token, str *result)
 
 int token_jump_to(char c, struct file *f)
 {
-	for (int i = f->pos, count = 0; f->src[i] != '\0'; i++, count++) {
-		if (f->src[i] != c)
-			continue;
+	for (int i = 0; f->src[f->pos] != '\0'; i++) {
+		if (f->src[f->pos] == c)
+			return i;
 		file_pos_next(f);
-		return count;
 	}
 	return -1;
+}
+
+int token_list_elem_end(char separator, struct file *f)
+{
+	if (f->src[f->pos] == separator) {
+		file_pos_next(f);
+		file_skip_space(f);
+	} if (f->src[f->pos] == '\n') {
+		file_line_next(f);
+		file_skip_space(f);
+	}
+	return 0;
 }
 
 int token_next(str *token, struct file *f)

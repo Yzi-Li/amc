@@ -6,7 +6,7 @@
 #include "include/op.h"
 #include "include/register.h"
 #include "include/stack.h"
-#include "../../include/backend/target.h"
+#include "../../include/backend/object.h"
 #include "../../include/expr.h"
 #include "../../include/symbol.h"
 #include "../../utils/utils.h"
@@ -66,7 +66,7 @@ int func_call_push_arg_expr(str *s, int index, struct expr *expr)
 	enum ASF_REGS dest = asf_call_arg_regs[index],
 	              src = ASF_REG_RAX;
 	str *tmp = NULL;
-	src = asf_reg_get(asf_yz_type_raw2imm(*expr->sum_type));
+	src = asf_reg_get(asf_yz_type_raw2bytes(*expr->sum_type));
 	if (index > asf_call_arg_regs_len) {
 		tmp = asf_inst_push_reg(src);
 	} else {
@@ -101,7 +101,7 @@ int func_call_push_arg_imm(str *s, int index, yz_val *v)
 {
 	enum ASF_REGS dest = asf_call_arg_regs[index];
 	struct asf_imm imm = {
-		.type = asf_yz_type2imm(v),
+		.type = asf_yz_type2bytes(v),
 		.iq = v->l
 	};
 	str *tmp = NULL;
@@ -124,7 +124,7 @@ int func_call_push_arg_sym(str *s, int index, struct symbol *sym)
 	str *tmp = NULL;
 	if (sym->args == NULL && sym->argc == 1)
 		return func_call_push_arg_identifier(s, index, sym);
-	offset_base = asf_reg_get(asf_yz_type2imm(&sym->result_type));
+	offset_base = asf_reg_get(asf_yz_type2bytes(&sym->result_type));
 	if (sym->args == NULL && sym->argc > 1) {
 		if (sym->argc - 2 > asf_call_arg_regs_len)
 			return 1;
@@ -173,7 +173,8 @@ void func_ret_clean_stack()
 
 int func_ret_expr(struct expr *expr)
 {
-	enum ASF_REGS reg = asf_reg_get(asf_yz_type_raw2imm(*expr->sum_type));
+	enum ASF_REGS reg = asf_reg_get(
+			asf_yz_type_raw2bytes(*expr->sum_type));
 	if (*asf_regs[reg].purpose != ASF_REG_PURPOSE_EXPR_RESULT)
 		return 1;
 	*asf_regs[reg].purpose = ASF_REG_PURPOSE_NULL;
@@ -183,7 +184,7 @@ int func_ret_expr(struct expr *expr)
 int func_ret_identifier(struct object_node *node, struct symbol *sym)
 {
 	char *name = str2chr(sym->name, sym->name_len);
-	enum ASF_REGS dest = asf_reg_get(asf_yz_type2imm(&sym->result_type));
+	enum ASF_REGS dest = asf_reg_get(asf_yz_type2bytes(&sym->result_type));
 	struct asf_stack_element *src = asf_identifier_get(name);
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_all;
@@ -204,7 +205,7 @@ int func_ret_imm(yz_val *v)
 	struct asf_imm imm = {};
 	struct object_node *node = malloc(sizeof(*node));
 	enum ASF_REGS reg = ASF_REG_RAX;
-	imm.type = asf_yz_type2imm(v);
+	imm.type = asf_yz_type2bytes(v);
 	imm.iq = v->l;
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
@@ -242,7 +243,7 @@ int func_ret_sym(struct symbol *sym)
 	node = malloc(sizeof(*node));
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
-	dest = asf_reg_get(asf_yz_type2imm(&sym->result_type));
+	dest = asf_reg_get(asf_yz_type2bytes(&sym->result_type));
 	if (sym->argc - 2 > asf_call_arg_regs_len)
 		goto err_free_node;
 	src = asf_call_arg_regs[sym->argc - 2] + dest;
@@ -276,7 +277,7 @@ int asf_func_call(const char *name, yz_val *type, yz_val **vs, int vlen)
 	node->s = str_new();
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
-	reg = asf_reg_get(asf_yz_type2imm(type));
+	reg = asf_reg_get(asf_yz_type2bytes(type));
 	if (*asf_regs[reg].purpose != ASF_REG_PURPOSE_NULL)
 		if (asf_op_save_reg(node, reg))
 			goto err_free_node;

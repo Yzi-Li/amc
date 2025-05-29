@@ -1,17 +1,20 @@
-#include "expr.h"
-#include "op.h"
+#include "include/expr.h"
+#include "include/identifier.h"
+#include "include/keywords.h"
+#include "include/op.h"
 #include "../include/backend.h"
 #include "../include/token.h"
 #include "../utils/converter.h"
-#include "../utils/die.h"
 #include "../utils/utils.h"
 #include <string.h>
 
 #define EXPR_END -1
 #define EXPR_OP_EMPTY -2
 #define EXPR_TERM_END -1
+#define EXPR_TOK_END 1
+#define EXPR_TOK_END_DIRECT 3
 
-static const char *TERM_END = ";),] \t\n";
+static const char *TERM_END = ";),]}[ \t\n";
 
 static const struct expr_operator operators[] = {
 	{"*",   1, OP_MUL},
@@ -43,7 +46,9 @@ static const struct expr_operator unary_ops[] = {
 
 static int expr_binary(struct file *f, struct expr *e, int top,
 		struct scope *scope);
-static int expr_check_end(char *endc, struct file *f, int top);
+static int expr_check_end(struct file *f);
+static int expr_check_end_special(struct file *f, int top);
+static int expr_check_end_top(struct file *f, str *tok);
 static enum YZ_TYPE *expr_get_sum_type(yz_val *l, yz_val *r);
 static int expr_operator(struct file *f, struct expr_operator **op, int top);
 static int expr_read_token(struct file *f, str *token, int top);
@@ -94,18 +99,31 @@ err_valr_not_found:
 	return 1;
 }
 
-int expr_check_end(char *endc, struct file *f, int top)
+int expr_check_end(struct file *f)
 {
-	if (top) {
-		if (f->src[f->pos] == '\n'
-				|| f->src[f->pos] == ';'
-				|| f->src[f->pos] == ','
-				|| f->src[f->pos] == ']')
-			return 1;
-		return 0;
-	}
-	if (f->src[f->pos] == ')' || *endc == ')')
-		return 1;
+	if (f->src[f->pos] == ','
+			|| f->src[f->pos] == ')'
+			|| f->src[f->pos] == ']'
+			|| f->src[f->pos] == '}')
+		return EXPR_TOK_END;
+	return 0;
+}
+
+int expr_check_end_special(struct file *f, int top)
+{
+	if (top)
+		return expr_check_end_top(f, NULL);
+	return expr_check_end(f);
+}
+
+int expr_check_end_top(struct file *f, str *token)
+{
+	if (token != NULL && token->s[0] == '=' && token->s[1] == '>')
+		return EXPR_TOK_END_DIRECT;
+	if (f->src[f->pos] == '\n'
+			|| parse_comment(f)
+			|| expr_check_end(f))
+		return EXPR_TOK_END;
 	return 0;
 }
 
@@ -124,7 +142,7 @@ int expr_operator(struct file *f, struct expr_operator **op, int top)
 	    token = TOKEN_NEW;
 	if ((end = expr_read_token(f, &token, top)) == 2)
 		goto err_eoe;
-	if (end == 3)
+	if (end == EXPR_TOK_END_DIRECT)
 		return EXPR_OP_EMPTY;
 	str_append(tmp, token.len, token.s);
 	str_append(tmp, 1, "\0");
@@ -146,19 +164,16 @@ err_eoe:
 
 int expr_read_token(struct file *f, str *token, int top)
 {
-	int end = expr_check_end(token_read_before(TERM_END, token, f),
-			f, top);
+	int ret = 0;
+	token_read_before(TERM_END, token, f);
 	if (token->len <= 0)
 		goto err_empty_token;
-	if (top && token->s[0] == '=' && token->s[1] == '>')
-		return 3;
-	if (top && f->src[f->pos] == '\n')
-		return end;
-	if (f->src[f->pos] == ']' || f->src[f->pos] == ',')
-		return end;
-	file_pos_next(f);
 	file_skip_space(f);
-	return end;
+	if (top && ((ret = expr_check_end_top(f, token)) != 0))
+		return ret;
+	if (!expr_check_end(f))
+		return 0;
+	return EXPR_TOK_END;
 err_empty_token:
 	printf("amc: expr_read_token: %lld,%lld: Empty token\n",
 			f->cur_line, f->cur_column);
@@ -252,7 +267,7 @@ int expr_term_chr(struct file *f, yz_val *v, int top)
 	str token = TOKEN_NEW;
 	if ((end = expr_read_token(f, &token, top)) == 2)
 		goto err_eoe;
-	if (end == 3)
+	if (end == EXPR_TOK_END_DIRECT)
 		return EXPR_TERM_END;
 	token.s = &token.s[1];
 	token.len -= 2;
@@ -278,19 +293,12 @@ int expr_term_expr(struct file *f, yz_val *v, int top, struct scope *scope)
 	v->type = AMC_EXPR;
 	if ((v->v = parse_expr(f, 0, scope)) == NULL)
 		goto err_cannot_parse_expr;
-	if (top) {
-		if (f->src[f->pos] != '\n'
-				&& f->src[f->pos] != ';'
-				&& f->src[f->pos] != ']'
-				&& f->src[f->pos] != ',')
-			return 0;
+	if (f->src[f->pos] != ')')
+		return 1;
+	file_pos_next(f);
+	file_skip_space(f);
+	if (expr_check_end_special(f, top))
 		return EXPR_TERM_END;
-	}
-	if (f->src[f->pos] == ')') {
-		file_pos_next(f);
-		file_skip_space(f);
-		return EXPR_TERM_END;
-	}
 	return 0;
 err_cannot_parse_expr:
 	printf("amc: expr_term_expr: %lld,%lld: Cannot parse expression!\n",
@@ -305,30 +313,23 @@ int expr_term_func(struct file *f, yz_val *v, int top, struct scope *scope)
 	int end = 0, ret = 0;
 	char *err_msg;
 	str token = TOKEN_NEW;
+	file_pos_next(f);
+	file_skip_space(f);
 	if ((end = expr_read_token(f, &token, top)) == 2)
 		return 1;
-	if (end == 3)
+	if (end == EXPR_TOK_END_DIRECT)
 		return EXPR_TERM_END;
-	token.s = &token.s[1];
-	token.len -= 1;
 	if (!symbol_find_in_group_in_scope(&token, &callee, scope, SYMG_FUNC))
 		goto err_func_not_found;
 	if (!callee->flags.in_block)
 		goto err_func_not_in_block;
 	v->type = AMC_SYM;
 	v->v = callee;
-	if ((ret = callee->parse_function(f, callee, scope)) == 0) {
-		file_pos_next(f);
-		file_skip_space(f);
-		if (expr_check_end(&f->src[f->pos], f, top)) {
-			file_pos_next(f);
-			return EXPR_TERM_END;
-		}
-		return 0;
-	}
-	if (ret > 0)
+	if ((ret = callee->parse_function(f, callee, scope)) > 0)
 		return 1;
-	return end == 1 ? EXPR_TERM_END : 0;
+	if (expr_check_end_special(f, top))
+		return EXPR_TERM_END;
+	return 0;
 err_func_not_found:
 	err_msg = str2chr(token.s, token.len);
 	printf("amc: expr_term_func: %lld,%lld: Function not found!\n"
@@ -356,28 +357,18 @@ int expr_term_identifier(struct file *f, yz_val *v, int top,
 		struct scope *scope)
 {
 	int end = 0;
-	char *err_msg;
-	struct symbol *sym = NULL;
 	str token = TOKEN_NEW;
 	if ((end = expr_read_token(f, &token, top)) == 2)
 		goto err_eoe;
-	if (end == 3)
+	if (end == EXPR_TOK_END_DIRECT)
 		return EXPR_TERM_END;
-	if (!symbol_find_in_group_in_scope(&token, &sym, scope, SYMG_SYM))
-		goto err_identifier_not_found;
-	v->type = AMC_SYM;
-	v->v = sym;
-	return end == 1 ? EXPR_TERM_END : 0;
+	if (identifier_read(f, &token, v, scope) > 1)
+		return 1;
+	if (expr_check_end_special(f, top))
+		return EXPR_TERM_END;
+	return 0;
 err_eoe:
 	printf("|< amc: expr_term_identifier: End of expression!\n");
-	return 1;
-err_identifier_not_found:
-	err_msg = str2chr(token.s, token.len);
-	printf("amc: expr_term_identifier: %lld,%lld: Identifier not found!\n"
-			"| Token: \"%s\"\n",
-			f->cur_line, f->cur_column,
-			err_msg);
-	free(err_msg);
 	return 1;
 }
 
@@ -388,7 +379,7 @@ int expr_term_int(struct file *f, yz_val *v, int top)
 	str token = TOKEN_NEW;
 	if ((end = expr_read_token(f, &token, top)) == 2)
 		goto err_eoe;
-	if (end == 3)
+	if (end == EXPR_TOK_END_DIRECT)
 		return EXPR_TERM_END;
 	if (str2int(&token, &v->l))
 		goto err_not_num;

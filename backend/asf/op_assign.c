@@ -3,6 +3,7 @@
 #include "include/mov.h"
 #include "include/register.h"
 #include "include/stack.h"
+#include "../../include/backend/object.h"
 #include "../../include/symbol.h"
 
 static int op_assign_get_val(struct expr *e, int (*op_func)(struct expr *e));

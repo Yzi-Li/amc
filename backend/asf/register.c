@@ -35,7 +35,7 @@ struct asf_reg asf_regs[] = {
 
 str *asf_reg_clean(enum ASF_REGS reg)
 {
-	struct asf_imm zero = {.iq = 0, .type = asf_regs[reg].size};
+	struct asf_imm zero = {.iq = 0, .type = asf_regs[reg].bytes};
 	*asf_regs[reg].purpose = ASF_REG_PURPOSE_NULL;
 	return asf_inst_mov(ASF_MOV_I2R, &zero, &reg);
 }
@@ -49,25 +49,25 @@ str *asf_reg_get_str(struct asf_reg *reg)
 	return s;
 }
 
-enum ASF_REGS asf_reg_get(enum ASF_IMM_TYPE type)
+enum ASF_REGS asf_reg_get(enum ASF_BYTES bytes)
 {
-	switch (type) {
-	case ASF_IMM8:
-	case ASF_IMMU8:
-	case ASF_IMM16:
-	case ASF_IMMU16:
-	case ASF_IMM32:
-	case ASF_IMMU32:
+	switch (bytes) {
+	case ASF_BYTES_8:
+	case ASF_BYTES_U8:
+	case ASF_BYTES_16:
+	case ASF_BYTES_U16:
+	case ASF_BYTES_32:
+	case ASF_BYTES_U32:
 		return ASF_REG_EAX;
 		break;
-	case ASF_IMM64:
-	case ASF_IMMU64:
+	case ASF_BYTES_64:
+	case ASF_BYTES_U64:
 		return ASF_REG_RAX;
 		break;
 	default:
 		printf("amc[backend.asf]: asf_reg_get: "
 				"Unsupport type: \"%d\"\n",
-				type);
+				bytes);
 		backend_stop(BE_STOP_SIGNAL_ERR);
 		break;
 	}

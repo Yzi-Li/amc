@@ -1,8 +1,5 @@
 #include "include/asf.h"
-#include "include/imm.h"
-#include "include/mov.h"
 #include "include/op.h"
-#include "include/stack.h"
 #include "include/suffix.h"
 
 static const char *temp_signed   = "imul%c %s\n";
@@ -29,7 +26,7 @@ int asf_op_mul(struct expr *e)
 			+ multiplicand_str->len);
 	str_append(multiplicand_str, 1, "\0");
 	snprintf(node->s->s, node->s->len, temp,
-			asf_suffix_get(asf_yz_type_raw2imm(*e->sum_type)),
+			asf_suffix_get(asf_yz_type_raw2bytes(*e->sum_type)),
 			multiplicand_str->s);
 	str_free(multiplicand_str);
 	return 0;

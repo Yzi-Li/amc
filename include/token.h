@@ -2,7 +2,6 @@
 #define AMC_TOKEN_H
 #include "../utils/str/str.h"
 #include "../include/file.h"
-#include "../include/type.h"
 
 #define TOKEN_NEW {.len = 0}
 
@@ -34,6 +33,14 @@ int token_get_token(str *token, str *result);
  *   -1: end of file and not found specified character.
  */
 int token_jump_to(char c, struct file *f);
+
+/**
+ * Handle end of element of 'token_parse_list'
+ * @note:
+ *   Use it on element of 'token_parse_list'.
+ * @return: always 0. so use it in return.
+ */
+int token_list_elem_end(char separator, struct file *f);
 
 /**
  * Get next token from file.

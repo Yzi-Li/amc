@@ -61,6 +61,7 @@ struct scope {
 };
 
 int symbol_args_append(struct symbol *self, yz_val *type);
+int symbol_check_name(const char *name, int len);
 int symbol_find(str *token, struct symbol **result, struct scope *scope);
 int symbol_find_in_group(str *token, struct symbol_group *group,
 		struct symbol **result);

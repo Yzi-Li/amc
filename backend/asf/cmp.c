@@ -37,7 +37,7 @@ int asf_inst_cmp(struct expr *e)
 	if (valr->s[valr->len - 1] != '\0')
 		str_append(valr, 1, "\0");
 	snprintf(node->s->s, node->s->len, temp,
-			asf_suffix_get(asf_yz_type_raw2imm(*e->sum_type)),
+			asf_suffix_get(asf_yz_type_raw2bytes(*e->sum_type)),
 			vall->s,
 			valr->s);
 	*asf_regs[ASF_REG_RAX].purpose = ASF_REG_PURPOSE_NULL;

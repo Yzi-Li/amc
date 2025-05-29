@@ -10,7 +10,7 @@ enum YZ_TYPE {
 	YZ_VOID, YZ_CHAR,
 	YZ_I8, YZ_I16, YZ_I32, YZ_I64,
 	YZ_U8, YZ_U16, YZ_U32, YZ_U64,
-	YZ_PTR
+	YZ_PTR, YZ_ARRAY
 };
 
 #define YZ_IS_DIGIT(X) (REGION_INT((X), YZ_I8, YZ_U64))
@@ -60,6 +60,5 @@ enum YZ_TYPE *yz_get_raw_type(yz_val *val);
 const char *yz_get_type_name(yz_val *val);
 enum YZ_TYPE yz_type_get(str *s);
 yz_val *yz_type_max(yz_val *l, yz_val *r);
-int parse_type(str *token, yz_val *type);
 
 #endif

@@ -1,11 +1,10 @@
-#include "block.h"
-#include "expr.h"
-#include "keywords.h"
+#include "include/block.h"
+#include "include/expr.h"
+#include "include/keywords.h"
 #include "../include/backend.h"
 #include "../include/file.h"
 #include "../include/scope.h"
 #include "../include/token.h"
-#include "../utils/die.h"
 #include "../utils/str/str.h"
 #include <stdio.h>
 

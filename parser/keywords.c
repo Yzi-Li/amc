@@ -1,4 +1,4 @@
-#include "keywords.h"
+#include "include/keywords.h"
 #include "../include/symbol.h"
 #include "../utils/utils.h"
 
@@ -18,6 +18,15 @@ static struct symbol keywords[] = {
 	//{"struct", 6, parse_struct,   {1, 1, 0}},
 	{"while",  5, parse_while,    {0, 1, 0}},
 };
+
+int keyword_end(struct file *f)
+{
+	if (parse_comment(f))
+		return 0;
+	if (f->src[f->pos] == '\n')
+		file_line_next(f);
+	return 0;
+}
 
 int keyword_find(str *token, struct symbol **result)
 {

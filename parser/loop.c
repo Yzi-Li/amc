@@ -1,6 +1,6 @@
-#include "expr.h"
-#include "block.h"
-#include "keywords.h"
+#include "include/expr.h"
+#include "include/block.h"
+#include "include/keywords.h"
 #include "../include/backend.h"
 
 static int loop_body_parse(struct file *f, struct scope *scope);

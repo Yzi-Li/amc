@@ -1,8 +1,6 @@
 #include "include/asf.h"
-#include "include/mov.h"
 #include "include/op.h"
 #include "include/register.h"
-#include "include/stack.h"
 #include "include/suffix.h"
 
 static const char *temp_signed   = "idiv%c %s\n";
@@ -31,7 +29,7 @@ int asf_op_div(struct expr *e)
 		temp = temp_unsigned;
 	str_expand(node->s, strlen(temp) - 1 + divisor->len);
 	snprintf(node->s->s, node->s->len, temp,
-			asf_suffix_get(asf_yz_type_raw2imm(*e->sum_type)),
+			asf_suffix_get(asf_yz_type_raw2bytes(*e->sum_type)),
 			divisor->s);
 	*asf_regs[result_reg].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
 	str_free(divisor);

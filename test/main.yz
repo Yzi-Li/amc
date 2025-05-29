@@ -7,7 +7,6 @@ fn func(a: i32): i32 =>
 	ret (3 * 4) - (a / 1) + b
 
 fn func_(a: i32): i32 =>
-	3 + 3
 	[func (1 + 7)]
 	ret 1 + 1
 

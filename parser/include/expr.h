@@ -1,9 +1,9 @@
 #ifndef AMC_PARSER_EXPR_H
 #define AMC_PARSER_EXPR_H
-#include "../include/expr.h"
-#include "../include/file.h"
-#include "../include/symbol.h"
-#include "../include/type.h"
+#include "../../include/expr.h"
+#include "../../include/file.h"
+#include "../../include/symbol.h"
+#include "../../include/type.h"
 
 int expr_apply(struct expr *e, struct scope *scope);
 void expr_free(struct expr *e);

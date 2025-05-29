@@ -1,4 +1,4 @@
-#include "keywords.h"
+#include "include/keywords.h"
 
 int parse_match(struct file *f, struct symbol *sym, struct scope *scope)
 {

@@ -1,8 +1,7 @@
-#include "block.h"
-#include "expr.h"
-#include "keywords.h"
+#include "include/block.h"
+#include "include/expr.h"
+#include "include/keywords.h"
 #include "../include/backend.h"
-#include "../utils/die.h"
 
 static int if_block_parse(struct file *f, struct symbol *sym,
 		struct scope *scope);

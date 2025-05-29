@@ -1,17 +1,16 @@
-#include "include/asf.h"
+#include "include/call.h"
+#include "include/identifier.h"
 #include "include/mov.h"
 #include "include/register.h"
 #include "include/stack.h"
-#include "include/suffix.h"
-#include "../../include/backend/target.h"
 #include <stdio.h>
 
 struct asf_stack_element *asf_stack_top = NULL;
 
-static int stack_element_append(enum ASF_IMM_TYPE bytes);
+static int stack_element_append(enum ASF_BYTES bytes);
 static void stack_element_remove();
 
-int stack_element_append(enum ASF_IMM_TYPE bytes)
+int stack_element_append(enum ASF_BYTES bytes)
 {
 	struct asf_stack_element *element = malloc(sizeof(*asf_stack_top));
 	if (element == NULL)
@@ -53,6 +52,35 @@ str *asf_inst_pop(enum ASF_REGS dest)
 	return s;
 }
 
+str *asf_inst_push(yz_val *val)
+{
+	struct asf_imm imm = {};
+	if (val->type == AMC_EXPR) {
+		return asf_inst_push_expr(val->v);
+	} else if (val->type == AMC_SYM) {
+		return asf_inst_push_sym(val->v);
+	} else if (YZ_IS_DIGIT(val->type)) {
+		imm.type = asf_yz_type_raw2bytes(val->type);
+		imm.iq = val->l;
+		return asf_inst_push_imm(&imm);
+	}
+	return NULL;
+}
+
+str *asf_inst_push_expr(struct expr *expr)
+{
+	return asf_inst_push_reg(asf_reg_get(
+				asf_yz_type_raw2bytes(*expr->sum_type)));
+}
+
+str *asf_inst_push_identifier(struct symbol *sym)
+{
+	char *name = str2chr(sym->name, sym->name_len);
+	struct asf_stack_element *src = asf_identifier_get(name);
+	free(name);
+	return asf_inst_push_mem(src);
+}
+
 str *asf_inst_push_imm(struct asf_imm *imm)
 {
 	if (stack_element_append(imm->type))
@@ -69,10 +97,24 @@ str *asf_inst_push_mem(struct asf_stack_element *src)
 
 str *asf_inst_push_reg(enum ASF_REGS src)
 {
-	if (stack_element_append(asf_regs[src].size))
+	if (stack_element_append(asf_regs[src].bytes))
 		return NULL;
 	*asf_regs[src].purpose = ASF_REG_PURPOSE_NULL;
 	return asf_inst_mov(ASF_MOV_R2M, &src, asf_stack_top);
+}
+
+str *asf_inst_push_sym(struct symbol *sym)
+{
+	enum ASF_REGS src = ASF_REG_RAX;
+	if (sym->args == NULL && sym->argc == 1)
+		return asf_inst_push_identifier(sym);
+	src = asf_reg_get(asf_yz_type2bytes(&sym->result_type));
+	if (sym->args == NULL && sym->argc > 1) {
+		if (sym->argc - 2 > asf_call_arg_regs_len)
+			return NULL;
+		src += asf_call_arg_regs[sym->argc - 2];
+	}
+	return asf_inst_push_reg(src);
 }
 
 str *asf_stack_get_element(struct asf_stack_element *element, int pop)

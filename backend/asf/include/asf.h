@@ -1,7 +1,5 @@
 #ifndef AMC_BE_ASF_H
 #define AMC_BE_ASF_H
-#include "cond.h"
-#include "scope.h"
 #include "../../../include/backend.h"
 
 enum OBJ_SECTION_TYPE {
@@ -14,6 +12,9 @@ int asf_end();
 int asf_file_new(struct file *f);
 int asf_init(int argc, char *argv[]);
 int asf_stop(enum BE_STOP_SIGNAL bess);
+
+int asf_array_def(char *name, yz_val **vs, int len);
+int asf_array_get_elem(char *name, yz_val *offset);
 
 int asf_cond_elif(backend_scope_status *raw_status);
 int asf_cond_else(backend_scope_status *raw_status);

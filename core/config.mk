@@ -1,4 +1,5 @@
 CORE_SRC =\
+	array.c\
 	file.c\
 	ptr.c\
 	scope.c\

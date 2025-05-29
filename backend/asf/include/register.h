@@ -1,7 +1,7 @@
 #ifndef AMC_BE_ASF_REGISTER_H
 #define AMC_BE_ASF_REGISTER_H
-#include "../../../include/type.h"
-#include "imm.h"
+#include "bytes.h"
+#include "../../../utils/str/str.h"
 
 enum ASF_REG_PURPOSE_TYPE {
 	ASF_REG_PURPOSE_NULL,
@@ -51,7 +51,7 @@ struct reg_flags {
 
 struct asf_reg {
 	const char *name;
-	int size;
+	int bytes;
 	struct reg_flags flags;
 	enum ASF_REG_PURPOSE_TYPE *purpose;
 };
@@ -63,7 +63,7 @@ static const unsigned int ASF_REG_64_OFFSET = 0;
 
 str *asf_reg_clean(enum ASF_REGS reg);
 str *asf_reg_get_str(struct asf_reg *reg);
-enum ASF_REGS asf_reg_get(enum ASF_IMM_TYPE type);
+enum ASF_REGS asf_reg_get(enum ASF_BYTES type);
 int asf_regs_init();
 
 #endif

@@ -1,7 +1,7 @@
-#ifndef AMC_KEYWORDS_H
-#define AMC_KEYWORDS_H
-#include "../include/file.h"
-#include "../include/symbol.h"
+#ifndef AMC_PARSER_KEYWORDS_H
+#define AMC_PARSER_KEYWORDS_H
+#include "../../include/file.h"
+#include "../../include/symbol.h"
 
 /*
  * Actually, this is the where all parse function definitions are located.
@@ -26,6 +26,7 @@ int parse_struct(struct file *f, struct symbol *sym, struct scope *scope);
 int parse_var(struct file *f, struct symbol *sym, struct scope *scope);
 int parse_while(struct file *f, struct symbol *sym, struct scope *scope);
 
+int keyword_end(struct file *f);
 int keyword_find(str *token, struct symbol **result);
 
 #endif

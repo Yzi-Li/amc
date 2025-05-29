@@ -1,19 +1,27 @@
 #include "include/suffix.h"
 
-char asf_suffix_get(int bytes)
+char asf_suffix_get(enum ASF_BYTES bytes)
 {
 	switch (bytes) {
-	case 1:
+	case ASF_BYTES_8:
+	case ASF_BYTES_U8:
 		return 'b';
 		break;
-	case 2:
+	case ASF_BYTES_16:
+	case ASF_BYTES_U16:
 		return 'w';
 		break;
-	case 4:
+	case ASF_BYTES_32:
+	case ASF_BYTES_U32:
 		return 'l';
 		break;
-	case 8:
+	case ASF_BYTES_64:
+	case ASF_BYTES_U64:
+	case ASF_BYTES_PTR:
 		return 'q';
+		break;
+	default:
+		return 'E';
 		break;
 	}
 

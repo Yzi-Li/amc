@@ -1,6 +1,7 @@
 // What fuck shit code?
 #include "../include/expr.h"
 #include "../include/ptr.h"
+#include "../include/symbol.h"
 
 static int ptr_extract(yz_ptr *p, yz_val **ref);
 
@@ -17,20 +18,6 @@ int ptr_extract(yz_ptr *p, yz_val **ref)
 	if (cur->ref.type == AMC_SYM)
 		*ref = &((struct symbol *)cur->ref.v)->result_type;
 	return level;
-}
-
-int parse_ptr(str *token, yz_val *ptr)
-{
-	yz_ptr *box = malloc(sizeof(yz_ptr));
-	ptr->type = YZ_PTR;
-	ptr->v = box;
-	return parse_type(token, &box->ref);
-}
-
-const char *yz_err_ptr_type(yz_val *val)
-{
-	printf("|v PTR: level: %d\n", ptr_extract(val->v, NULL));
-	return "AMC_PTR";
 }
 
 yz_ptr *yz_ptr_get_from_val(yz_val *val)
@@ -57,4 +44,10 @@ int yz_ptr_is_equal(yz_ptr *l, yz_ptr *r)
 	if (lref->type != rref->type)
 		return 0;
 	return 1;
+}
+
+const char *yz_type_err_ptr(yz_val *val)
+{
+	printf("|v PTR: level: %d\n", ptr_extract(val->v, NULL));
+	return "AMC_PTR";
 }

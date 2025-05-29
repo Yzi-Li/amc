@@ -57,10 +57,10 @@ int asf_op_extract_val(struct expr *e)
 		goto err_free_node;
 	node->s = str_new();
 	ptr = ((struct symbol*)e->valr->v)->result_type.v;
-	dest = asf_reg_get(asf_yz_type_raw2imm(ptr->ref.type));
+	dest = asf_reg_get(asf_yz_type_raw2bytes(ptr->ref.type));
 	str_expand(node->s, strlen(temp));
 	snprintf(node->s->s, node->s->len, temp,
-			asf_suffix_get(asf_regs[dest].size),
+			asf_suffix_get(asf_regs[dest].bytes),
 			asf_regs[src].name,
 			asf_regs[dest].name);
 	return 0;
@@ -80,7 +80,7 @@ int asf_op_get_addr(struct expr *e)
 	node = malloc(sizeof(*node));
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
-	dest = asf_reg_get(asf_yz_type_raw2imm(*e->sum_type));
+	dest = asf_reg_get(asf_yz_type_raw2bytes(*e->sum_type));
 	if (*asf_regs[dest].purpose != ASF_REG_PURPOSE_NULL)
 		if (asf_op_save_reg(node, dest))
 			goto err_free_node;
@@ -89,7 +89,7 @@ int asf_op_get_addr(struct expr *e)
 	node->s = str_new();
 	str_expand(node->s, strlen(temp) - 3 + identifier->len);
 	snprintf(node->s->s, node->s->len, temp,
-			asf_suffix_get(asf_regs[dest].size),
+			asf_suffix_get(asf_regs[dest].bytes),
 			identifier->s,
 			asf_regs[dest].name);
 	return 0;

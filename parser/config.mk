@@ -1,4 +1,5 @@
 PARSER_SRC =\
+	array.c\
 	block.c\
 	comment.c\
 	func.c\
@@ -9,6 +10,8 @@ PARSER_SRC =\
 	loop.c\
 	match.c\
 	op.c\
-	parser.c
+	parser.c\
+	ptr.c\
+	type.c
 PARSER_OBJ = $(PARSER_SRC:.c=.o)
 PARSER_DEBUG_OBJ = $(PARSER_SRC:.c=.debug.o)

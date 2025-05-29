@@ -6,7 +6,7 @@
 #include "include/register.h"
 #include "include/stack.h"
 #include "../../include/symbol.h"
-#include "../../include/backend/target.h"
+#include "../../include/backend/object.h"
 
 typedef int sym_id_t;
 
@@ -21,10 +21,11 @@ static int defined_sym_capacity = 0;
 
 static sym_id_t get_id(char *name);
 static sym_id_t reg_id(char *name);
-static int set_expr(char *name, struct expr *expr);
-static int set_identifier(char *name, struct symbol *sym);
-static int set_imm(char *name, yz_val *val);
-static int set_sym(char *name, struct symbol *sym);
+static str *set_expr(sym_id_t id, struct expr *expr);
+static str *set_identifier(sym_id_t id, struct symbol *sym);
+static str *set_imm(sym_id_t id, yz_val *val);
+static str *set_sym(sym_id_t id, struct symbol *sym);
+static str *set_val(sym_id_t id, yz_val *val);
 
 sym_id_t get_id(char *name)
 {
@@ -58,153 +59,89 @@ sym_id_t reg_id(char *name)
 	return defined_sym_len - 1;
 }
 
-int set_expr(char *name, struct expr *expr)
+str *set_expr(sym_id_t id, struct expr *expr)
 {
-	sym_id_t id = -1;
-	struct object_node *node = calloc(1, sizeof(*node));
-	enum ASF_REGS src = asf_reg_get(asf_yz_type_raw2imm(*expr->sum_type));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-		goto err_free_node;
-	if ((id = get_id(name)) == -1) {
-		if ((id = reg_id(name)) == -1)
-			goto err_free_node;
-		if ((node->s = asf_inst_push_reg(src)) == NULL)
-			goto err_inst_failed;
-		defined_syms[id].stack = asf_stack_top;
-	} else {
-		if ((node->s = asf_inst_mov(ASF_MOV_R2M, &src,
-				defined_syms[id].stack)) == NULL)
-			goto err_inst_failed;
-	}
-	return 0;
-err_free_node:
-	free(node);
-	return 1;
-err_inst_failed:
-	printf("amc[backend.asf:%s]: set_expr: Get instruction failed!\n",
-			__FILE__);
-	goto err_free_node;
+	enum ASF_REGS src = asf_reg_get(asf_yz_type_raw2bytes(*expr->sum_type));
+	return asf_inst_mov(ASF_MOV_R2M, &src, defined_syms[id].stack);
 }
 
-int set_identifier(char *name, struct symbol *sym)
+str *set_identifier(sym_id_t id, struct symbol *sym)
 {
-	sym_id_t id = -1, src_id = -1;
-	struct object_node *node = calloc(1, sizeof(*node));
 	struct asf_stack_element *src = NULL;
+	sym_id_t src_id = -1;
 	char *src_name = NULL;
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-		goto err_free_node;
 	src_name = str2chr(sym->name, sym->name_len);
 	if ((src_id = get_id(src_name)) == -1)
 		goto err_id_not_exists;
 	free(src_name);
 	src = defined_syms[src_id].stack;
-	if ((id = get_id(name)) == -1) {
-		if ((id = reg_id(name)) == -1)
-			goto err_free_node;
-		if ((node->s = asf_inst_push_mem(src)) == NULL)
-			goto err_inst_failed;
-		defined_syms[id].stack = asf_stack_top;
-	} else {
-		if ((node->s = asf_inst_mov(ASF_MOV_M2M, src,
-				defined_syms[id].stack)) == NULL)
-			goto err_inst_failed;
-	}
-	return 0;
-err_free_node:
-	free(node);
-	return 1;
+	return asf_inst_mov(ASF_MOV_M2M, src, defined_syms[id].stack);
 err_id_not_exists:
 	printf("amc[backend.asf:%s]: set_identifier: "
-			"Indentifier not exists!\n",
+			"Identifier not exists!\n",
 			__FILE__);
 	free(src_name);
-	goto err_free_node;
-err_inst_failed:
-	printf("amc[backend.asf:%s]: set_expr: Get instruction failed!\n",
-			__FILE__);
-	goto err_free_node;
+	return NULL;
 }
 
-int set_imm(char *name, yz_val *val)
+str *set_imm(sym_id_t id, yz_val *val)
 {
-	sym_id_t id = -1;
 	struct asf_imm imm = {
-		.type = asf_yz_type2imm(val),
+		.type = asf_yz_type_raw2bytes(val->type),
 		.iq = val->l
 	};
-	struct object_node *node = calloc(1, sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-		goto err_free_node;
-	if ((id = get_id(name)) == -1) {
-		if ((id = reg_id(name)) == -1)
-			goto err_free_node;
-		if ((node->s = asf_inst_push_imm(&imm)) == NULL)
-			goto err_inst_failed;
-		defined_syms[id].stack = asf_stack_top;
-	} else {
-		if ((node->s = asf_inst_mov(ASF_MOV_I2M, &imm,
-				defined_syms[id].stack)) == NULL)
-			goto err_inst_failed;
-	}
-	return 0;
-err_free_node:
-	free(node);
-	return 1;
-err_inst_failed:
-	printf("amc[backend.asf:%s]: set_expr: Get instruction failed!\n",
-			__FILE__);
-	goto err_free_node;
+	return asf_inst_mov(ASF_MOV_I2M, &imm, defined_syms[id].stack);
 }
 
-int set_sym(char *name, struct symbol *sym)
+str *set_sym(sym_id_t id, struct symbol *sym)
 {
-	sym_id_t id = -1;
-	struct object_node *node = NULL;
-	enum ASF_REGS src = asf_reg_get(asf_yz_type2imm(&sym->result_type));
+	enum ASF_REGS src = asf_reg_get(asf_yz_type2bytes(&sym->result_type));
 	if (sym->args == NULL && sym->argc == 1)
-		return set_identifier(name, sym);
+		return set_identifier(id, sym);
 	if (sym->args == NULL && sym->argc > 1) {
 		if (sym->argc - 2 > asf_call_arg_regs_len)
-			return 1;
+			return NULL;
 		src += asf_call_arg_regs[sym->argc - 2];
 	}
-	node = calloc(1, sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-		goto err_free_node;
-	if ((id = get_id(name)) == -1) {
-		if ((id = reg_id(name)) == -1)
-			goto err_free_node;
-		if ((node->s = asf_inst_push_reg(src)) == NULL)
-			goto err_inst_failed;
-		defined_syms[id].stack = asf_stack_top;
-	} else {
-		if ((node->s = asf_inst_mov(ASF_MOV_R2M, &src,
-				defined_syms[id].stack)) == NULL)
-			goto err_inst_failed;
+	return asf_inst_mov(ASF_MOV_R2M, &src, defined_syms[id].stack);
+}
+
+str *set_val(sym_id_t id, yz_val *val)
+{
+	if (val->type == AMC_EXPR) {
+		return set_expr(id, val->v);
+	} else if (val->type == AMC_SYM) {
+		return set_sym(id, val->v);
+	} else if (YZ_IS_DIGIT(val->type)) {
+		return set_imm(id, val);
 	}
-	return 0;
-err_free_node:
-	free(node);
-	return 1;
-err_inst_failed:
-	printf("amc[backend.asf:%s]: set_expr: Get instruction failed!\n",
-			__FILE__);
-	goto err_free_node;
+	printf("amc[backend.asf]: asf_var_set: Unsupport type: \"%s\"\n",
+				yz_get_type_name(val));
+	return NULL;
 }
 
 int asf_var_set(char *name, yz_val *val)
 {
-	if (val->type == AMC_EXPR) {
-		return set_expr(name, val->v);
-	} else if (val->type == AMC_SYM) {
-		return set_sym(name, val->v);
-	} else if (YZ_IS_DIGIT(val->type)) {
-		return set_imm(name, val);
+	sym_id_t id = -1;
+	struct object_node *node = malloc(sizeof(*node));
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+		goto err_free_node;
+	if ((id = get_id(name)) == -1) {
+		if ((id = reg_id(name)) == -1)
+			goto err_free_node;
+		if ((node->s = asf_inst_push(val)) == NULL)
+			goto err_inst_failed;
+		defined_syms[id].stack = asf_stack_top;
+	} else {
+		if ((node->s = set_val(id, val)) == NULL)
+			goto err_inst_failed;
 	}
-	printf("amc[backend.asf]: asf_var_immut_init: Unsupport type: "
-			"\"%s\"\n",
-			yz_get_type_name(val));
+	return 0;
+err_inst_failed:
+	printf("amc[backend.asf]: asf_var_set: Get instruction failed!\n");
+	goto err_free_node;
+err_free_node:
+	free(node);
 	return 1;
 }
 
@@ -232,4 +169,21 @@ struct asf_stack_element *asf_identifier_get(char *name)
 	if ((id = get_id(name)) == -1)
 		return NULL;
 	return defined_syms[id].stack;
+}
+
+int asf_identifier_reg(char *name, struct asf_stack_element *src)
+{
+	sym_id_t id = -1;
+	if (name == NULL || src == NULL)
+		return 1;
+	if ((id = get_id(name)) != -1)
+		goto err_registered;
+	if ((id = reg_id(name)) == -1)
+		return 1;
+	defined_syms[id].stack = src;
+	return 0;
+err_registered:
+	printf("amc[backend.asf]: asf_identifier_reg: "
+			"Identifier registered!\n");
+	return 1;
 }
