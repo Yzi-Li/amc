@@ -10,21 +10,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int syscall_push_arg(str *s, yz_val *v, int index);
-static int syscall_push_arg_expr(str *s, struct expr *expr, int index);
-static int syscall_push_arg_identifier(str *s, struct symbol *sym, int index);
-static int syscall_push_arg_imm(str *s, yz_val *v, int index);
-static int syscall_push_arg_sym(str *s, struct symbol *sym, int index);
-static int syscall_push_args(str *s, int vlen, yz_val **vs);
+static int call_push_arg(str *s, yz_val *v, int index);
+static int call_push_arg_expr(str *s, struct expr *expr, int index);
+static int call_push_arg_identifier(str *s, struct symbol *sym, int index);
+static int call_push_arg_imm(str *s, yz_val *v, int index);
+static int call_push_arg_sym(str *s, struct symbol *sym, int index);
 
-int syscall_push_arg(str *s, yz_val *v, int index)
+int call_push_arg(str *s, yz_val *v, int index)
 {
 	if (v->type == AMC_SYM) {
-		return syscall_push_arg_sym(s, v->v, index);
+		return call_push_arg_sym(s, v->v, index);
 	} else if (v->type == AMC_EXPR) {
-		return syscall_push_arg_expr(s, v->v, index);
+		return call_push_arg_expr(s, v->v, index);
 	} else if (YZ_IS_DIGIT(v->type)) {
-		return syscall_push_arg_imm(s, v, index);
+		return call_push_arg_imm(s, v, index);
 	}
 	printf("amc[backend.asf]: syscall_push_arg: "
 			"Unsupport argument type: \"%s\"\n",
@@ -32,7 +31,7 @@ int syscall_push_arg(str *s, yz_val *v, int index)
 	return 1;
 }
 
-int syscall_push_arg_expr(str *s, struct expr *expr, int index)
+int call_push_arg_expr(str *s, struct expr *expr, int index)
 {
 	enum ASF_REGS dest = asf_call_arg_regs[index],
 	              src = ASF_REG_RAX;
@@ -47,7 +46,7 @@ int syscall_push_arg_expr(str *s, struct expr *expr, int index)
 	return 0;
 }
 
-int syscall_push_arg_identifier(str *s, struct symbol *sym, int index)
+int call_push_arg_identifier(str *s, struct symbol *sym, int index)
 {
 	char *name = str2chr(sym->name, sym->name_len);
 	str *tmp = NULL;
@@ -68,7 +67,7 @@ err_identifier_not_found:
 	return 1;
 }
 
-int syscall_push_arg_imm(str *s, yz_val *v, int index)
+int call_push_arg_imm(str *s, yz_val *v, int index)
 {
 	struct asf_imm imm = {
 		.type = asf_yz_type_raw2bytes(v->type),
@@ -81,13 +80,13 @@ int syscall_push_arg_imm(str *s, yz_val *v, int index)
 	return 0;
 }
 
-int syscall_push_arg_sym(str *s, struct symbol *sym, int index)
+int call_push_arg_sym(str *s, struct symbol *sym, int index)
 {
 	enum ASF_REGS dest = asf_call_arg_regs[index],
 	              src = ASF_REG_RAX;
 	str *tmp = NULL;
 	if (sym->args == NULL && sym->argc == 1)
-		return syscall_push_arg_identifier(s, sym, index);
+		return call_push_arg_identifier(s, sym, index);
 	src = asf_reg_get(asf_yz_type2bytes(&sym->result_type));
 	dest += src;
 	if (sym->args == NULL && sym->argc > 1) {
@@ -101,14 +100,14 @@ int syscall_push_arg_sym(str *s, struct symbol *sym, int index)
 	return 0;
 }
 
-int syscall_push_args(str *s, int vlen, yz_val **vs)
+int asf_call_push_args(str *s, int vlen, yz_val **vs)
 {
 	for (int i = 0; i < vlen; i++) {
 		if (i > asf_call_arg_regs_len)
 			goto err_too_many_arg;
 		if (vs[i] == NULL)
 			goto err_arg_not_exists;
-		if (syscall_push_arg(s, vs[i], i))
+		if (call_push_arg(s, vs[i], i))
 			return 1;
 	}
 	return 0;
@@ -128,7 +127,7 @@ str *asf_inst_syscall(int code, int vlen, yz_val **vs)
 		"movq $%d, %%rax\n"
 		"syscall\n";
 	str *s = str_new();
-	if (syscall_push_args(s, vlen, vs))
+	if (asf_call_push_args(s, vlen, vs))
 		goto err_free_str;
 	str_last = s->len;
 	str_expand(s, strlen(temp) - 2 + ullen(code));

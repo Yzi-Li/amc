@@ -12,4 +12,7 @@ static enum ASF_REGS asf_call_arg_regs[] = {
 };
 static const int asf_call_arg_regs_len = LENGTH(asf_call_arg_regs);
 
+int asf_call_push_args(str *s, int vlen, yz_val **vs);
+str *asf_inst_syscall(int code, int vlen, yz_val **vs);
+
 #endif
