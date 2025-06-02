@@ -2,6 +2,8 @@
 #include "include/bytes.h"
 #include "include/op.h"
 #include "include/suffix.h"
+#include <stdlib.h>
+#include <string.h>
 
 static const char *temp = "add%c %s, %s\n";
 

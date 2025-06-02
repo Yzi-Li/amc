@@ -1,12 +1,9 @@
 #ifndef STR_H
 #define STR_H
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 typedef struct str {
-    int len;
-    char *s;
+	int len;
+	char *s;
 } str;
 
 char *str2chr(const char *s, int len);

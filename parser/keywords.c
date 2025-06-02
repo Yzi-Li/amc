@@ -1,6 +1,7 @@
 #include "include/keywords.h"
 #include "../include/symbol.h"
 #include "../utils/utils.h"
+#include <string.h>
 
 static struct symbol keywords[] = {
 	//{"const",  5, parse_const,    {0, 0, 1, 0}},

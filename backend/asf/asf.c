@@ -2,6 +2,7 @@
 #include "include/register.h"
 #include "../../include/backend.h"
 #include "../../include/backend/target.h"
+#include <stdlib.h>
 
 struct backend backend_asf = {
 	.end      = asf_end,

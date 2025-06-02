@@ -3,13 +3,14 @@
 #include "include/identifier.h"
 #include "include/imm.h"
 #include "include/mov.h"
-#include "include/op.h"
 #include "include/register.h"
 #include "include/stack.h"
 #include "../../include/backend/object.h"
 #include "../../include/expr.h"
 #include "../../include/symbol.h"
 #include "../../utils/utils.h"
+#include <stdlib.h>
+#include <string.h>
 
 static int func_call_basic_args(str *s, yz_val **vs, int vlen);
 static int func_call_ext_args(str *s, yz_val **vs, int vlen);
@@ -260,9 +261,6 @@ int asf_func_call(const char *name, yz_val *type, yz_val **vs, int vlen)
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	reg = asf_reg_get(asf_yz_type2bytes(type));
-	if (*asf_regs[reg].purpose != ASF_REG_PURPOSE_NULL)
-		if (asf_op_save_reg(node, reg))
-			goto err_free_node;
 	*asf_regs[reg].purpose = ASF_REG_PURPOSE_FUNC_RESULT;
 	if (func_call_basic_args(node->s, vs, vlen))
 		goto err_free_node;
@@ -317,6 +315,7 @@ int asf_func_ret(yz_val *v, int is_main)
 		"popq %rbp\n"
 		"ret\n";
 	struct object_node *node = malloc(sizeof(*node));
+	node->s = NULL;
 	if (is_main) {
 		if (func_ret_main(v, &node->s))
 			goto err_free_node;

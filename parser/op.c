@@ -5,6 +5,7 @@
 #include "../include/comptime/ptr.h"
 #include "../include/ptr.h"
 #include "../utils/utils.h"
+#include <stdlib.h>
 
 static int op_unary_extract_val(struct expr *e, struct scope *scope);
 static int op_unary_get_addr(struct expr *e, struct scope *scope);

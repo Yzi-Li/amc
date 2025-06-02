@@ -5,6 +5,7 @@
 #include "../utils/die.h"
 #include "../utils/str/str.h"
 #include "include/keywords.h"
+#include <stdlib.h>
 
 struct parser parser_global_conf = {0, 0, 0};
 

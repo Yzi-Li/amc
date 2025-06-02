@@ -7,6 +7,8 @@
 #include "../../include/symbol.h"
 #include "../../utils/utils.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 static int syscall_push_arg(str *s, yz_val *v, int index);
 static int syscall_push_arg_expr(str *s, struct expr *expr, int index);

@@ -6,6 +6,8 @@
 #include "include/stack.h"
 #include "include/suffix.h"
 #include "../../include/ptr.h"
+#include <stdlib.h>
+#include <string.h>
 
 static int op_ptr_extract_get_addr(enum ASF_REGS *dest, struct symbol *sym);
 static str *op_ptr_identifier_get(yz_ptr *ptr);

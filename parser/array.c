@@ -7,6 +7,9 @@
 #include "../include/array.h"
 #include "../include/backend.h"
 #include "../include/token.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 struct structure_array_handle {
 	int index;

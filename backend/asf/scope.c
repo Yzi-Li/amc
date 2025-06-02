@@ -2,6 +2,7 @@
 #include "include/identifier.h"
 #include "include/scope.h"
 #include "../../include/backend/object.h"
+#include <stdlib.h>
 
 static int scope_end_normal(struct asf_scope_status *status);
 

@@ -5,6 +5,8 @@
 #include "include/stack.h"
 #include "include/suffix.h"
 #include "../../include/backend/object.h"
+#include <stdlib.h>
+#include <string.h>
 
 static int array_elem_push(yz_val *val);
 static int array_elem_push_empty(yz_val *type);

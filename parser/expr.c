@@ -8,6 +8,8 @@
 #include "../include/token.h"
 #include "../utils/converter.h"
 #include "../utils/utils.h"
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define EXPR_END -1

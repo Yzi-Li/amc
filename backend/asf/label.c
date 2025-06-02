@@ -1,6 +1,7 @@
 #include "include/label.h"
 #include "../../utils/utils.h"
 #include <stdio.h>
+#include <string.h>
 
 static int label_id_top = -1;
 

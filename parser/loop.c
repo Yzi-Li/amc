@@ -2,6 +2,7 @@
 #include "include/block.h"
 #include "include/keywords.h"
 #include "../include/backend.h"
+#include <stdio.h>
 
 static int loop_body_parse(struct file *f, struct scope *scope);
 static int loop_condition_parse(struct file *f, struct scope *scope);

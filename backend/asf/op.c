@@ -8,6 +8,8 @@
 #include "include/suffix.h"
 #include "../../include/expr.h"
 #include "../../include/symbol.h"
+#include <stdlib.h>
+#include <string.h>
 
 static str *op_get_val_from_mem(struct object_node *parent,
 		enum ASF_REGS dest);

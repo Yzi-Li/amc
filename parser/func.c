@@ -12,6 +12,8 @@
 #include "../include/comptime/ptr.h"
 #include "../utils/utils.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 struct func_call_handle {
 	struct file *f;
@@ -46,8 +48,9 @@ yz_val *func_call_arg_handle(struct expr *expr, struct symbol *arg)
 {
 	yz_val *type = NULL,
 	       *val = func_call_arg_val_get(expr, &arg->result_type);
-	if (!comptime_ptr_check_can_null(val, arg))
-		return NULL;
+	if (val->type == AMC_SYM && arg->result_type.type == YZ_PTR)
+		if (!comptime_ptr_check_can_null(val, arg))
+			return NULL;
 	if ((type = yz_type_max(val, &arg->result_type)) == NULL)
 		goto err_wrong_arg_type;
 	return val;
@@ -161,12 +164,8 @@ int func_call_read_token(struct file *f, str *token)
 	file_skip_space(f);
 	if (token_read_before(SPECIAL_TOKEN_END, token, f) == NULL)
 		return 1;
-	if (f->src[f->pos] == ']') {
-		file_pos_next(f);
-		file_skip_space(f);
-		keyword_end(f);
+	if (f->src[f->pos] == ']')
 		return -1;
-	}
 	file_skip_space(f);
 	return keyword_end(f);
 }
@@ -293,7 +292,9 @@ int func_def_read_args(struct file *f, struct symbol *fn, struct scope *scope)
 	file_skip_space(f);
 	return 0;
 err_args_cannot_parse:
-	printf("amc: parse_func_def: Cannot parse function arguments!\n");
+	printf("amc: parse_func_def: %lld,%lld: "
+			"Cannot parse function arguments!\n",
+			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
@@ -307,19 +308,22 @@ int func_def_read_block(struct file *f, struct scope *scope)
 
 int func_def_read_name(struct file *f, struct symbol *fn)
 {
-	int len = 0;
-	fn->name = &f->src[f->pos];
-	for (; f->src[f->pos] != ' '
-			&& f->src[f->pos] != '\t'
-			&& f->src[f->pos] != '\n'
-			&& f->src[f->pos] != '('
-			&& f->src[f->pos] != ':'; len++) {
-		if (f->src[f->pos] == '\0')
-			goto err_eof;
-		file_pos_next(f);
-	}
+	const char *tok_end = " \t\n(:;";
+	str token = TOKEN_NEW;
+	if (token_read_before(tok_end, &token, f) == NULL)
+		goto err_eof;
 	file_skip_space(f);
-	fn->name_len = len;
+	keyword_end(f);
+	if (token.len == 3 && strncmp("rec", token.s, 3) == 0) {
+		fn->flags.rec = 1;
+		token.len = 0;
+		if (token_read_before(tok_end, &token, f) == NULL)
+			goto err_eof;
+		file_skip_space(f);
+		keyword_end(f);
+	}
+	fn->name = token.s;
+	fn->name_len = token.len;
 	return 0;
 err_eof:
 	printf("amc: func_def_read_name: end of file\n");
@@ -383,9 +387,14 @@ int parse_func_call(struct file *f, struct symbol *sym, struct scope *scope)
 {
 	yz_val **v = NULL;
 	const char *name = NULL;
-	v = func_call_read_args(f, sym, scope);
-	if (v == NULL)
-		return 1;
+	if (sym->argc == 0 && f->src[f->pos] == ']') {
+		file_pos_next(f);
+		file_skip_space(f);
+	} else {
+		v = func_call_read_args(f, sym, scope);
+		if (v == NULL)
+			return 1;
+	}
 	if (sym->name[sym->name_len - 1] != '\0') {
 		name = str2chr(sym->name, sym->name_len);
 	} else {
@@ -477,7 +486,9 @@ int func_call_read(struct file *f, struct symbol **fn, struct scope *scope)
 		goto err_func_not_in_block;
 	if (ret == -1 && callee->argc > 0)
 		goto err_func_miss_args;
-	if ((ret = callee->parse_function(f, callee, scope)) > 0)
+	if (scope->fn == callee && callee->flags.rec == 0)
+		goto err_func_cannot_rec;
+	if (callee->parse_function(f, callee, scope))
 		return 1;
 	if (fn != NULL)
 		*fn = callee;
@@ -494,9 +505,7 @@ err_func_not_found:
 err_func_not_in_block:
 	err_msg = str2chr(callee->name, callee->name_len);
 	printf("amc: func_call_read: %lld,%lld: "
-			"Function cannot be called in block!\n"
-			"| Function callee: \"%s\"\n"
-			"|                   ^\n",
+			"Function: '%s' cannot be called in block!\n",
 			orig_line, orig_column, err_msg);
 	free(err_msg);
 	backend_stop(BE_STOP_SIGNAL_ERR);
@@ -504,12 +513,18 @@ err_func_not_in_block:
 err_func_miss_args:
 	err_msg = str2chr(callee->name, callee->name_len);
 	printf("amc: func_call_read: %lld,%lld: "
-			"Function need %d arguments "
-			"but not have any arguments!\n"
-			"| Function calee: \"%s\"\n"
-			"|                  ^\n",
+			"Function: '%s' need %d arguments "
+			"but not have any arguments!\n",
 			orig_line, orig_column,
-			callee->argc, err_msg);
+			err_msg, callee->argc);
+	free(err_msg);
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 1;
+err_func_cannot_rec:
+	err_msg = str2chr(callee->name, callee->name_len);
+	printf("amc: func_call_read: %lld,%lld: "
+			"Function: '%s' cannot be recursively called\n",
+			orig_line, orig_column, err_msg);
 	free(err_msg);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;

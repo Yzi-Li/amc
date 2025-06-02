@@ -1,4 +1,6 @@
 #include "../../include/comptime/ptr.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 static int check_val_type(yz_val *val);
 

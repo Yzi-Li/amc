@@ -1,5 +1,7 @@
 #include "str.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 char *str2chr(const char *s, int len)
 {

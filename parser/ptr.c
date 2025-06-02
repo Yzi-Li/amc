@@ -1,6 +1,7 @@
 #include "include/ptr.h"
 #include "include/type.h"
 #include "../include/ptr.h"
+#include <stdlib.h>
 
 int parse_type_ptr(struct file *f, yz_val *ptr)
 {

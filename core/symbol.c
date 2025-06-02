@@ -1,5 +1,7 @@
 #include "../include/symbol.h"
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 int symbol_args_append(struct symbol *self, struct symbol *sym)
 {
@@ -79,11 +81,22 @@ void symbol_group_free(struct symbol_group *group)
 
 int symbol_register(struct symbol *symbol, struct symbol_group *group)
 {
+	char *err_msg;
+	str name_token = {.s = (char*)symbol->name, .len = symbol->name_len};
+	struct symbol *tmp = NULL;
 	if (symbol_check_name(symbol->name, symbol->name_len))
 		return 1;
+	if (symbol_find_in_group(&name_token, group, &tmp))
+		goto err_defined;
 	group->size += 1;
 	group->symbols = realloc(group->symbols,
 			sizeof(struct symbol*) * group->size);
 	group->symbols[group->size - 1] = symbol;
 	return 0;
+err_defined:
+	err_msg = str2chr(symbol->name, symbol->name_len);
+	printf("amc: symbol_register: symbol: \"%s\" defined!\n",
+			err_msg);
+	free(err_msg);
+	return 1;
 }

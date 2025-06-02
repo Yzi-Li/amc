@@ -5,6 +5,8 @@
 #include "../include/ptr.h"
 #include "../utils/utils.h"
 #include <limits.h>
+#include <stdio.h>
+#include <string.h>
 
 static yz_val *yz_type_max_raw(enum YZ_TYPE ltype, enum YZ_TYPE rtype,
 		yz_val *l, yz_val *r);

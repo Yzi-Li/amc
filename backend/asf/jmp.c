@@ -2,6 +2,7 @@
 #include "../../utils/str/str.h"
 #include "../../utils/utils.h"
 #include <stdio.h>
+#include <string.h>
 
 static const char *insts[] = {
 	[ASF_JMP_ALWAYS] = "jmp %s\n",

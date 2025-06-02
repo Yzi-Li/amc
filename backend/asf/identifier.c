@@ -9,6 +9,8 @@
 #include "include/stack.h"
 #include "../../include/symbol.h"
 #include "../../include/backend/object.h"
+#include <stdlib.h>
+#include <string.h>
 
 typedef int sym_id_t;
 

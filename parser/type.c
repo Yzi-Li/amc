@@ -3,6 +3,7 @@
 #include "include/token.h"
 #include "include/type.h"
 #include "../include/token.h"
+#include <stdio.h>
 
 int parse_type(struct file *f, yz_val *type)
 {

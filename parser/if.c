@@ -2,6 +2,7 @@
 #include "include/expr.h"
 #include "include/keywords.h"
 #include "../include/backend.h"
+#include <stdio.h>
 
 static int if_block_parse(struct file *f, struct symbol *sym,
 		struct scope *scope);

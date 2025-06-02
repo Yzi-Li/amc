@@ -2,6 +2,7 @@
 #include "include/jmp.h"
 #include "include/label.h"
 #include "include/scope.h"
+#include <stdlib.h>
 
 static int loop_append_jmp_begin(struct asf_scope_status *status,
 		label_id label);

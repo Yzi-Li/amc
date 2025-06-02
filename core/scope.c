@@ -1,5 +1,6 @@
 #include "../include/backend.h"
 #include "../include/scope.h"
+#include <stdio.h>
 
 int scope_check_is_correct(struct scope *scope)
 {

@@ -2,6 +2,7 @@
 #include "include/cmp.h"
 #include "include/jmp.h"
 #include "include/label.h"
+#include <stdlib.h>
 
 static int cmp_and_jmp(struct expr *e, enum ASF_JMP_TYPE jmp_type);
 static int cmp_jmp_inst_append(label_id label, str *label_str,

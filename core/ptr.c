@@ -2,6 +2,7 @@
 #include "../include/expr.h"
 #include "../include/ptr.h"
 #include "../include/symbol.h"
+#include <stdio.h>
 
 static int ptr_extract(yz_ptr *p, yz_val **ref);
 

@@ -2,6 +2,8 @@
 #include "include/op.h"
 #include "include/register.h"
 #include "include/suffix.h"
+#include <stdlib.h>
+#include <string.h>
 
 static const char *temp_signed   = "idiv%c %s\n";
 static const char *temp_unsigned = "div%c %s\n";

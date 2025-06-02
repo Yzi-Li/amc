@@ -19,6 +19,7 @@ enum SYMG {
 
 struct symbol_flag {
 	unsigned int can_null:1,
+	             rec:1,
 	             toplevel:1,
 	             in_block:1,
 	             is_init:1,

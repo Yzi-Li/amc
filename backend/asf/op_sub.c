@@ -1,6 +1,8 @@
 #include "include/asf.h"
 #include "include/op.h"
 #include "include/suffix.h"
+#include <stdlib.h>
+#include <string.h>
 
 static const char *temp = "sub%c %s, %s\n";
 

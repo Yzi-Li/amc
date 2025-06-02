@@ -10,6 +10,7 @@
 #include "../include/token.h"
 #include "../utils/str/str.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 static int identifier_assign_backend_call(struct symbol *sym, yz_val *val,

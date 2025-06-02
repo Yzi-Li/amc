@@ -2,6 +2,8 @@
 #include "include/imm.h"
 #include "include/mov.h"
 #include "../../include/backend.h"
+#include <stdlib.h>
+#include <string.h>
 
 struct asf_reg asf_regs[] = {
 	[ASF_REG_RAX] = {"rax", 8, {1, 1}, NULL},

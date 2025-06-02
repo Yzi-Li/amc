@@ -1,5 +1,6 @@
 #include "../include/backend/object.h"
 #include "../include/backend.h"
+#include <stdlib.h>
 
 extern int backend_flag;
 

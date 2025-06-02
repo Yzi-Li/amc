@@ -2,6 +2,7 @@
 #define AMC_EXPR_H
 #include "op.h"
 #include "../include/type.h"
+#include <stdio.h>
 
 #define EXPR_IS_SINGLE_TERM(EXPR) (\
 		(EXPR)->op == NULL\

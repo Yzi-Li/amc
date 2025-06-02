@@ -3,6 +3,7 @@
 #include "include/jmp.h"
 #include "include/label.h"
 #include "include/scope.h"
+#include <stdlib.h>
 
 static int cond_append_branch(struct asf_cond_handle *handle,
 		struct object_node *node);

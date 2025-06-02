@@ -5,6 +5,8 @@
 #include "include/suffix.h"
 #include "../../include/expr.h"
 #include "../../utils/str/str.h"
+#include <stdlib.h>
+#include <string.h>
 
 int asf_inst_cmp(struct expr *e)
 {
