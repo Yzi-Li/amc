@@ -22,24 +22,26 @@ struct backend backend_asf = {
 
 	.ops = {
 		[OP_ADD] = asf_op_add,
-		[OP_AND] = asf_op_and,
 		[OP_DIV] = asf_op_div,
-		[OP_EQ]  = asf_op_eq,
-		[OP_GE]  = asf_op_ge,
-		[OP_GT]  = asf_op_gt,
-		[OP_LE]  = asf_op_le,
-		[OP_LT]  = asf_op_lt,
 		[OP_MUL] = asf_op_mul,
-		[OP_NE]  = asf_op_ne,
-		[OP_NOT] = asf_op_not,
-		[OP_OR]  = asf_op_or,
 		[OP_SUB] = asf_op_sub,
 
-		[OP_ASSIGN] = asf_op_assign,
-		[OP_ASSIGN_ADD] = asf_op_assign_add,
-		[OP_ASSIGN_DIV] = asf_op_assign_div,
-		[OP_ASSIGN_MUL] = asf_op_assign_mul,
-		[OP_ASSIGN_SUB] = asf_op_assign_sub,
+		[OP_EQ]  = asf_op_eq,
+		[OP_NE]  = asf_op_ne,
+		[OP_LE]  = asf_op_le,
+		[OP_LT]  = asf_op_lt,
+		[OP_GE]  = asf_op_ge,
+		[OP_GT]  = asf_op_gt,
+
+		[OP_AND] = asf_op_and,
+		[OP_OR]  = asf_op_or,
+		[OP_NOT] = asf_op_not,
+
+		[OP_ASSIGN] = NULL,
+		[OP_ASSIGN_ADD] = NULL,
+		[OP_ASSIGN_DIV] = NULL,
+		[OP_ASSIGN_MUL] = NULL,
+		[OP_ASSIGN_SUB] = NULL,
 
 		[OP_EXTRACT_VAL] = asf_op_extract_val,
 		[OP_GET_ADDR] = asf_op_get_addr
@@ -48,8 +50,8 @@ struct backend backend_asf = {
 	.scope_begin = asf_scope_begin,
 	.scope_end = asf_scope_end,
 
-	.var_set        = asf_var_set,
 	.var_immut_init = asf_var_immut_init,
+	.var_set        = asf_var_set,
 
 	.while_begin = asf_while_begin,
 	.while_end   = asf_while_end

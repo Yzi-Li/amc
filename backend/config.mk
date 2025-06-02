@@ -19,7 +19,6 @@ BE_ASF_SRC =\
 	mov.c\
 	op.c\
 	op_add.c\
-	op_assign.c\
 	op_cmp.c\
 	op_div.c\
 	op_mul.c\

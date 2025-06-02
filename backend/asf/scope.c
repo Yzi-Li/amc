@@ -1,10 +1,14 @@
 #include "include/asf.h"
+#include "include/identifier.h"
 #include "include/scope.h"
+#include "../../include/backend/object.h"
 
 static int scope_end_normal(struct asf_scope_status *status);
 
 int scope_end_normal(struct asf_scope_status *status)
 {
+	asf_identifier_free_id(status->identifier_count);
+	asf_stack_end_frame(status->stack_start);
 	if (status->end_node == NULL)
 		return 0;
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], status->end_node))
@@ -20,6 +24,7 @@ err_free_node:
 backend_scope_status *asf_scope_begin()
 {
 	struct asf_scope_status *status = calloc(1, sizeof(*status));
+	status->stack_start = asf_stack_top;
 	return status;
 }
 
@@ -34,6 +39,8 @@ int asf_scope_end(backend_scope_status *raw_status)
 	case ASF_SCOPE_STATUS_COND:
 		status->type = ASF_SCOPE_STATUS_NORMAL;
 		if (asf_cond_handle_end(&status->cond))
+			return 1;
+		if (scope_end_normal(status))
 			return 1;
 		break;
 	default:

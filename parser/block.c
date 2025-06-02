@@ -1,5 +1,6 @@
 #include "include/block.h"
 #include "include/expr.h"
+#include "include/func.h"
 #include "include/keywords.h"
 #include "../include/backend.h"
 #include "../include/file.h"
@@ -35,12 +36,12 @@ int block_parse_expr(struct file *f, struct scope *scope)
 	file_pos_next(f);
 	return 0;
 err_cannot_parse_expr:
-	printf("amc: block_parse_expr: %lld,%lld: Cannot parse expression!\n",
+	printf("| block_parse_expr: %lld,%lld: Cannot parse expression!\n",
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_cannot_apply_expr:
-	printf("amc: block_parse_expr: %lld,%lld: Cannot apply expression!\n",
+	printf("| block_parse_expr: %lld,%lld: Cannot apply expression!\n",
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
@@ -48,34 +49,10 @@ err_cannot_apply_expr:
 
 int block_parse_func(struct file *f, struct scope *scope)
 {
-	char *err_msg;
-	i64 orig_column = f->cur_column,
-	    orig_line = f->cur_line;
-	struct symbol *sym = NULL;
-	str token = TOKEN_NEW;
-	file_pos_next(f);
-	file_skip_space(f);
-	if (token_next(&token, f))
+	if (func_call_read(f, NULL, scope))
 		return 1;
-	if (!symbol_find_in_group_in_scope(&token, &sym, scope, SYMG_FUNC))
-		goto err_func_not_found;
-	if (sym->parse_function(f, sym, scope))
-		return 1;
-	file_pos_next(f);
 	file_skip_space(f);
-	parse_comment(f);
-	if (f->src[f->pos] == '\n')
-		return file_line_next(f);
-	return 0;
-err_func_not_found:
-	err_msg = str2chr(token.s, token.len);
-	printf("amc: block_parse_func: %lld,%lld: Function not found!\n"
-			"| Token: \"%s\"\n",
-			orig_line, orig_column,
-			err_msg);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	free(err_msg);
-	return 1;
+	return keyword_end(f);
 }
 
 int block_parse_keyword(struct file *f, struct scope *scope)
@@ -127,15 +104,7 @@ int block_parse_line(struct file *f, struct scope *scope)
 		return 0;
 	if (ret > 0)
 		return 1;
-	if (block_parse_expr(f, scope))
-		goto err_not_expr_or_symbol_call;
-	return 0;
-err_not_expr_or_symbol_call:
-	printf("amc: block_parse_line: %lld,%lld: "
-			"Line is not expression or symbol call!\n",
-			f->cur_line, f->cur_column);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
+	return block_parse_expr(f, scope);
 }
 
 int parse_block(struct file *f, struct scope *scope)

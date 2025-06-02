@@ -20,13 +20,12 @@ static int func_call_push_arg_identifier(str *s, int index,
 static int func_call_push_arg_imm(str *s, int index, yz_val *v);
 static int func_call_push_arg_sym(str *s, int index, struct symbol *sym);
 static int func_call_set_stack_top(struct object_node *parent);
-static void func_ret_clean_stack();
-static int func_ret_expr(struct expr *expr);
-static int func_ret_identifier(struct object_node *node, struct symbol *sym);
-static int func_ret_imm(yz_val *v);
-static int func_ret_main(yz_val *v, str *s);
-static int func_ret_sym(struct symbol *sym);
-static int func_ret_val(yz_val *v);
+static int func_ret_expr(struct expr *expr, str **s);
+static int func_ret_identifier(struct symbol *sym, str **s);
+static int func_ret_imm(yz_val *v, str **s);
+static int func_ret_main(yz_val *v, str **s);
+static int func_ret_sym(struct symbol *sym, str **s);
+static int func_ret_val(yz_val *v, str **s);
 
 int func_call_basic_args(str *s, yz_val **vs, int vlen)
 {
@@ -158,111 +157,94 @@ int func_call_set_stack_top(struct object_node *parent)
 	return 0;
 }
 
-void func_ret_clean_stack()
-{
-	struct asf_stack_element *cur = asf_stack_top, *nex;
-	while (cur != NULL) {
-		nex = cur->prev;
-		free(cur);
-		cur = nex;
-	}
-	asf_stack_top = NULL;
-	asf_identifier_free_id(0);
-	return;
-}
-
-int func_ret_expr(struct expr *expr)
+int func_ret_expr(struct expr *expr, str **s)
 {
 	enum ASF_REGS reg = asf_reg_get(
 			asf_yz_type_raw2bytes(*expr->sum_type));
 	if (*asf_regs[reg].purpose != ASF_REG_PURPOSE_EXPR_RESULT)
 		return 1;
 	*asf_regs[reg].purpose = ASF_REG_PURPOSE_NULL;
+	*s = NULL;
 	return 0;
 }
 
-int func_ret_identifier(struct object_node *node, struct symbol *sym)
+int func_ret_identifier(struct symbol *sym, str **s)
 {
 	char *name = str2chr(sym->name, sym->name_len);
 	enum ASF_REGS dest = asf_reg_get(asf_yz_type2bytes(&sym->result_type));
 	struct asf_stack_element *src = asf_identifier_get(name);
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-		goto err_free_all;
+	free(name);
 	if (src == NULL)
-		goto err_free_all;
-	node->s = asf_inst_mov(ASF_MOV_M2R, src, &dest);
-	free(name);
+		return 1;
+	if ((*s = asf_inst_mov(ASF_MOV_M2R, src, &dest)) == NULL)
+		goto err_inst_failed;
+	(*s)->len -= 1;
 	return 0;
-err_free_all:
-	free(name);
-	str_free(node->s);
-	free(node);
+err_inst_failed:
+	printf("amc[backend.asf:%s]: func_ret_identifier: "
+			"Get instruction failed!\n", __FILE__);
 	return 1;
 }
 
-int func_ret_imm(yz_val *v)
+int func_ret_imm(yz_val *v, str **s)
 {
 	struct asf_imm imm = {};
-	struct object_node *node = malloc(sizeof(*node));
 	enum ASF_REGS reg = ASF_REG_RAX;
 	imm.type = asf_yz_type2bytes(v);
 	imm.iq = v->l;
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-		goto err_free_node;
 	reg = asf_reg_get(imm.type);
-	node->s = asf_inst_mov(ASF_MOV_I2R, &imm, &reg);
+	if ((*s = asf_inst_mov(ASF_MOV_I2R, &imm, &reg)) == NULL)
+		goto err_inst_failed;
+	(*s)->len -= 1;
 	return 0;
-err_free_node:
-	str_free(node->s);
-	free(node);
+err_inst_failed:
+	printf("amc[backend.asf:%s]: func_ret_imm: Get instruction failed!\n",
+			__FILE__);
 	return 1;
 }
 
-int func_ret_main(yz_val *v, str *s)
+int func_ret_main(yz_val *v, str **s)
 {
-	str *tmp = NULL;
-	if ((tmp = asf_inst_syscall(60, 1, &v)) == NULL)
-		goto err_free_tmp;
-	str_append(s, tmp->len - 1, tmp->s);
-	str_free(tmp);
+	if ((*s = asf_inst_syscall(60, 1, &v)) == NULL)
+		goto err_inst_failed;
+	(*s)->len -= 1;
 	return 0;
-err_free_tmp:
-	str_free(tmp);
+err_inst_failed:
+	printf("amc[backend.asf:%s]: func_ret_main: Get instruction failed!\n",
+			__FILE__);
 	return 1;
 }
 
-int func_ret_sym(struct symbol *sym)
+int func_ret_sym(struct symbol *sym, str **s)
 {
-	struct object_node *node = NULL;
 	enum ASF_REGS dest = ASF_REG_RAX,
 	              src = ASF_REG_RDI;
 	if (sym->args == NULL && sym->argc == 1)
-		return func_ret_identifier(node, sym);
+		return func_ret_identifier(sym, s);
 	if (sym->args != NULL && sym->argc != 0)
 		return 0;
-	node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-		goto err_free_node;
-	dest = asf_reg_get(asf_yz_type2bytes(&sym->result_type));
 	if (sym->argc - 2 > asf_call_arg_regs_len)
-		goto err_free_node;
+		return 1;
+	dest = asf_reg_get(asf_yz_type2bytes(&sym->result_type));
 	src = asf_call_arg_regs[sym->argc - 2] + dest;
-	node->s = asf_inst_mov(ASF_MOV_R2R, &src, &dest);
+	if ((*s = asf_inst_mov(ASF_MOV_R2R, &src, &dest)) == NULL)
+		goto err_inst_failed;
+	(*s)->len -= 1;
 	return 0;
-err_free_node:
-	str_free(node->s);
-	free(node);
+err_inst_failed:
+	printf("amc[backend.asf:%s]: func_ret_sym: Get instruction failed!\n",
+			__FILE__);
 	return 1;
 }
 
-int func_ret_val(yz_val *v)
+int func_ret_val(yz_val *v, str **s)
 {
 	if (v->type == AMC_EXPR) {
-		return func_ret_expr(v->v);
+		return func_ret_expr(v->v, s);
 	} else if (v->type == AMC_SYM) {
-		return func_ret_sym(v->v);
+		return func_ret_sym(v->v, s);
 	} else if (YZ_IS_DIGIT(v->type)) {
-		return func_ret_imm(v);
+		return func_ret_imm(v, s);
 	}
 	return 1;
 }
@@ -335,20 +317,19 @@ int asf_func_ret(yz_val *v, int is_main)
 		"popq %rbp\n"
 		"ret\n";
 	struct object_node *node = malloc(sizeof(*node));
-	node->s = str_new();
 	if (is_main) {
-		if (func_ret_main(v, node->s))
+		if (func_ret_main(v, &node->s))
 			goto err_free_node;
-	} else if (func_ret_val(v)) {
+	} else if (func_ret_val(v, &node->s)) {
 		goto err_free_node;
 	}
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
+	if (node->s == NULL)
+		node->s = str_new();
 	str_append(node->s, strlen(temp), temp);
-	func_ret_clean_stack();
 	return 0;
 err_free_node:
-	str_free(node->s);
 	free(node);
 	return 1;
 }

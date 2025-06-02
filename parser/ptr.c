@@ -10,5 +10,12 @@ int parse_type_ptr(struct file *f, yz_val *ptr)
 	box = malloc(sizeof(yz_ptr));
 	ptr->type = YZ_PTR;
 	ptr->v = box;
-	return parse_type(f, &box->ref);
+	if (parse_type(f, &box->ref))
+		return 1;
+	if (f->src[f->pos] == '?') {
+		file_pos_next(f);
+		file_skip_space(f);
+		return -1;
+	}
+	return 0;
 }

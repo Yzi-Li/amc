@@ -3,6 +3,7 @@
 #include "../utils/cint.h"
 #include "../utils/str/str.h"
 #include "backend/scope.h"
+#include "comptime/symbol.h"
 #include "file.h"
 #include "type.h"
 #include <limits.h>
@@ -17,7 +18,12 @@ enum SYMG {
 #define SYM_GROUPS_SIZE 2
 
 struct symbol_flag {
-	unsigned int toplevel:1, in_block:1, mut:1;
+	unsigned int can_null:1,
+	             toplevel:1,
+	             in_block:1,
+	             is_init:1,
+	             mut:1;
+	struct comptime_symbol_flag comptime_flag;
 };
 
 struct symbol {
@@ -35,7 +41,7 @@ struct symbol {
  */
 	u8 argc;
 	yz_val result_type;
-	yz_val **args;
+	struct symbol **args;
 };
 
 struct symbol_group {
@@ -60,7 +66,7 @@ struct scope {
 	struct symbol_group sym_groups[SYM_GROUPS_SIZE];
 };
 
-int symbol_args_append(struct symbol *self, yz_val *type);
+int symbol_args_append(struct symbol *self, struct symbol *sym);
 int symbol_check_name(const char *name, int len);
 int symbol_find(str *token, struct symbol **result, struct scope *scope);
 int symbol_find_in_group(str *token, struct symbol_group *group,

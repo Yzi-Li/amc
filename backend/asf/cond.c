@@ -1,6 +1,7 @@
 #include "include/asf.h"
 #include "include/cond.h"
 #include "include/jmp.h"
+#include "include/label.h"
 #include "include/scope.h"
 
 static int cond_append_branch(struct asf_cond_handle *handle,

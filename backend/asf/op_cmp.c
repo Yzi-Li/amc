@@ -1,14 +1,7 @@
 #include "include/asf.h"
 #include "include/cmp.h"
-#include "include/imm.h"
 #include "include/jmp.h"
 #include "include/label.h"
-#include "include/mov.h"
-#include "include/op.h"
-#include "include/register.h"
-#include "include/stack.h"
-#include "include/suffix.h"
-#include "../../include/type.h"
 
 static int cmp_and_jmp(struct expr *e, enum ASF_JMP_TYPE jmp_type);
 static int cmp_jmp_inst_append(label_id label, str *label_str,
@@ -62,14 +55,9 @@ int asf_op_eq(struct expr *e)
 	return cmp_and_jmp(e, ASF_JMP_NE);
 }
 
-int asf_op_ge(struct expr *e)
+int asf_op_ne(struct expr *e)
 {
-	return cmp_and_jmp(e, ASF_JMP_LT);
-}
-
-int asf_op_gt(struct expr *e)
-{
-	return cmp_and_jmp(e, ASF_JMP_LE);
+	return cmp_and_jmp(e, ASF_JMP_EQ);
 }
 
 int asf_op_le(struct expr *e)
@@ -82,7 +70,12 @@ int asf_op_lt(struct expr *e)
 	return cmp_and_jmp(e, ASF_JMP_GE);
 }
 
-int asf_op_ne(struct expr *e)
+int asf_op_ge(struct expr *e)
 {
-	return cmp_and_jmp(e, ASF_JMP_EQ);
+	return cmp_and_jmp(e, ASF_JMP_LT);
+}
+
+int asf_op_gt(struct expr *e)
+{
+	return cmp_and_jmp(e, ASF_JMP_LE);
 }

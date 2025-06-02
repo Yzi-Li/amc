@@ -1,3 +1,4 @@
+#include "include/bytes.h"
 #include "include/call.h"
 #include "include/identifier.h"
 #include "include/mov.h"
@@ -19,13 +20,13 @@ int stack_element_append(enum ASF_BYTES bytes)
 		asf_stack_top = element;
 		asf_stack_top->next = NULL;
 		asf_stack_top->prev = NULL;
-		asf_stack_top->addr = bytes;
+		asf_stack_top->addr = asf_bytes_get_size(bytes);
 		asf_stack_top->bytes = bytes;
 		return 0;
 	}
 	element->next = NULL;
 	element->prev = asf_stack_top;
-	element->addr = element->prev->addr + bytes;
+	element->addr = element->prev->addr + asf_bytes_get_size(bytes);
 	element->bytes = bytes;
 	asf_stack_top->next = element;
 	asf_stack_top = element;
@@ -59,6 +60,10 @@ str *asf_inst_push(yz_val *val)
 		return asf_inst_push_expr(val->v);
 	} else if (val->type == AMC_SYM) {
 		return asf_inst_push_sym(val->v);
+	} else if (val->type == YZ_NULL) {
+		imm.type = ASF_BYTES_U64;
+		imm.iq = 0;
+		return asf_inst_push_imm(&imm);
 	} else if (YZ_IS_DIGIT(val->type)) {
 		imm.type = asf_yz_type_raw2bytes(val->type);
 		imm.iq = val->l;
@@ -115,6 +120,25 @@ str *asf_inst_push_sym(struct symbol *sym)
 		src += asf_call_arg_regs[sym->argc - 2];
 	}
 	return asf_inst_push_reg(src);
+}
+
+void asf_stack_end_frame(struct asf_stack_element *start)
+{
+	struct asf_stack_element *cur = NULL, *next = NULL;
+	if (start == NULL) {
+		cur = asf_stack_top;
+	} else {
+		cur = start->next;
+		if (start->prev != NULL)
+			start->prev->next = NULL;
+	}
+	asf_stack_top = start;
+	while (cur != NULL) {
+		next = cur->next;
+		free(cur);
+		cur = next;
+	}
+	return;
 }
 
 str *asf_stack_get_element(struct asf_stack_element *element, int pop)

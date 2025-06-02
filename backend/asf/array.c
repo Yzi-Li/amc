@@ -136,13 +136,14 @@ err_free_node:
 	return 1;
 }
 
-int asf_array_def(char *name, yz_val **vs, int len)
+int asf_array_def(char *name, yz_val **vs, int len,
+		backend_scope_status *raw_status)
 {
 	for (int i = len - 1; i != -1; i--) {
 		if (array_elem_push(vs[i]))
 			return 1;
 	}
-	if (asf_identifier_reg(name, asf_stack_top))
+	if (asf_identifier_reg(name, asf_stack_top, raw_status))
 		goto err_identifier_reg_failed;
 	return 0;
 err_identifier_reg_failed:

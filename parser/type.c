@@ -1,11 +1,11 @@
 #include "include/array.h"
 #include "include/ptr.h"
+#include "include/token.h"
 #include "include/type.h"
 #include "../include/token.h"
 
 int parse_type(struct file *f, yz_val *type)
 {
-	char *err_msg = NULL;
 	str token = TOKEN_NEW;
 	if (type == NULL)
 		goto err_type_null;
@@ -14,7 +14,7 @@ int parse_type(struct file *f, yz_val *type)
 	} else if (f->src[f->pos] == '[') {
 		return parse_type_array(f, type);
 	}
-	if (token_read_before(" \t\n:,)", &token, f) == NULL)
+	if (token_read_before(SPECIAL_TOKEN_END, &token, f) == NULL)
 		return 1;
 	file_skip_space(f);
 	type->type = yz_type_get(&token);

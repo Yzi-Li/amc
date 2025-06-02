@@ -3,6 +3,8 @@
 #include "../../include/expr.h"
 #include "../../include/symbol.h"
 
+int op_apply_cmp(struct expr *e);
 int op_apply_special(struct expr *e, struct scope *scope);
+int op_assign(struct file *f, struct expr *e, struct scope *scope);
 
 #endif

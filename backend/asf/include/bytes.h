@@ -13,13 +13,12 @@ enum ASF_BYTES {
 	ASF_BYTES_U8  = 8 + 1,
 	ASF_BYTES_U16 = 8 + 2,
 	ASF_BYTES_U32 = 8 + 4,
-	ASF_BYTES_U64 = 8 + 8,
-
-	ASF_BYTES_PTR = 8 + 9
+	ASF_BYTES_U64 = 8 + 8
 };
 
 static const int ASF_BYTES_U_OFFSET = 8;
 
+enum ASF_BYTES asf_bytes_get_size(enum ASF_BYTES bytes);
 enum ASF_BYTES asf_yz_type_raw2bytes(enum YZ_TYPE type);
 enum ASF_BYTES asf_yz_type2bytes(yz_val *type);
 

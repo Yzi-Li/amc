@@ -22,6 +22,8 @@ err_parse_block_failed:
 int if_condition_parse(struct file *f, struct symbol *sym, struct scope *scope)
 {
 	struct expr *expr = NULL;
+	i64 orig_column = f->cur_column,
+	    orig_line = f->cur_line;
 	if ((expr = parse_expr(f, 1, scope)) == NULL)
 		goto err_cannot_parse_expr;
 	if (expr_apply(expr, scope) > 0)
@@ -30,11 +32,15 @@ int if_condition_parse(struct file *f, struct symbol *sym, struct scope *scope)
 		return file_line_next(f);
 	return 0;
 err_cannot_parse_expr:
-	printf("|< amc: if_condition_parse: Cannot parse expression!\n");
+	printf("|< amc: if_condition_parse: %lld,%lld: "
+			"Cannot parse expression!\n",
+			orig_line, orig_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_cannot_apply_expr:
-	printf("|< amc: if_condition_parse: Cannot apply expression!\n");
+	printf("|< amc: if_condition_parse: %lld,%lld: "
+			"Cannot apply expression!\n",
+			orig_line, orig_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }

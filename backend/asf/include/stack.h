@@ -22,6 +22,7 @@ str *asf_inst_push_mem(struct asf_stack_element *src);
 str *asf_inst_push_reg(enum ASF_REGS src);
 str *asf_inst_push_sym(struct symbol *sym);
 str *asf_inst_syscall(int code, int vlen, yz_val **vs);
+void asf_stack_end_frame(struct asf_stack_element *start);
 str *asf_stack_get_element(struct asf_stack_element *element, int pop);
 
 #endif

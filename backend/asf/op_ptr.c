@@ -1,4 +1,5 @@
 #include "include/asf.h"
+#include "include/call.h"
 #include "include/identifier.h"
 #include "include/mov.h"
 #include "include/op.h"
@@ -6,20 +7,29 @@
 #include "include/suffix.h"
 #include "../../include/ptr.h"
 
-static int op_ptr_extract_val_get_addr(enum ASF_REGS dest, struct symbol *sym);
+static int op_ptr_extract_get_addr(enum ASF_REGS *dest, struct symbol *sym);
 static str *op_ptr_identifier_get(yz_ptr *ptr);
 
-int op_ptr_extract_val_get_addr(enum ASF_REGS dest, struct symbol *sym)
+int op_ptr_extract_get_addr(enum ASF_REGS *dest, struct symbol *sym)
 {
 	char *name = NULL;
 	struct object_node *node = NULL;
 	struct asf_stack_element *src = NULL;
+	if (sym->args == NULL && sym->argc == 0)
+		return 1;
+	if (sym->args == NULL && sym->argc > 1) {
+		if (sym->argc - 2 > asf_call_arg_regs_len)
+			return 1;
+		*dest = asf_call_arg_regs[sym->argc - 2];
+		return 0;
+	}
 	node = malloc(sizeof(*node));
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	name = str2chr(sym->name, sym->name_len);
 	src = asf_identifier_get(name);
-	if ((node->s = asf_inst_mov(ASF_MOV_M2R, src, &dest)) == NULL)
+	free(name);
+	if ((node->s = asf_inst_mov(ASF_MOV_M2R, src, dest)) == NULL)
 		goto err_inst_failed;
 	return 0;
 err_free_node:
@@ -50,7 +60,7 @@ int asf_op_extract_val(struct expr *e)
 	const char *temp = "mov%c (%%%s), %%%s\n";
 	if (e->valr->type != AMC_SYM)
 		return 1;
-	if (op_ptr_extract_val_get_addr(src, e->valr->v))
+	if (op_ptr_extract_get_addr(&src, e->valr->v))
 		return 1;
 	node = malloc(sizeof(*node));
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))

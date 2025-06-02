@@ -173,7 +173,8 @@ int array_structure(struct file *f, struct symbol *sym, struct scope *scope)
 	if (token_parse_list(",}", handle, f, array_structure_elem))
 		goto err_free_handle;
 	name = str2chr(sym->name, sym->name_len);
-	if (backend_call(array_def)(name, handle->vs, handle->len))
+	if (backend_call(array_def)(name, handle->vs, handle->len,
+				scope->status))
 		goto err_backend_failed;
 	array_handle_free(handle);
 	if (f->src[f->pos] != '}')
@@ -235,12 +236,13 @@ err_cannot_apply_expr:
 int parse_type_array(struct file *f, yz_val *type)
 {
 	yz_array *arr = NULL;
+	int ret = 0;
 	file_pos_next(f);
 	file_skip_space(f);
 	arr = malloc(sizeof(*arr));
 	type->type = YZ_ARRAY;
 	type->v = arr;
-	if (parse_type(f, &arr->type))
+	if ((ret = parse_type(f, &arr->type)) > 0)
 		goto err_free_arr;
 	if (f->src[f->pos] != ',')
 		return 1;

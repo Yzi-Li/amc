@@ -1,5 +1,5 @@
 fn main: i32 =>
 	let a: i32 = 1
 	let b: *i32 = &a
-	let c: i64 = *b
+	let c: i32 = *b
 	ret 0

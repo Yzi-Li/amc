@@ -2,6 +2,7 @@
 #include "include/expr.h"
 #include "include/identifier.h"
 #include "include/keywords.h"
+#include "include/null.h"
 #include "include/type.h"
 #include "../include/backend.h"
 #include "../include/expr.h"
@@ -11,17 +12,53 @@
 #include <stdio.h>
 #include <string.h>
 
+static int identifier_assign_backend_call(struct symbol *sym, yz_val *val,
+		enum OP_ID mode, struct scope *scope);
 static int let_check_defined(struct file *f, str *name, struct scope *scope);
 static int let_check_val_type(yz_val *src, yz_val *dest);
 static int let_handle_val_type(yz_val *src, yz_val *dest);
 static int let_init_constructor(struct file *f, struct symbol *sym,
 		struct scope *scope);
+static int let_init_null(struct file *f, struct symbol *sym,
+		struct scope *scope);
 static int let_init_val(struct file *f, struct symbol *sym,
 		struct scope *scope);
 static int let_read_def(struct file *f, str *name);
 static int let_read_def_type(struct file *f, yz_val *type);
-static struct symbol *let_reg_sym(struct file *f, str *name, int mut,
+static struct symbol *let_reg_sym(struct file *f, str *name,
+		int can_null, int mut,
 		struct scope *scope);
+
+int identifier_assign_backend_call(struct symbol *sym, yz_val *val,
+		enum OP_ID mode, struct scope *scope)
+{
+	char *name = str2chr(sym->name, sym->name_len);
+	if (sym->flags.mut) {
+		if (backend_call(var_set)(name, val, mode, scope->status))
+			goto err_free_name;
+	} else {
+		if (sym->flags.is_init)
+			goto err_sym_is_immut;
+		if (mode != OP_ASSIGN)
+			goto err_unsupport_op;
+		if (backend_call(var_immut_init)(name, val, scope->status))
+			goto err_free_name;
+	}
+	sym->flags.is_init = 1;
+	free(name);
+	return 0;
+err_free_name:
+	free(name);
+	return 1;
+err_sym_is_immut:
+	printf("amc: identifier_assign_backend_call: "
+			"Symbol: \"%s\" is immutable!\n", name);
+	goto err_free_name;
+err_unsupport_op:
+	printf("amc: identifier_assign_backend_call: "
+			"Unsupport operator for immutable identifier!\n");
+	goto err_free_name;
+}
 
 int let_check_defined(struct file *f, str *name, struct scope *scope)
 {
@@ -84,51 +121,51 @@ int let_init_constructor(struct file *f, struct symbol *sym,
 	return 0;
 }
 
+int let_init_null(struct file *f, struct symbol *sym, struct scope *scope)
+{
+	char *name = NULL;
+	yz_val val = {.type = YZ_NULL, .v = NULL};
+	file_pos_nnext(strlen(CHR_NULL), f);
+	file_skip_space(f);
+	if (f->src[f->pos] != '\n' && f->src[f->pos] != ';')
+		goto err_null_must_exist_separately;
+	if (!sym->flags.can_null)
+		goto err_identifier_cannot_be_null;
+	name = str2chr(sym->name, sym->name_len);
+	if (sym->flags.mut) {
+		if (backend_call(var_set)(name, &val, OP_ASSIGN,
+					scope->status))
+			goto err_free_name;
+	} else {
+		if (backend_call(var_immut_init)(name, &val, scope->status))
+			goto err_free_name;
+	}
+	free(name);
+	return keyword_end(f);
+err_null_must_exist_separately:
+	printf("amc: let_init_null: %lld,%lld: null must exist separately!\n",
+			f->cur_line, f->cur_column);
+	return 1;
+err_identifier_cannot_be_null:
+	printf("amc: let_init_null: %lld,%lld: "
+			"Identifier cannot be null!\n",
+			f->cur_line, f->cur_column);
+	return 1;
+err_free_name:
+	free(name);
+	printf("amc: let_init_null: Backend call failed!\n");
+	return 1;
+}
+
 int let_init_val(struct file *f, struct symbol *sym, struct scope *scope)
 {
-	struct expr *expr = NULL;
-	i64 orig_column = f->cur_column,
-	    orig_line = f->cur_line;
-	yz_val *val = NULL;
-	char *name = NULL;
 	file_pos_next(f);
 	file_skip_space(f);
 	if (f->src[f->pos] == '{')
 		return let_init_constructor(f, sym, scope);
-	if ((expr = parse_expr(f, 1, scope)) == NULL)
-		goto err_cannot_parse_expr;
-	if (expr_apply(expr, scope) > 0)
-		goto err_cannot_apply_expr;
-	if ((val = identifier_expr_val_handle(&expr, &sym->result_type))
-			== NULL)
-		goto err_cannot_apply_expr;
-	name = str2chr(sym->name, sym->name_len); // don't free
-	if (sym->flags.mut) {
-		if (backend_call(var_set)(name, val))
-			return 1;
-	} else {
-		if (backend_call(var_immut_init)(name, val))
-			return 1;
-	}
-	if (expr != NULL)
-		expr_free(expr);
-	if (f->src[f->pos] == ']')
-		file_pos_next(f);
-	if (parse_comment(f))
-		return 0;
-	if (f->src[f->pos] == '\n')
-		return file_line_next(f);
-	return 0;
-err_cannot_parse_expr:
-	printf("amc: let_init_val: %lld,%lld: Cannot parse expr!\n",
-			orig_line, orig_column);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
-err_cannot_apply_expr:
-	printf("amc: let_init_val: %lld,%lld: Cannot apply expr!\n",
-			orig_line, orig_column);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
+	if (identifier_assign_val(f, sym, OP_ASSIGN, scope))
+		return 1;
+	return keyword_end(f);
 }
 
 int let_read_def(struct file *f, str *name)
@@ -164,9 +201,10 @@ int let_read_def_type(struct file *f, yz_val *type)
 {
 	i64 orig_column = f->cur_column,
 	    orig_line = f->cur_line;
-	if (parse_type(f, type))
+	int ret = 0;
+	if ((ret = parse_type(f, type)) > 0)
 		goto err_unsupport_type;
-	return 0;
+	return ret;
 err_unsupport_type:
 	printf("amc: parse_let: %lld,%lld: Unsupport type!\n",
 			orig_line, orig_column);
@@ -174,7 +212,7 @@ err_unsupport_type:
 	return 1;
 }
 
-struct symbol *let_reg_sym(struct file *f, str *name, int mut,
+struct symbol *let_reg_sym(struct file *f, str *name, int can_null, int mut,
 		struct scope *scope)
 {
 	struct symbol *result = NULL;
@@ -185,6 +223,7 @@ struct symbol *let_reg_sym(struct file *f, str *name, int mut,
 	result->args = NULL;
 	result->name = name->s;
 	result->name_len = name->len;
+	result->flags.can_null = can_null;
 	result->flags.mut = mut;
 	result->parse_function = NULL;
 	if (symbol_register(result, &scope->sym_groups[SYMG_SYM]))
@@ -200,15 +239,15 @@ err_cannot_register_sym:
 
 int parse_let(struct file *f, struct symbol *sym, struct scope *scope)
 {
-	int mut = 0;
+	int can_null = 0, mut = 0;
 	str name_tok = TOKEN_NEW;
 	yz_val type = {};
 	struct symbol *result = NULL;
 	if ((mut = let_read_def(f, &name_tok)) > 1)
 		return 1;
-	if (let_read_def_type(f, &type))
+	if ((can_null = let_read_def_type(f, &type)) > 0)
 		return 1;
-	if ((result = let_reg_sym(f, &name_tok, mut, scope)) == NULL)
+	if ((result = let_reg_sym(f, &name_tok, can_null, mut, scope)) == NULL)
 		return 1;
 	result->result_type = type;
 	if (f->src[f->pos] == '\n')
@@ -221,6 +260,47 @@ int parse_let(struct file *f, struct symbol *sym, struct scope *scope)
 err_syntax_err:
 	printf("amc: parse_let: %lld,%lld: Syntax error!\n",
 			f->cur_line, f->cur_column);
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 1;
+}
+
+int identifier_assign_val(struct file *f, struct symbol *sym, enum OP_ID mode,
+		struct scope *scope)
+{
+	struct expr *expr = NULL;
+	i64 orig_column = f->cur_column,
+	    orig_line = f->cur_line;
+	yz_val *val = NULL;
+	sym->flags.comptime_flag.checked_null = 0;
+	if (strncmp(CHR_NULL, &f->src[f->pos], strlen(CHR_NULL)) == 0)
+		return let_init_null(f, sym, scope);
+	if ((expr = parse_expr(f, 1, scope)) == NULL)
+		goto err_cannot_parse_expr;
+	if (expr_apply(expr, scope) > 0)
+		goto err_cannot_apply_expr;
+	if ((val = identifier_expr_val_handle(&expr, &sym->result_type))
+			== NULL)
+		goto err_cannot_apply_expr;
+	if (identifier_assign_backend_call(sym, val, mode, scope))
+		goto err_backend_failed;
+	if (expr != NULL)
+		expr_free(expr);
+	if (f->src[f->pos] == ']')
+		file_pos_next(f);
+	return 0;
+err_cannot_parse_expr:
+	printf("| identifier_assign_val: %lld,%lld: Cannot parse expr!\n",
+			orig_line, orig_column);
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 1;
+err_cannot_apply_expr:
+	printf("| identifier_assign_val: %lld,%lld: Cannot apply expr!\n",
+			orig_line, orig_column);
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 1;
+err_backend_failed:
+	printf("amc: identifier_assign_val: %lld,%lld: Backend call failed!\n",
+			orig_line, orig_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }

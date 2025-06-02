@@ -1,11 +1,11 @@
 #include "../include/symbol.h"
 #include <stdlib.h>
 
-int symbol_args_append(struct symbol *self, yz_val *type)
+int symbol_args_append(struct symbol *self, struct symbol *sym)
 {
 	self->argc += 1;
 	self->args = realloc(self->args, sizeof(yz_val*) * self->argc);
-	self->args[self->argc - 1] = type;
+	self->args[self->argc - 1] = sym;
 	return 0;
 }
 

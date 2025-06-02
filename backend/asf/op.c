@@ -5,6 +5,7 @@
 #include "include/mov.h"
 #include "include/op.h"
 #include "include/stack.h"
+#include "include/suffix.h"
 #include "../../include/expr.h"
 #include "../../include/symbol.h"
 
@@ -28,6 +29,7 @@ static str *op_get_valr_identifier(struct object_node *parent,
 		struct symbol *src);
 static str *op_get_valr_imm(struct object_node *parent, yz_val *src,
 		enum ASF_REGS dest);
+static str *op_get_valr_null(struct object_node *parent, enum ASF_REGS dest);
 static str *op_get_valr_sym(struct object_node *parent, struct expr *e,
 		enum ASF_REGS dest);
 static int op_init_obj_node(struct object_node *parent,
@@ -230,6 +232,15 @@ err_inst_failed:
 	goto err_free_node;
 }
 
+str *op_get_valr_null(struct object_node *parent, enum ASF_REGS dest)
+{
+	yz_val src = {
+		.type = YZ_U64,
+		.l = 0
+	};
+	return op_get_valr_imm(parent, &src, dest);
+}
+
 str *op_get_valr_sym(struct object_node *parent, struct expr *e,
 		enum ASF_REGS dest)
 {
@@ -305,6 +316,8 @@ str *asf_op_get_val_right(struct object_node *parent, struct expr *e,
 		return op_get_valr_expr(parent, e, dest);
 	} else if (e->valr->type == AMC_SYM) {
 		return op_get_valr_sym(parent, e, dest);
+	} else if (e->valr->type == YZ_NULL) {
+		return op_get_valr_null(parent, dest);
 	} else if (YZ_IS_DIGIT(e->valr->type)) {
 		return op_get_valr_imm(parent, e->valr, dest);
 	}
@@ -326,4 +339,58 @@ err_inst_failed:
 	printf("amc[backend.asf:%s]: asf_op_save_reg: "
 			"Get instruction failed!\n", __FILE__);
 	goto err_free_node;
+}
+
+str *asf_inst_op_add(enum ASF_REGS src, enum ASF_REGS dest)
+{
+	str *s = NULL;
+	const char *temp = "add%c %%%s, %%%s\n";
+	s = str_new();
+	str_expand(s, strlen(temp));
+	snprintf(s->s, s->len, temp,
+			asf_suffix_get(asf_regs[src].bytes),
+			asf_regs[src].name,
+			asf_regs[dest].name);
+	return s;
+}
+
+str *asf_inst_op_div(enum ASF_REGS src, int is_unsigned)
+{
+	str *s = NULL;
+	const char *temp_signed = "imul%c %%%s\n";
+	const char *temp_unsigned = "mul%c %%%s\n";
+	const char *temp = is_unsigned ? temp_unsigned : temp_signed;
+	s = str_new();
+	str_expand(s, strlen(temp));
+	snprintf(s->s, s->len, temp,
+			asf_suffix_get(asf_regs[src].bytes),
+			asf_regs[src].name);
+	return s;
+}
+
+str *asf_inst_op_mul(enum ASF_REGS src, int is_unsigned)
+{
+	str *s = NULL;
+	const char *temp_signed = "imul%c %%%s\n";
+	const char *temp_unsigned = "mul%c %%%s\n";
+	const char *temp = is_unsigned ? temp_unsigned : temp_signed;
+	s = str_new();
+	str_expand(s, strlen(temp));
+	snprintf(s->s, s->len, temp,
+			asf_suffix_get(asf_regs[src].bytes),
+			asf_regs[src].name);
+	return s;
+}
+
+str *asf_inst_op_sub(enum ASF_REGS src, enum ASF_REGS dest)
+{
+	str *s = NULL;
+	const char *temp = "sub%c %%%s, %%%s\n";
+	s = str_new();
+	str_expand(s, strlen(temp));
+	snprintf(s->s, s->len, temp,
+			asf_suffix_get(asf_regs[src].bytes),
+			asf_regs[src].name,
+			asf_regs[dest].name);
+	return s;
 }

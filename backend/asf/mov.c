@@ -1,4 +1,5 @@
 #include "include/mov.h"
+#include "include/bytes.h"
 #include "include/imm.h"
 #include "include/register.h"
 #include "include/stack.h"
@@ -23,15 +24,17 @@ static str *mov_u32_to_rax(str *mov);
 str *mov_i2m(struct asf_imm *src, struct asf_stack_element *dest)
 {
 	str *s = NULL;
+	enum ASF_BYTES src_bytes = asf_bytes_get_size(src->type),
+	               dest_bytes = asf_bytes_get_size(dest->bytes);
 	const char *temp = "mov%c $%lld, -%d(%%rbp)\n";
-	if (src->type != dest->bytes)
+	if (src_bytes != dest_bytes)
 		return NULL;
 	s = str_new();
 	str_expand(s, strlen(temp) - 7
 			+ ullen(src->iq)
 			+ ullen(dest->addr));
 	snprintf(s->s, s->len, temp,
-			asf_suffix_get(src->type),
+			asf_suffix_get(src_bytes),
 			src->iq,
 			dest->addr);
 	return s;
@@ -40,8 +43,9 @@ str *mov_i2m(struct asf_imm *src, struct asf_stack_element *dest)
 str *mov_i2r(struct asf_imm *src, enum ASF_REGS dest)
 {
 	str *s = NULL;
+	enum ASF_BYTES src_bytes = asf_bytes_get_size(src->type);
 	const char *temp = "mov%c $%lld, %%%s\n";
-	if (src->type != asf_regs[dest].bytes)
+	if (src_bytes != asf_regs[dest].bytes)
 		return NULL;
 	s = str_new();
 	str_expand(s, strlen(temp) - 4 + ullen(src->iq));
@@ -72,10 +76,8 @@ str *mov_m2m(struct asf_stack_element *src, struct asf_stack_element *dest)
 str *mov_m2r(struct asf_stack_element *src, enum ASF_REGS dest)
 {
 	str *s = NULL;
-	enum ASF_BYTES src_bytes = src->bytes;
+	enum ASF_BYTES src_bytes = asf_bytes_get_size(src->bytes);
 	const char *temp = "mov%c -%d(%%rbp), %%%s\n";
-	if (REGION_INT(src->bytes, ASF_BYTES_U8, ASF_BYTES_U64))
-		src_bytes = src->bytes - ASF_BYTES_U_OFFSET;
 	if (asf_regs[dest].bytes != src_bytes)
 		return mov_m2r_converter(src, dest);
 	s = str_new();
@@ -108,14 +110,15 @@ str *mov_m32_to_r64(struct asf_stack_element *src, enum ASF_REGS dest)
 
 str *mov_r2m(enum ASF_REGS src, struct asf_stack_element *dest)
 {
+	enum ASF_BYTES dest_bytes = asf_bytes_get_size(dest->bytes);
 	str *s = NULL;
 	const char *temp = "mov%c %%%s, -%d(%%rbp)\n";
-	if (asf_regs[src].bytes != dest->bytes)
+	if (asf_regs[src].bytes != dest_bytes)
 		return NULL;
 	s = str_new();
 	str_expand(s, strlen(temp) - 3 + ullen(dest->addr));
 	snprintf(s->s, s->len, temp,
-			asf_suffix_get(dest->bytes),
+			asf_suffix_get(dest_bytes),
 			asf_regs[src].name,
 			dest->addr);
 	return s;

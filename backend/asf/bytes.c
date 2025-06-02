@@ -2,6 +2,13 @@
 #include "../../include/array.h"
 #include "../../include/expr.h"
 
+enum ASF_BYTES asf_bytes_get_size(enum ASF_BYTES bytes)
+{
+	if (bytes > ASF_BYTES_U_OFFSET)
+		bytes -= ASF_BYTES_U_OFFSET;
+	return bytes;
+}
+
 enum ASF_BYTES asf_yz_type_raw2bytes(enum YZ_TYPE type)
 {
 	switch (type) {
@@ -35,7 +42,7 @@ enum ASF_BYTES asf_yz_type2bytes(yz_val *type)
 				*((struct expr*)type->v)->sum_type);
 		break;
 	case YZ_PTR:
-		return ASF_BYTES_PTR;
+		return ASF_BYTES_U64;
 		break;
 	case YZ_ARRAY:
 		return asf_yz_type2bytes(&((yz_array*)type->v)->type);

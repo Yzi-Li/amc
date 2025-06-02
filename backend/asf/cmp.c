@@ -1,19 +1,10 @@
 #include "include/asf.h"
-#include "include/call.h"
 #include "include/cmp.h"
-#include "include/identifier.h"
-#include "include/imm.h"
-#include "include/mov.h"
 #include "include/op.h"
 #include "include/register.h"
-#include "include/stack.h"
 #include "include/suffix.h"
-#include "../../include/backend/target.h"
 #include "../../include/expr.h"
-#include "../../include/symbol.h"
-#include "../../include/token.h"
 #include "../../utils/str/str.h"
-#include "../../utils/utils.h"
 
 int asf_inst_cmp(struct expr *e)
 {

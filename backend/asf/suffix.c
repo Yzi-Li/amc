@@ -17,7 +17,6 @@ char asf_suffix_get(enum ASF_BYTES bytes)
 		break;
 	case ASF_BYTES_64:
 	case ASF_BYTES_U64:
-	case ASF_BYTES_PTR:
 		return 'q';
 		break;
 	default:

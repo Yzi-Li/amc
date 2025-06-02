@@ -50,16 +50,8 @@ enum YZ_TYPE yz_get_int_size(long long l)
 
 enum YZ_TYPE *yz_get_raw_type(yz_val *val)
 {
-	struct expr *e = NULL;
-	if (val->type == AMC_EXPR) {
-		e = val->v;
-		if (e->op->id == OP_EXTRACT_VAL)
-			return &((yz_ptr*)
-					((struct symbol*)e->valr->v)
-						->result_type.v)
-				->ref.type;
-		return e->sum_type;
-	}
+	if (val->type == AMC_EXPR)
+		return ((struct expr*)val->v)->sum_type;
 	if (val->type == AMC_SYM)
 		return yz_get_raw_type(
 				&((struct symbol*)val->v)->result_type);
@@ -88,6 +80,9 @@ const char *yz_get_type_name(yz_val *val)
 	case YZ_ARRAY:
 		return yz_type_err_array(val);
 		break;
+	case YZ_NULL:
+		return "YZ_NULL";
+		break;
 	default:
 		return "(Cannot get type)";
 	}
@@ -114,6 +109,9 @@ yz_val *yz_type_max(yz_val *l, yz_val *r)
 		return NULL;
 	if ((rraw = *yz_get_raw_type(r)) == AMC_ERR_TYPE)
 		return NULL;
+	if ((lraw == YZ_NULL || rraw == YZ_NULL)
+			&& (lraw == YZ_PTR || rraw == YZ_PTR))
+		return l;
 	if (lraw == YZ_PTR && rraw == YZ_PTR)
 		return yz_type_ptr_max(l, r);
 	if (lraw == YZ_PTR || rraw == YZ_PTR)
