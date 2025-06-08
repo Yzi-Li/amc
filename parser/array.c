@@ -138,8 +138,9 @@ err_read_offset_failed:
 int array_get_elem(struct file *f, yz_val *val, struct scope *scope)
 {
 	struct symbol *sym = val->v;
-	char *name = NULL;
 	yz_val *offset = NULL;
+	if (sym->result_type.type != YZ_ARRAY)
+		goto err_not_arr;
 	file_pos_next(f);
 	file_skip_space(f);
 	if ((offset = array_read_offset(f, scope)) == NULL)
@@ -148,18 +149,22 @@ int array_get_elem(struct file *f, yz_val *val, struct scope *scope)
 		goto err_not_end;
 	file_pos_next(f);
 	file_skip_space(f);
-	name = str2chr(sym->name, sym->name_len);
-	if (backend_call(array_get_elem)(name, offset))
+	if (backend_call(array_get_elem)(sym->name, offset))
 		goto err_backend_failed;
-	free(name);
 	return array_get_elem_handle_val(val);
+err_not_arr:
+	printf("amc: array_get_elem: %lld,%lld: Symbol: '%s' isn't array!\n",
+			f->cur_line, f->cur_column, sym->name);
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 1;
 err_backend_failed:
-	free(name);
-	printf("amc: array_get_elem: Backend call failed!\n");
+	printf("amc: array_get_elem: %lld,%lld: Backend call failed!\n",
+			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_not_end:
-	printf("amc: array_get_elem: Not end!\n");
+	printf("amc: array_get_elem: %lld,%lld: Not end!\n",
+			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
@@ -167,7 +172,6 @@ err_not_end:
 int array_structure(struct file *f, struct symbol *sym, struct scope *scope)
 {
 	struct structure_array_handle *handle = malloc(sizeof(*handle));
-	char *name = NULL;
 	handle->index = 0;
 	handle->len = ((yz_array*)sym->result_type.v)->len;
 	handle->scope = scope;
@@ -175,8 +179,7 @@ int array_structure(struct file *f, struct symbol *sym, struct scope *scope)
 	handle->vs = calloc(handle->len, sizeof(yz_val));
 	if (token_parse_list(",}", handle, f, array_structure_elem))
 		goto err_free_handle;
-	name = str2chr(sym->name, sym->name_len);
-	if (backend_call(array_def)(name, handle->vs, handle->len,
+	if (backend_call(array_def)(sym->name, handle->vs, handle->len,
 				scope->status))
 		goto err_backend_failed;
 	array_handle_free(handle);
@@ -243,17 +246,24 @@ int parse_type_array(struct file *f, yz_val *type)
 	file_pos_next(f);
 	file_skip_space(f);
 	arr = malloc(sizeof(*arr));
+	arr->len = -1;
 	type->type = YZ_ARRAY;
 	type->v = arr;
 	if ((ret = parse_type(f, &arr->type)) > 0)
 		goto err_free_arr;
-	if (f->src[f->pos] != ',')
-		return 1;
+	if (f->src[f->pos] != ',') {
+		if (f->src[f->pos] != ']')
+			goto err_free_arr;
+		file_pos_next(f);
+		file_skip_space(f);
+		return 0;
+	}
 	file_pos_next(f);
 	file_skip_space(f);
 	return array_get_len(f, arr);
 err_free_arr:
 	free(arr);
 	type->v = NULL;
+	type->type = AMC_ERR_TYPE;
 	return 1;
 }

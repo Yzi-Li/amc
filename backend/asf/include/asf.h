@@ -5,7 +5,9 @@
 enum OBJ_SECTION_TYPE {
 	ASF_OBJ_TEXT,
 	ASF_OBJ_DATA,
-	ASF_OBJ_RODATA
+	ASF_OBJ_RODATA,
+
+	ASF_OBJ_COUNT
 };
 
 int asf_end();
@@ -21,12 +23,15 @@ int asf_cond_elif(backend_scope_status *raw_status);
 int asf_cond_else(backend_scope_status *raw_status);
 int asf_cond_if(backend_scope_status *raw_status);
 
+int asf_const_def_str(char *str, int len);
+
 int asf_func_call(const char *name, yz_val *type, yz_val **v, int vlen);
 int asf_func_def(const char *name, int len, yz_val *type);
 int asf_func_ret(yz_val *v, int is_main);
 
 backend_scope_status *asf_scope_begin();
 int asf_scope_end(backend_scope_status *raw_status);
+int asf_syscall(int code);
 
 int asf_op_add(struct expr *e);
 int asf_op_div(struct expr *e);

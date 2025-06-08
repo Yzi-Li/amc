@@ -8,13 +8,27 @@
 #include <stdio.h>
 #include <string.h>
 
+static yz_val *yz_type_arr_max(yz_val *l, yz_val *r);
 static yz_val *yz_type_max_raw(enum YZ_TYPE ltype, enum YZ_TYPE rtype,
 		yz_val *l, yz_val *r);
 static yz_val *yz_type_ptr_max(yz_val *l, yz_val *r);
 
+yz_val *yz_type_arr_max(yz_val *l, yz_val *r)
+{
+	yz_array *larr, *rarr;
+	if ((larr = l->v) == NULL)
+		return NULL;
+	if ((rarr = r->v) == NULL)
+		return NULL;
+	return yz_type_max(&larr->type, &rarr->type)
+		== &larr->type ? l : r;
+}
+
 yz_val *yz_type_max_raw(enum YZ_TYPE ltype, enum YZ_TYPE rtype,
 		yz_val *l, yz_val *r)
 {
+	if (ltype == YZ_CHAR && rtype == YZ_CHAR)
+		return l;
 	if (!YZ_IS_DIGIT(ltype) || !YZ_IS_DIGIT(rtype))
 		return NULL;
 	if (YZ_IS_UNSIGNED_DIGIT(ltype)
@@ -116,6 +130,8 @@ yz_val *yz_type_max(yz_val *l, yz_val *r)
 		return l;
 	if (lraw == YZ_PTR && rraw == YZ_PTR)
 		return yz_type_ptr_max(l, r);
+	if (lraw == YZ_ARRAY && rraw == YZ_ARRAY)
+		return yz_type_arr_max(l, r);
 	if (lraw == YZ_PTR || rraw == YZ_PTR)
 		return NULL;
 	if (l->type == AMC_SYM)

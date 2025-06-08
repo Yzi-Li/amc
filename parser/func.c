@@ -31,7 +31,7 @@ static int func_call_read_arg(const char *se, struct file *f, void *data);
 static yz_val **func_call_read_args(struct file *f, struct symbol *fn,
 		struct scope *scope);
 static int func_call_read_token(struct file *f, str *token);
-static int func_def_block_start(struct file *f);
+static int func_def_block_start(struct file *f, struct symbol *sym);
 static int func_def_check_main(const char *name, int len);
 static int func_def_end_scope(struct symbol *fn, struct scope *scope);
 static int func_def_main(struct file *f, struct scope *fn_scope);
@@ -39,7 +39,6 @@ static int func_def_read_arg(const char *se, struct file *f, void *data);
 static int func_def_read_arg_name(const char *se, struct file *f, str *name);
 static int func_def_read_args(struct file *f, struct symbol *fn,
 		struct scope *scope);
-static int func_def_read_block(struct file *f, struct scope *scope);
 static int func_def_read_name(struct file *f, struct symbol *fn);
 static int func_def_read_type(struct file *f, struct symbol *sym);
 static int func_ret_get_val(yz_val *val, struct symbol *fn, struct expr *expr);
@@ -170,33 +169,23 @@ int func_call_read_token(struct file *f, str *token)
 	return keyword_end(f);
 }
 
-int func_def_block_start(struct file *f)
+int func_def_block_start(struct file *f, struct symbol *sym)
 {
-	char *err_msg;
-	str token = TOKEN_NEW;
-	if (token_next(&token, f))
-		return 1;
-	if (token.s[token.len - 1] == ';') {
-		token.len -= 1;
-		file_line_next(f);
+	if (f->src[f->pos] == '\n' || f->src[f->pos] == ';') {
+		keyword_end(f);
+		sym->flags.only_declaration = 1;
+		return -1;
 	}
-	if (token.len != 2)
+	if (f->src[f->pos] != '=' || f->src[f->pos + 1] != '>')
 		goto err_not_func_def_start;
-	if (token.s[0] != '=' || token.s[1] != '>')
-		goto err_not_func_def_start;
-	parse_comment(f);
-	if (f->src[f->pos] == '\n')
-		return file_line_next(f);
-	return 0;
+	file_pos_nnext(2, f);
+	file_skip_space(f);
+	return keyword_end(f);
 err_not_func_def_start:
-	err_msg = str2chr(token.s, token.len);
-	printf("amc: func_def_block_start: %lld,%lld:"
-			"Function define start character not found\n"
-			"| Token: \"%s\"\n"
-			"|         ^\n",
+	printf("amc: func_def_block_start: %lld,%lld: "
+			"Function: '%s' define start character not found\n",
 			f->cur_line, f->cur_column,
-			err_msg);
-	free(err_msg);
+			sym->name);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
@@ -225,13 +214,16 @@ int func_def_main(struct file *f, struct scope *fn_scope)
 	parser_global_conf.has_main = 1;
 	while (f->src[f->pos] != '=')
 		file_pos_next(f);
+	file_pos_nnext(2, f);
+	file_skip_space(f);
+	keyword_end(f);
 	if (backend_call(func_def)("_start", 7, NULL))
 		goto err_free_fn;
 	fn_scope->fn->parse_function = func_call_main;
 	if (symbol_register(fn_scope->fn,
 				&fn_scope->parent->sym_groups[SYMG_FUNC]))
 		goto err_free_fn;
-	return func_def_read_block(f, fn_scope);
+	return parse_block(f, fn_scope);
 err_free_fn:
 	free_safe(fn_scope->fn);
 	return 1;
@@ -247,7 +239,7 @@ int func_def_read_arg(const char *se, struct file *f, void *data)
 	sym = calloc(1, sizeof(*sym));
 	if (func_def_read_type(f, sym))
 		goto err_unsupport_type;
-	sym->name = name.s;
+	sym->name = str2chr(name.s, name.len);
 	sym->name_len = name.len;
 	sym->parse_function = NULL;
 	sym->argc = 2 + scope->fn->argc;
@@ -269,13 +261,16 @@ int func_def_read_arg_name(const char *se, struct file *f, str *name)
 {
 	char *end = NULL;
 	if ((end = token_read_before(" :\n\t,)", name, f)) == NULL)
-		return 1;
+		goto err_read_token_failed;
 	file_skip_space(f);
 	keyword_end(f);
 	file_skip_space(f);
 	if (f->src[f->pos] != ':')
 		return 1;
 	return 0;
+err_read_token_failed:
+	printf("amc: func_def_read_arg_name: Read name failed!\n");
+	return 1;
 }
 
 int func_def_read_args(struct file *f, struct symbol *fn, struct scope *scope)
@@ -292,18 +287,11 @@ int func_def_read_args(struct file *f, struct symbol *fn, struct scope *scope)
 	file_skip_space(f);
 	return 0;
 err_args_cannot_parse:
-	printf("amc: parse_func_def: %lld,%lld: "
+	printf("amc: func_def_read_args: %lld,%lld: "
 			"Cannot parse function arguments!\n",
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
-}
-
-int func_def_read_block(struct file *f, struct scope *scope)
-{
-	if (func_def_block_start(f))
-		return 1;
-	return parse_block(f, scope);
 }
 
 int func_def_read_name(struct file *f, struct symbol *fn)
@@ -322,7 +310,7 @@ int func_def_read_name(struct file *f, struct symbol *fn)
 		file_skip_space(f);
 		keyword_end(f);
 	}
-	fn->name = token.s;
+	fn->name = str2chr(token.s, token.len);
 	fn->name_len = token.len;
 	return 0;
 err_eof:
@@ -342,7 +330,7 @@ int func_def_read_type(struct file *f, struct symbol *sym)
 		goto err_cannot_get_type;
 	if (ret == -1)
 		sym->flags.can_null = 1;
-	return keyword_end(f);
+	return 0;
 err_cannot_get_type:
 	printf("amc: func_def_read_type: Cannot get type!\n");
 	backend_stop(BE_STOP_SIGNAL_ERR);
@@ -385,27 +373,29 @@ err_type:
 
 int parse_func_call(struct file *f, struct symbol *sym, struct scope *scope)
 {
-	yz_val **v = NULL;
-	const char *name = NULL;
+	yz_val **args = NULL;
 	if (sym->argc == 0 && f->src[f->pos] == ']') {
 		file_pos_next(f);
 		file_skip_space(f);
 	} else {
-		v = func_call_read_args(f, sym, scope);
-		if (v == NULL)
+		args = func_call_read_args(f, sym, scope);
+		if (args == NULL)
 			return 1;
 	}
-	if (sym->name[sym->name_len - 1] != '\0') {
-		name = str2chr(sym->name, sym->name_len);
-	} else {
-		name = sym->name;
-	}
-	return backend_call(func_call)(name, &sym->result_type, v, sym->argc);
+	if (hook_apply(&sym->hooks->times[HOOK_FUNC_CALL_BEFORE]))
+		return 1;
+	if (backend_call(func_call)(sym->name, &sym->result_type,
+			args, sym->argc))
+		return 1;
+	if (hook_apply(&sym->hooks->times[HOOK_FUNC_CALL_AFTER]))
+		return 1;
+	return 0;
 }
 
 int parse_func_def(struct file *f, struct symbol *sym, struct scope *scope)
 {
 	struct symbol *result = calloc(1, sizeof(*result));
+	int ret = 0;
 	struct scope fn_scope = {
 		.fn = result,
 		.indent = scope->indent,
@@ -424,19 +414,25 @@ int parse_func_def(struct file *f, struct symbol *sym, struct scope *scope)
 		goto err_free_result;
 	if (func_def_read_type(f, result))
 		goto err_free_result;
+	result->flags.in_block = 1;
 	result->parse_function = parse_func_call;
+	result->hooks = sym->hooks;
+	if ((ret = func_def_block_start(f, result)) > 0)
+		goto err_free_result;
+	if (symbol_register(result, &scope->sym_groups[SYMG_FUNC]))
+		goto err_free_result;
+	if (ret == -1)
+		return func_def_end_scope(result, &fn_scope);
 	if (backend_call(func_def)(result->name,
 			result->name_len,
 			&result->result_type))
 		goto err_free_result;
-	result->flags.in_block = 1;
-	if (symbol_register(result, &scope->sym_groups[SYMG_FUNC]))
-		goto err_free_result;
-	if (func_def_read_block(f, &fn_scope))
+	if (parse_block(f, &fn_scope))
 		goto err_free_result;
 	return func_def_end_scope(result, &fn_scope);
 err_free_result:
 	free_safe(result);
+	free(result->name);
 	return 1;
 }
 

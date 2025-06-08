@@ -7,4 +7,6 @@ typedef int (*backend_func_call_f)(const char *name, yz_val *type,
 typedef int (*backend_func_def_f)(const char *name, int len, yz_val *type);
 typedef int (*backend_func_ret_f)(yz_val *v, int is_main);
 
+typedef int (*backend_syscall_f)(int code);
+
 #endif

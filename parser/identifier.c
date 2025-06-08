@@ -3,6 +3,7 @@
 #include "include/identifier.h"
 #include "include/keywords.h"
 #include "include/null.h"
+#include "include/token.h"
 #include "include/type.h"
 #include "../include/backend.h"
 #include "../include/expr.h"
@@ -33,32 +34,28 @@ static struct symbol *let_reg_sym(struct file *f, str *name,
 int identifier_assign_backend_call(struct symbol *sym, yz_val *val,
 		enum OP_ID mode, struct scope *scope)
 {
-	char *name = str2chr(sym->name, sym->name_len);
 	if (sym->flags.mut) {
-		if (backend_call(var_set)(name, val, mode, scope->status))
-			goto err_free_name;
+		if (backend_call(var_set)(sym->name, val, mode, scope->status))
+			return 1;
 	} else {
 		if (sym->flags.is_init)
 			goto err_sym_is_immut;
 		if (mode != OP_ASSIGN)
 			goto err_unsupport_op;
-		if (backend_call(var_immut_init)(name, val, scope->status))
-			goto err_free_name;
+		if (backend_call(var_immut_init)(sym->name, val,
+					scope->status))
+			return 1;
 	}
 	sym->flags.is_init = 1;
-	free(name);
 	return 0;
-err_free_name:
-	free(name);
-	return 1;
 err_sym_is_immut:
 	printf("amc: identifier_assign_backend_call: "
-			"Symbol: \"%s\" is immutable!\n", name);
-	goto err_free_name;
+			"Symbol: \"%s\" is immutable!\n", sym->name);
+	return 1;
 err_unsupport_op:
 	printf("amc: identifier_assign_backend_call: "
 			"Unsupport operator for immutable identifier!\n");
-	goto err_free_name;
+	return 1;
 }
 
 int let_check_defined(struct file *f, str *name, struct scope *scope)
@@ -222,7 +219,7 @@ struct symbol *let_reg_sym(struct file *f, str *name, int can_null, int mut,
 	result = calloc(1, sizeof(*result));
 	result->argc = 1;
 	result->args = NULL;
-	result->name = name->s;
+	result->name = str2chr(name->s, name->len);
 	result->name_len = name->len;
 	result->flags.can_null = can_null;
 	result->flags.mut = mut;
@@ -327,22 +324,22 @@ err_get_type:
 	return NULL;
 }
 
-int identifier_read(struct file *f, str *token, yz_val *val,
-		struct scope *scope)
+int identifier_read(struct file *f, yz_val *val, struct scope *scope)
 {
 	char *err_msg;
 	struct symbol *sym = NULL;
-	if (!symbol_find_in_group_in_scope(token, &sym, scope, SYMG_SYM))
+	str token = TOKEN_NEW;
+	if (token_read_before(SPECIAL_TOKEN_END, &token, f) == NULL)
+		return 1;
+	if (!symbol_find_in_group_in_scope(&token, &sym, scope, SYMG_SYM))
 		goto err_identifier_not_found;
 	val->type = AMC_SYM;
 	val->v = sym;
-	if (f->src[f->pos] != '[')
-		return 0;
-	if (sym->result_type.type == YZ_ARRAY)
+	if (f->src[f->pos] == '[')
 		return array_get_elem(f, val, scope);
 	return 0;
 err_identifier_not_found:
-	err_msg = str2chr(token->s, token->len);
+	err_msg = str2chr(token.s, token.len);
 	printf("amc: identifier_read: %lld,%lld: Identifier not found!\n"
 			"| Token: \"%s\"\n",
 			f->cur_line, f->cur_column,

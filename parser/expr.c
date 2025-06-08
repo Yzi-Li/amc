@@ -4,6 +4,8 @@
 #include "include/keywords.h"
 #include "include/null.h"
 #include "include/op.h"
+#include "include/token.h"
+#include "../include/array.h"
 #include "../include/backend.h"
 #include "../include/token.h"
 #include "../utils/converter.h"
@@ -17,8 +19,6 @@
 #define EXPR_TERM_END -1
 #define EXPR_TOK_END 1
 #define EXPR_TOK_END_DIRECT 3
-
-static const char *TERM_END = ";),]}[ \t\n";
 
 static const struct expr_operator operators[] = {
 	{"*",   1, OP_MUL},
@@ -74,6 +74,7 @@ static int expr_term_identifier(struct file *f, yz_val *v, int top,
 		struct scope *scope);
 static int expr_term_int(struct file *f, yz_val *v, int top);
 static int expr_term_null(struct file *f, yz_val *v, int top);
+static int expr_term_str(struct file *f, yz_val *v, int top);
 static int expr_unary(struct file *f, yz_val *v, struct expr_operator *op,
 		int top, struct scope *scope);
 static struct expr_operator *expr_unary_get_op(char c);
@@ -199,7 +200,7 @@ err_eoe:
 int expr_read_token(struct file *f, str *token, int top)
 {
 	int ret = 0;
-	token_read_before(TERM_END, token, f);
+	token_read_before(SPECIAL_TOKEN_END, token, f);
 	if (token->len <= 0)
 		goto err_empty_token;
 	file_skip_space(f);
@@ -298,6 +299,8 @@ int expr_term(struct file *f, yz_val *v, int top, struct scope *scope)
 		return expr_term_expr(f, v, top, scope);
 	} else if (f->src[f->pos] == '[') {
 		return expr_term_func(f, v, top, scope);
+	} else if (f->src[f->pos] == '"') {
+		return expr_term_str(f, v, top);
 	} else if ((unary = expr_unary_get_op(f->src[f->pos])) != NULL) {
 		return expr_unary(f, v, unary, top, scope);
 	} else if (f->src[f->pos] == CHR_NULL[0]
@@ -315,16 +318,13 @@ int expr_term_chr(struct file *f, yz_val *v, int top)
 		goto err_eoe;
 	if (end == EXPR_TOK_END_DIRECT)
 		return EXPR_TERM_END;
-	token.s = &token.s[1];
-	token.len -= 2;
-	if (token.s[token.len] != '\'')
+	if (token.s[token.len - 1] != '\'')
 		goto err_char_not_end;
 	v->type = YZ_CHAR;
-	token.s = &token.s[1];
-	token.len -= 2;
+	v->i = token.s[1];
 	return end == 1 ? EXPR_TERM_END : 0;
 err_eoe:
-	printf("|< amc: expr_term_chr: End of expression!\n");
+	printf("amc: expr_term_chr: End of expression!\n");
 	return 1;
 err_char_not_end:
 	printf("amc: expr_term_chr: Character not end!\n");
@@ -368,20 +368,11 @@ int expr_term_func(struct file *f, yz_val *v, int top, struct scope *scope)
 int expr_term_identifier(struct file *f, yz_val *v, int top,
 		struct scope *scope)
 {
-	int end = 0;
-	str token = TOKEN_NEW;
-	if ((end = expr_read_token(f, &token, top)) == 2)
-		goto err_eoe;
-	if (end == EXPR_TOK_END_DIRECT)
-		return EXPR_TERM_END;
-	if (identifier_read(f, &token, v, scope) > 1)
+	if (identifier_read(f, v, scope) > 1)
 		return 1;
 	if (expr_check_end_special(f, top))
 		return EXPR_TERM_END;
 	return 0;
-err_eoe:
-	printf("|< amc: expr_term_identifier: End of expression!\n");
-	return 1;
 }
 
 int expr_term_int(struct file *f, yz_val *v, int top)
@@ -398,7 +389,7 @@ int expr_term_int(struct file *f, yz_val *v, int top)
 	v->type = yz_get_int_size(v->l);
 	return end == 1 ? EXPR_TERM_END : 0;
 err_eoe:
-	printf("|< amc: expr_term_int: End of expression!\n");
+	printf("amc: expr_term_int: End of expression!\n");
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_not_num:
@@ -418,6 +409,33 @@ int expr_term_null(struct file *f, yz_val *v, int top)
 	if (expr_check_end_special(f, top))
 		return EXPR_TERM_END;
 	return 0;
+}
+
+int expr_term_str(struct file *f, yz_val *v, int top)
+{
+	yz_array *arr = NULL;
+	int const_id = 0;
+	str token = TOKEN_NEW;
+	file_pos_next(f);
+	if (token_read_before("\"", &token, f) == NULL)
+		return 1;
+	file_pos_next(f);
+	file_skip_space(f);
+	if ((const_id = backend_call(const_def_str)
+				(str2chr(token.s, token.len), token.len)) == -1)
+		goto err_backend_failed;
+	arr = malloc(sizeof(*arr));
+	arr->len = token.len;
+	arr->type.type = YZ_CHAR;
+	arr->type.i = const_id;
+	v->type = YZ_ARRAY;
+	v->v = arr;
+	if (expr_check_end_special(f, top))
+		return EXPR_TERM_END;
+	return 0;
+err_backend_failed:
+	printf("amc: expr_term_str: Backend call failed!\n");
+	return 1;
 }
 
 int expr_unary(struct file *f, yz_val *v, struct expr_operator *op, int top,

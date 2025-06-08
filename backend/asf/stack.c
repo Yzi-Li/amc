@@ -66,12 +66,25 @@ str *asf_inst_push(yz_val *val)
 		imm.type = ASF_BYTES_U64;
 		imm.iq = 0;
 		return asf_inst_push_imm(&imm);
-	} else if (YZ_IS_DIGIT(val->type)) {
+	} else if (val->type == YZ_ARRAY) {
+		return asf_inst_push_arr(val->v);
+	} else if (YZ_IS_DIGIT(val->type) || val->type == YZ_CHAR) {
 		imm.type = asf_yz_type_raw2bytes(val->type);
 		imm.iq = val->l;
 		return asf_inst_push_imm(&imm);
 	}
+	printf("amc[backend.asf]: asf_inst_push: Unsupport type: '%s'!\n",
+			yz_get_type_name(val));
 	return NULL;
+}
+
+str *asf_inst_push_arr(yz_array *arr)
+{
+	if (stack_element_append(ASF_BYTES_U64))
+		return NULL;
+	if (arr->type.type != YZ_CHAR)
+		return NULL;
+	return asf_inst_mov(ASF_MOV_C2M, &arr->type.i, asf_stack_top);
 }
 
 str *asf_inst_push_expr(struct expr *expr)
@@ -82,9 +95,7 @@ str *asf_inst_push_expr(struct expr *expr)
 
 str *asf_inst_push_identifier(struct symbol *sym)
 {
-	char *name = str2chr(sym->name, sym->name_len);
-	struct asf_stack_element *src = asf_identifier_get(name);
-	free(name);
+	struct asf_stack_element *src = asf_identifier_get(sym->name);
 	return asf_inst_push_mem(src);
 }
 

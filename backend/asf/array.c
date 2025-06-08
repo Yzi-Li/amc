@@ -105,7 +105,6 @@ err_free_node:
 int array_get_elem_from_sym(struct asf_stack_element *base, struct symbol *sym)
 {
 	enum ASF_REGS dest = ASF_REG_RAX;
-	char *name = NULL;
 	struct object_node *node = NULL;
 	struct asf_stack_element *src = NULL;
 	if (sym->args == NULL && sym->argc > 1) {
@@ -114,10 +113,8 @@ int array_get_elem_from_sym(struct asf_stack_element *base, struct symbol *sym)
 		return array_get_elem_from_reg(base,
 				asf_call_arg_regs[sym->argc - 2]);
 	} else if (sym->args == NULL && sym->argc == 1) {
-		name = str2chr(sym->name, sym->name_len);
-		if ((src = asf_identifier_get(name)) == NULL)
+		if ((src = asf_identifier_get(sym->name)) == NULL)
 			goto err_identifier_not_found;
-		free(name);
 		node = malloc(sizeof(*node));
 		if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 			goto err_free_node;
@@ -127,8 +124,7 @@ int array_get_elem_from_sym(struct asf_stack_element *base, struct symbol *sym)
 	return array_get_elem_from_reg(base, ASF_REG_RAX);
 err_identifier_not_found:
 	printf("amc[backend.asf:%s]: array_get_elem_from_sym: "
-			"Identifier: \"%s\" not found!\n", name, __FILE__);
-	free(name);
+			"Identifier: \"%s\" not found!\n", sym->name, __FILE__);
 	return 1;
 err_inst_failed:
 	printf("amc[backend.asf:%s]: array_get_elem_from_sym: "

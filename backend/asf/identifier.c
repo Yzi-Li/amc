@@ -220,12 +220,9 @@ str *set_identifier(sym_id_t id, struct symbol *sym, enum OP_ID mode)
 {
 	struct asf_stack_element *src = NULL;
 	sym_id_t src_id = -1;
-	char *src_name = NULL;
 	enum ASF_REGS src_reg = ASF_REG_RAX;
-	src_name = str2chr(sym->name, sym->name_len);
-	if ((src_id = get_id(src_name)) == -1)
+	if ((src_id = get_id(sym->name)) == -1)
 		goto err_id_not_exists;
-	free(src_name);
 	src = defined_syms[src_id].stack;
 	if (mode != OP_ASSIGN) {
 		src_reg = asf_reg_get(defined_syms[id].stack->bytes);
@@ -239,7 +236,6 @@ err_id_not_exists:
 	printf("amc[backend.asf:%s]: set_identifier: "
 			"Identifier not exists!\n",
 			__FILE__);
-	free(src_name);
 	return NULL;
 }
 

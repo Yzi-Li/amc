@@ -44,6 +44,7 @@ int token_list_elem_end(char separator, struct file *f);
 
 /**
  * Get next token from file.
+ * Don't jump to next line.
  */
 int token_next(str *token, struct file *f);
 

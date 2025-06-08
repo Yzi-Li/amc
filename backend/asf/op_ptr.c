@@ -14,7 +14,6 @@ static str *op_ptr_identifier_get(yz_ptr *ptr);
 
 int op_ptr_extract_get_addr(enum ASF_REGS *dest, struct symbol *sym)
 {
-	char *name = NULL;
 	struct object_node *node = NULL;
 	struct asf_stack_element *src = NULL;
 	if (sym->args == NULL && sym->argc == 0)
@@ -28,9 +27,7 @@ int op_ptr_extract_get_addr(enum ASF_REGS *dest, struct symbol *sym)
 	node = malloc(sizeof(*node));
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
-	name = str2chr(sym->name, sym->name_len);
-	src = asf_identifier_get(name);
-	free(name);
+	src = asf_identifier_get(sym->name);
 	if ((node->s = asf_inst_mov(ASF_MOV_M2R, src, dest)) == NULL)
 		goto err_inst_failed;
 	return 0;
@@ -46,8 +43,7 @@ err_inst_failed:
 str *op_ptr_identifier_get(yz_ptr *ptr)
 {
 	struct symbol *sym = ptr->ref.v;
-	char *name = str2chr(sym->name, sym->name_len);
-	struct asf_stack_element *stack = asf_identifier_get(name);
+	struct asf_stack_element *stack = asf_identifier_get(sym->name);
 	str *result = asf_stack_get_element(stack, 0);
 	if (result->s[result->len - 1] != '\0')
 		str_append(result, 1, "\0");

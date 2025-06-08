@@ -7,16 +7,18 @@ include core/config.mk
 include backend/config.mk
 
 include comptime/config.mk
+include decorator/config.mk
 include parser/config.mk
 
 UTILSDIR = utils
 STRDIR = $(UTILSDIR)/str
 STRLIB = $(STRDIR)/libstr.a
 
-COREDIR  = core
-COMPTIME = comptime
-PARSER   = parser
-BACKEND  = backend
+COREDIR   = core
+COMPTIME  = comptime
+DECORATOR = decorator
+PARSER    = parser
+BACKEND   = backend
 
 UTILS_TARGET = $(addprefix $(UTILSDIR)/, $(UTILS_OBJ))
 UTILS_DEBUG_TARGET = $(addprefix $(UTILSDIR)/, $(UTILS_DEBUG_OBJ))
@@ -24,6 +26,8 @@ CORE_TARGET = $(addprefix $(COREDIR)/, $(CORE_OBJ))
 CORE_DEBUG_TARGET = $(addprefix $(COREDIR)/, $(CORE_DEBUG_OBJ))
 COMPTIME_TARGET = $(addprefix $(COMPTIME)/, $(COMPTIME_OBJ))
 COMPTIME_DEBUG_TARGET = $(addprefix $(COMPTIME)/, $(COMPTIME_DEBUG_OBJ))
+DECORATOR_TARGET = $(addprefix $(DECORATOR)/, $(DECORATOR_OBJ))
+DECORATOR_DEBUG_TARGET = $(addprefix $(DECORATOR)/, $(DECORATOR_DEBUG_OBJ))
 PARSER_TARGET = $(addprefix $(PARSER)/, $(PARSER_OBJ))
 PARSER_DEBUG_TARGET = $(addprefix $(PARSER)/, $(PARSER_DEBUG_OBJ))
 BACKEND_TARGET = $(addprefix backend/, $(BACKEND_OBJ))
@@ -35,15 +39,17 @@ TARGET = amc
 DEBUG_OBJ = $(SRC:.c=.debug.o)
 DEBUG_TARGET = $(TARGET).debug
 
-CLIBS = -L$(STRDIR) -lstr
+CLIBS = -L$(STRDIR) -lstr -lgetarg
 
 .PHONY: all clean debug debug_target
-.PHONY: $(COREDIR) $(COMPTIME) $(PARSER) $(BACKEND) $(STRLIB) $(UTILSDIR)
+.PHONY: $(COREDIR) $(COMPTIME) $(DECORATOR) $(PARSER) $(BACKEND) $(STRLIB)\
+	$(UTILSDIR)
 all: $(TARGET)
 debug: $(DEBUG_TARGET)
 debug_target:
 	@$(MAKE) -C $(COREDIR) debug
 	@$(MAKE) -C $(COMPTIME) debug
+	@$(MAKE) -C $(DECORATOR) debug
 	@$(MAKE) -C $(PARSER) debug
 	@$(MAKE) -C $(BACKEND) debug
 	@$(MAKE) -C $(UTILSDIR) debug
@@ -57,14 +63,16 @@ debug_target:
 $(STRLIB):
 	@$(MAKE) -C $(STRDIR)
 
-$(COREDIR) $(PARSER) $(BACKEND) $(UTILSDIR):
+$(COREDIR) $(COMPTIME) $(DECORATOR) $(PARSER) $(BACKEND) $(UTILSDIR):
 	@$(MAKE) -C $@
 
-$(TARGET): $(OBJ) $(COREDIR) $(PARSER) $(BACKEND) $(UTILSDIR) $(STRLIB)
+$(TARGET): $(OBJ) $(COREDIR) $(COMPTIME) $(DECORATOR) $(PARSER) $(BACKEND)\
+	$(UTILSDIR) $(STRLIB)
 	$(CC) $(CFLAGS) -o $@\
 		$(OBJ)\
 		$(CORE_TARGET)\
 		$(COMPTIME_TARGET)\
+		$(DECORATOR_TARGET)\
 		$(PARSER_TARGET)\
 		$(UTILS_TARGET)\
 		$(BACKEND_TARGET)\
@@ -75,6 +83,7 @@ $(DEBUG_TARGET): $(DEBUG_OBJ) debug_target $(STRLIB)
 		$(DEBUG_OBJ)\
 		$(CORE_DEBUG_TARGET)\
 		$(COMPTIME_DEBUG_TARGET)\
+		$(DECORATOR_DEBUG_TARGET)\
 		$(PARSER_DEBUG_TARGET)\
 		$(UTILS_DEBUG_TARGET)\
 		$(BACKEND_DEBUG_TARGET)\
@@ -84,6 +93,7 @@ clean:
 	rm -f $(TARGET) $(OBJ) $(DEBUG_TARGET) $(DEBUG_OBJ)
 	@$(MAKE) -C $(COREDIR) clean
 	@$(MAKE) -C $(COMPTIME) clean
+	@$(MAKE) -C $(DECORATOR) clean
 	@$(MAKE) -C $(STRDIR) clean
 	@$(MAKE) -C $(PARSER) clean
 	@$(MAKE) -C $(BACKEND) clean

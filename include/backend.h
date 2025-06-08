@@ -3,6 +3,7 @@
 #include "file.h"
 #include "backend/array.h"
 #include "backend/cond.h"
+#include "backend/const.h"
 #include "backend/expr.h"
 #include "backend/func.h"
 #include "backend/loop.h"
@@ -42,12 +43,14 @@ struct backend {
 	backend_cond_elif_f      cond_elif;
 	backend_cond_else_f      cond_else;
 	backend_cond_if_f        cond_if;
+	backend_const_def_str_f  const_def_str;
 	backend_func_call_f      func_call;
 	backend_func_def_f       func_def;
 	backend_func_ret_f       func_ret;
 	backend_op_cmd_f         ops[OP_LEN];
 	backend_scope_begin_f    scope_begin;
 	backend_scope_end_f      scope_end;
+	backend_syscall_f        syscall;
 	backend_var_set_f        var_set;
 	backend_var_immut_init_f var_immut_init;
 	backend_while_begin_f    while_begin;

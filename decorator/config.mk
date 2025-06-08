@@ -1,0 +1,5 @@
+DECORATOR_SRC =\
+	decorator.c
+
+DECORATOR_OBJ = $(DECORATOR_SRC:.c=.o)
+DECORATOR_DEBUG_OBJ = $(DECORATOR_SRC:.c=.debug.o)

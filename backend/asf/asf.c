@@ -3,6 +3,7 @@
 #include "../../include/backend.h"
 #include "../../include/backend/target.h"
 #include <stdlib.h>
+#include <string.h>
 
 struct backend backend_asf = {
 	.end      = asf_end,
@@ -16,6 +17,8 @@ struct backend backend_asf = {
 	.cond_elif = asf_cond_elif,
 	.cond_else = asf_cond_else,
 	.cond_if   = asf_cond_if,
+
+	.const_def_str = asf_const_def_str,
 
 	.func_call = asf_func_call,
 	.func_def  = asf_func_def,
@@ -50,6 +53,7 @@ struct backend backend_asf = {
 
 	.scope_begin = asf_scope_begin,
 	.scope_end = asf_scope_end,
+	.syscall = asf_syscall,
 
 	.var_immut_init = asf_var_immut_init,
 	.var_set        = asf_var_set,
@@ -66,9 +70,19 @@ int asf_init(int argc, char *argv[])
 
 int asf_file_new(struct file *f)
 {
+	const char *temp_rodata = ".section .rodata\n";
+	struct object_node *rodata = NULL;
 	cur_obj++;
-	objs[cur_obj] = calloc(3, sizeof(void*));
+	objs[cur_obj] = calloc(3, sizeof(struct object_head));
+	rodata = malloc(sizeof(*rodata));
+	if (object_append(&objs[cur_obj][ASF_OBJ_RODATA], rodata))
+		goto err_free_rodata;
+	rodata->s = str_new();
+	str_append(rodata->s, strlen(temp_rodata), temp_rodata);
 	return 0;
+err_free_rodata:
+	free(rodata);
+	return 1;
 }
 
 int asf_stop(enum BE_STOP_SIGNAL bess)
@@ -87,5 +101,5 @@ int asf_stop(enum BE_STOP_SIGNAL bess)
 
 int asf_end()
 {
-	return target_write(objs, 1);
+	return target_write(objs, ASF_OBJ_COUNT);
 }

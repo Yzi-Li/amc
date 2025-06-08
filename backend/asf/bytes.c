@@ -19,6 +19,7 @@ enum ASF_BYTES asf_yz_type_raw2bytes(enum YZ_TYPE type)
 		break;
 	case YZ_U8:
 	case YZ_U16:
+	case YZ_CHAR:
 	case YZ_U32:
 		return ASF_BYTES_U32;
 		break;

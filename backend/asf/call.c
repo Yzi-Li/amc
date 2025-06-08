@@ -1,8 +1,10 @@
+#include "include/asf.h"
 #include "include/call.h"
 #include "include/identifier.h"
 #include "include/mov.h"
 #include "include/register.h"
 #include "include/stack.h"
+#include "../../include/backend/object.h"
 #include "../../include/expr.h"
 #include "../../include/symbol.h"
 #include "../../utils/utils.h"
@@ -11,6 +13,7 @@
 #include <string.h>
 
 static int call_push_arg(str *s, yz_val *v, int index);
+static int call_push_arg_arr(str *s, yz_array *arr, int index);
 static int call_push_arg_expr(str *s, struct expr *expr, int index);
 static int call_push_arg_identifier(str *s, struct symbol *sym, int index);
 static int call_push_arg_imm(str *s, yz_val *v, int index);
@@ -22,13 +25,28 @@ int call_push_arg(str *s, yz_val *v, int index)
 		return call_push_arg_sym(s, v->v, index);
 	} else if (v->type == AMC_EXPR) {
 		return call_push_arg_expr(s, v->v, index);
+	} else if (v->type == YZ_ARRAY) {
+		return call_push_arg_arr(s, v->v, index);
 	} else if (YZ_IS_DIGIT(v->type)) {
 		return call_push_arg_imm(s, v, index);
 	}
-	printf("amc[backend.asf]: syscall_push_arg: "
+	printf("amc[backend.asf]: call_push_arg: "
 			"Unsupport argument type: \"%s\"\n",
 			yz_get_type_name(v));
 	return 1;
+}
+
+int call_push_arg_arr(str *s, yz_array *arr, int index)
+{
+	enum ASF_REGS dest = asf_call_arg_regs[index];
+	str *tmp = NULL;
+	if (arr->type.type != YZ_CHAR)
+		return 1;
+	dest += asf_reg_get(ASF_BYTES_U64);
+	tmp = asf_inst_mov(ASF_MOV_C2R, &arr->type.i, &dest);
+	str_append(s, tmp->len - 1, tmp->s);
+	str_free(tmp);
+	return 0;
 }
 
 int call_push_arg_expr(str *s, struct expr *expr, int index)
@@ -48,22 +66,19 @@ int call_push_arg_expr(str *s, struct expr *expr, int index)
 
 int call_push_arg_identifier(str *s, struct symbol *sym, int index)
 {
-	char *name = str2chr(sym->name, sym->name_len);
 	str *tmp = NULL;
 	enum ASF_REGS dest = asf_call_arg_regs[index];
-	struct asf_stack_element *src = asf_identifier_get(name);
+	struct asf_stack_element *src = asf_identifier_get(sym->name);
 	if (src == NULL)
 		goto err_identifier_not_found;
 	dest += asf_reg_get(src->bytes);
 	tmp = asf_inst_mov(ASF_MOV_M2R, src, &dest);
 	str_append(s, tmp->len - 1, tmp->s);
 	str_free(tmp);
-	free(name);
 	return 0;
 err_identifier_not_found:
-	printf("amc[backend.asf]: syscall_push_arg_identifier: "
-			"\"%s\"\n", name);
-	free(name);
+	printf("amc[backend.asf]: call_push_arg_identifier: "
+			"\"%s\"\n", sym->name);
 	return 1;
 }
 
@@ -100,24 +115,31 @@ int call_push_arg_sym(str *s, struct symbol *sym, int index)
 	return 0;
 }
 
-int asf_call_push_args(str *s, int vlen, yz_val **vs)
+int asf_call_push_args(int vlen, yz_val **vs)
 {
+	struct object_node *node = NULL;
+	node = malloc(sizeof(*node));
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+		goto err_free_node;
+	node->s = str_new();
 	for (int i = 0; i < vlen; i++) {
 		if (i > asf_call_arg_regs_len)
 			goto err_too_many_arg;
 		if (vs[i] == NULL)
 			goto err_arg_not_exists;
-		if (call_push_arg(s, vs[i], i))
+		if (call_push_arg(node->s, vs[i], i))
 			return 1;
 	}
 	return 0;
+err_free_node:
+	free(node);
+	return 1;
 err_too_many_arg:
-	printf("amc[backend.asf]: syscall_push_args: Too many arguments!\n");
-	return 1;
+	printf("amc[backend.asf]: call_push_args: Too many arguments!\n");
+	goto err_free_node;
 err_arg_not_exists:
-	printf("amc[backend.asf]: syscall_push_args: "
-			"Argument is not exists!\n");
-	return 1;
+	printf("amc[backend.asf]: call_push_args: Argument is not exists!\n");
+	goto err_free_node;
 }
 
 str *asf_inst_syscall(int code, int vlen, yz_val **vs)
@@ -127,7 +149,7 @@ str *asf_inst_syscall(int code, int vlen, yz_val **vs)
 		"movq $%d, %%rax\n"
 		"syscall\n";
 	str *s = str_new();
-	if (asf_call_push_args(s, vlen, vs))
+	if (asf_call_push_args(vlen, vs))
 		goto err_free_str;
 	str_last = s->len;
 	str_expand(s, strlen(temp) - 2 + ullen(code));

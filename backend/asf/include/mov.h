@@ -3,6 +3,8 @@
 #include "../../../utils/str/str.h"
 
 enum ASF_MOV_TYPE {
+	ASF_MOV_C2M,
+	ASF_MOV_C2R,
 	ASF_MOV_I2M,
 	ASF_MOV_I2R,
 	ASF_MOV_M2M,

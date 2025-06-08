@@ -2,6 +2,7 @@ PARSER_SRC =\
 	array.c\
 	block.c\
 	comment.c\
+	decorator.c\
 	func.c\
 	expr.c\
 	identifier.c\

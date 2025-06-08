@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+static str *mov_c2m(int src, struct asf_stack_element *dest);
+static str *mov_c2r(int src, enum ASF_REGS dest);
 static str *mov_i2m(struct asf_imm *src, struct asf_stack_element *dest);
 static str *mov_i2r(struct asf_imm *src, enum ASF_REGS dest);
 static str *mov_m2m(struct asf_stack_element *src,
@@ -20,6 +22,33 @@ static str *mov_m32_to_r64(struct asf_stack_element *src, enum ASF_REGS dest);
 static str *mov_r2m(enum ASF_REGS src, struct asf_stack_element *dest);
 static str *mov_r2r(enum ASF_REGS src, enum ASF_REGS dest);
 static str *mov_u32_to_rax(str *mov);
+
+str *mov_c2m(int src, struct asf_stack_element *dest)
+{
+	str *s = NULL;
+	const char *temp = "mov%c $.LC%d, -%d(%%rbp)\n";
+	s = str_new();
+	str_expand(s, strlen(temp) - 5
+			+ ullen(src) + ullen(dest->addr));
+	snprintf(s->s, s->len, temp,
+			asf_suffix_get(dest->bytes),
+			src,
+			dest->addr);
+	return s;
+}
+
+str *mov_c2r(int src, enum ASF_REGS dest)
+{
+	str *s = NULL;
+	const char *temp = "mov%c $.LC%d, %%%s\n";
+	s = str_new();
+	str_expand(s, strlen(temp) - 2 + ullen(src));
+	snprintf(s->s, s->len, temp,
+			asf_suffix_get(asf_regs[dest].bytes),
+			src,
+			asf_regs[dest].name);
+	return s;
+}
 
 str *mov_i2m(struct asf_imm *src, struct asf_stack_element *dest)
 {
@@ -150,6 +179,12 @@ str *mov_u32_to_rax(str *mov)
 str *asf_inst_mov(enum ASF_MOV_TYPE mt, void *l, void *r)
 {
 	switch (mt) {
+	case ASF_MOV_C2M:
+		return mov_c2m(*(int*)l, (struct asf_stack_element*)r);
+		break;
+	case ASF_MOV_C2R:
+		return mov_c2r(*(int*)l, *(enum ASF_REGS*)r);
+		break;
 	case ASF_MOV_I2M:
 		return mov_i2m((struct asf_imm*)l,
 				(struct asf_stack_element*)r);

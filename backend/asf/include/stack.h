@@ -2,6 +2,7 @@
 #define AMC_BE_ASF_STACK_H
 #include "imm.h"
 #include "register.h"
+#include "../../../include/array.h"
 #include "../../../include/expr.h"
 #include "../../../include/symbol.h"
 
@@ -15,6 +16,7 @@ extern struct asf_stack_element *asf_stack_top;
 
 str *asf_inst_pop(enum ASF_REGS dest);
 str *asf_inst_push(yz_val *val);
+str *asf_inst_push_arr(yz_array *arr);
 str *asf_inst_push_expr(struct expr *expr);
 str *asf_inst_push_identifier(struct symbol *sym);
 str *asf_inst_push_imm(struct asf_imm *imm);

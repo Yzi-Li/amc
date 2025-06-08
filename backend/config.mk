@@ -8,7 +8,9 @@ BE_ASF_SRC =\
 	asf.c\
 	bytes.c\
 	cmp.c\
+	call.c\
 	cond.c\
+	const.c\
 	expr.c\
 	func.c\
 	identifier.c\
@@ -27,8 +29,7 @@ BE_ASF_SRC =\
 	register.c\
 	scope.c\
 	stack.c\
-	suffix.c\
-	syscall.c
+	suffix.c
 
 BACKEND_SRC += $(addprefix asf/, $(BE_ASF_SRC))
 

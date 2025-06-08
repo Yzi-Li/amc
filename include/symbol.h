@@ -3,6 +3,7 @@
 #include "../utils/cint.h"
 #include "../utils/str/str.h"
 #include "backend/scope.h"
+#include "comptime/hook.h"
 #include "comptime/symbol.h"
 #include "file.h"
 #include "type.h"
@@ -19,6 +20,7 @@ enum SYMG {
 
 struct symbol_flag {
 	unsigned int can_null:1,
+	             only_declaration:1,
 	             rec:1,
 	             toplevel:1,
 	             in_block:1,
@@ -28,7 +30,7 @@ struct symbol_flag {
 };
 
 struct symbol {
-	const char *name;
+	char *name;
 	u32 name_len;
 	int (*parse_function)(struct file *f, struct symbol *sym,
 			struct scope *scope);
@@ -43,6 +45,8 @@ struct symbol {
 	u8 argc;
 	yz_val result_type;
 	struct symbol **args;
+
+	struct hooks *hooks;
 };
 
 struct symbol_group {
