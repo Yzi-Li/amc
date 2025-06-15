@@ -4,6 +4,7 @@ fn write(fd: u32,
 	count: u64): u64
 
 fn main: i32 =>
-	let c: [char] = "Hello!"
+	let c: mut [char] = "Hello!"
+	c = "H"
 	[write 1, "Hello world!\n", 6]
 	ret 0

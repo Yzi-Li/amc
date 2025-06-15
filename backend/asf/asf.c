@@ -52,7 +52,12 @@ struct backend backend_asf = {
 	},
 
 	.scope_begin = asf_scope_begin,
-	.scope_end = asf_scope_end,
+	.scope_end   = asf_scope_end,
+
+	.struct_def      = asf_struct_def,
+	.struct_get_elem = asf_struct_get_elem,
+
+	.symbol_status_free = asf_symbol_status_free,
 	.syscall = asf_syscall,
 
 	.var_immut_init = asf_var_immut_init,

@@ -1,3 +1,4 @@
+#include "../include/backend.h"
 #include "../include/symbol.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,14 +70,25 @@ int symbol_find_in_group_in_scope(str *token, struct symbol **result,
 	return 0;
 }
 
-void symbol_group_free(struct symbol_group *group)
+//TODO: free 'hooks' and 'result_type'
+void symbol_free(struct symbol *sym)
 {
-	for (int i = 0; i < group->size; i++) {
-		if (group->symbols[i] == NULL)
+	symbol_group_free(sym->args, sym->argc);
+	backend_call(symbol_status_free)(sym->backend_status);
+	free_safe(sym->name);
+	free_safe(sym);
+}
+
+void symbol_group_free(struct symbol **syms, int count)
+{
+	if (syms == NULL)
+		return;
+	for (int i = 0; i < count; i++) {
+		if (syms[i] == NULL)
 			continue;
-		free(group->symbols[i]);
+		symbol_free(syms[i]);
 	}
-	free(group->symbols);
+	free_safe(syms);
 }
 
 int symbol_register(struct symbol *symbol, struct symbol_group *group)

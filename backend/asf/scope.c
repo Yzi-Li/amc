@@ -1,5 +1,4 @@
 #include "include/asf.h"
-#include "include/identifier.h"
 #include "include/scope.h"
 #include "../../include/backend/object.h"
 #include <stdlib.h>
@@ -8,7 +7,6 @@ static int scope_end_normal(struct asf_scope_status *status);
 
 int scope_end_normal(struct asf_scope_status *status)
 {
-	asf_identifier_free_id(status->identifier_count);
 	asf_stack_end_frame(status->stack_start);
 	if (status->end_node == NULL)
 		return 0;
@@ -55,4 +53,9 @@ err_unsupport_type:
 			status->type);
 	free(raw_status);
 	return 1;
+}
+
+void asf_symbol_status_free(backend_symbol_status *raw_stat)
+{
+	return;
 }

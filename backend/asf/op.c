@@ -1,6 +1,5 @@
 #include "include/asf.h"
 #include "include/call.h"
-#include "include/identifier.h"
 #include "include/imm.h"
 #include "include/mov.h"
 #include "include/op.h"
@@ -119,7 +118,7 @@ str *op_get_vall_identifier(struct object_node *parent, struct symbol *src,
 		enum ASF_REGS dest)
 {
 	char *name = str2chr(src->name, src->name_len);
-	struct asf_stack_element *identifier = asf_identifier_get(name);
+	struct asf_stack_element *identifier = src->backend_status;
 	struct object_node *node = NULL;
 	if (identifier == NULL)
 		goto err_identifier_not_found;
@@ -194,7 +193,7 @@ str *op_get_valr_expr(struct object_node *parent, struct expr *src,
 str *op_get_valr_identifier(struct object_node *parent, struct symbol *src)
 {
 	char *name = str2chr(src->name, src->name_len);
-	struct asf_stack_element *identifier = asf_identifier_get(name);
+	struct asf_stack_element *identifier = src->backend_status;
 	if (identifier == NULL)
 		goto err_identifier_not_found;
 	free(name);

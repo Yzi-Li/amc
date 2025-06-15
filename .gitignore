@@ -1,5 +1,8 @@
 *.o
 *.a
 *.debug.o
+.cache
+compile_commands.json
+
 ./amc
 amc.debug

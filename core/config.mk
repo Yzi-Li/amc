@@ -3,6 +3,7 @@ CORE_SRC =\
 	file.c\
 	ptr.c\
 	scope.c\
+	struct.c\
 	symbol.c\
 	token.c\
 	type.c

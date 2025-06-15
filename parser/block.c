@@ -1,6 +1,7 @@
 #include "include/block.h"
 #include "include/expr.h"
 #include "include/func.h"
+#include "include/indent.h"
 #include "include/keywords.h"
 #include "../include/backend.h"
 #include "../include/file.h"
@@ -9,21 +10,10 @@
 #include "../utils/str/str.h"
 #include <stdio.h>
 
-static int block_get_indent(struct file *f);
 static int block_parse_expr(struct file *f, struct scope *scope);
 static int block_parse_func(struct file *f, struct scope *scope);
 static int block_parse_keyword(struct file *f, struct scope *scope);
 static int block_parse_line(struct file *f, struct scope *scope);
-
-int block_get_indent(struct file *f)
-{
-	int i = 0;
-	while (f->src[f->pos] == '\t') {
-		file_pos_next(f);
-		i++;
-	}
-	return i;
-}
 
 int block_parse_expr(struct file *f, struct scope *scope)
 {
@@ -85,7 +75,7 @@ int block_parse_line(struct file *f, struct scope *scope)
 	i64 orig_column = f->cur_column,
 	    orig_line = f->cur_line,
 	    orig_pos = f->pos;
-	if ((indent = block_get_indent(f)) != scope->indent) {
+	if ((indent = indent_read(f)) != scope->indent) {
 		f->cur_column = orig_column;
 		f->cur_line = orig_line;
 		f->pos = orig_pos;

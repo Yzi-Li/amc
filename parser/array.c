@@ -1,5 +1,6 @@
 //TODO: Mutable array
 #include "include/array.h"
+#include "include/constructor.h"
 #include "include/expr.h"
 #include "include/identifier.h"
 #include "include/keywords.h"
@@ -11,21 +12,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct structure_array_handle {
-	int index;
-	int len;
-	struct scope *scope;
-	struct symbol *sym;
-	yz_val **vs;
-};
-
 static int array_get_elem_handle_val(yz_val *val);
 static int array_get_len(struct file *f, yz_array *arr);
 static int array_get_len_check_mut(struct file *f);
 static int array_get_len_end(struct file *f, int len);
 static int array_get_len_from_num(struct file *f, int *len);
-static void array_handle_free(struct structure_array_handle *handle);
 static yz_val *array_read_offset(struct file *f, struct scope *scope);
+static int constructor_array_elem(const char *se, struct file *f, void *data);
 
 int array_get_elem_handle_val(yz_val *val)
 {
@@ -108,16 +101,6 @@ err_not_num:
 	return 1;
 }
 
-void array_handle_free(struct structure_array_handle *handle)
-{
-	for (int i = 0; i < handle->len; i++) {
-		if (handle->vs[handle->index] == NULL)
-			return;
-		expr_free_val(handle->vs[handle->index]);
-	}
-	free(handle);
-}
-
 yz_val *array_read_offset(struct file *f, struct scope *scope)
 {
 	yz_val type = {.type = YZ_U64, .l = 0};
@@ -135,6 +118,42 @@ err_read_offset_failed:
 	return NULL;
 }
 
+int constructor_array_elem(const char *se, struct file *f, void *data)
+{
+	struct constructor_handle *handle = data;
+	yz_array *arr = handle->sym->result_type.v;
+	struct expr *expr = NULL;
+	yz_val *val = NULL;
+	if (handle->index > handle->len - 1)
+		goto err_too_many_elem;
+	if ((expr = parse_expr(f, 1, handle->scope)) == NULL)
+		goto err_cannot_parse_expr;
+	if (expr_apply(expr, handle->scope) > 0)
+		goto err_cannot_apply_expr;
+	if ((val = identifier_expr_val_handle(&expr, &arr->type)) == NULL)
+		goto err_cannot_apply_expr;
+	handle->vs[handle->index] = val;
+	handle->index += 1;
+	return token_list_elem_end(',', f);
+err_too_many_elem:
+	printf("amc: constructor_array_elem: %lld,%lld: "
+			"Too many elements!\n",
+			f->cur_line, f->cur_column);
+	return 1;
+err_cannot_parse_expr:
+	printf("amc: constructor_array_elem: %lld,%lld: "
+			"Cannot parse expr!\n",
+			f->cur_line, f->cur_column);
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 1;
+err_cannot_apply_expr:
+	printf("amc: constructor_array_elem: %lld,%lld: "
+			"Cannot apply expr!\n",
+			f->cur_line, f->cur_column);
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 1;
+}
+
 int array_get_elem(struct file *f, yz_val *val, struct scope *scope)
 {
 	struct symbol *sym = val->v;
@@ -149,7 +168,7 @@ int array_get_elem(struct file *f, yz_val *val, struct scope *scope)
 		goto err_not_end;
 	file_pos_next(f);
 	file_skip_space(f);
-	if (backend_call(array_get_elem)(sym->name, offset))
+	if (backend_call(array_get_elem)(sym->backend_status, offset))
 		goto err_backend_failed;
 	return array_get_elem_handle_val(val);
 err_not_arr:
@@ -169,77 +188,41 @@ err_not_end:
 	return 1;
 }
 
-int array_structure(struct file *f, struct symbol *sym, struct scope *scope)
+int constructor_array(struct file *f, struct symbol *sym, struct scope *scope)
 {
-	struct structure_array_handle *handle = malloc(sizeof(*handle));
+	struct constructor_handle *handle = malloc(sizeof(*handle));
 	handle->index = 0;
 	handle->len = ((yz_array*)sym->result_type.v)->len;
 	handle->scope = scope;
 	handle->sym = sym;
-	handle->vs = calloc(handle->len, sizeof(yz_val));
-	if (token_parse_list(",}", handle, f, array_structure_elem))
+	handle->vs = calloc(handle->len, sizeof(yz_val*));
+	if (token_parse_list(",}", handle, f, constructor_array_elem))
 		goto err_free_handle;
-	if (backend_call(array_def)(sym->name, handle->vs, handle->len,
-				scope->status))
+	if (backend_call(array_def)(&sym->backend_status, handle->vs,
+				handle->len))
 		goto err_backend_failed;
-	array_handle_free(handle);
+	constructor_handle_free(handle);
 	if (f->src[f->pos] != '}')
 		goto err_not_end;
 	file_pos_next(f);
 	file_skip_space(f);
 	return keyword_end(f);
 err_backend_failed:
-	array_handle_free(handle);
-	printf("amc: array_structure: %lld,%lld: Backend call failed!\n",
+	constructor_handle_free(handle);
+	printf("amc: constructor_array: %lld,%lld: Backend call failed!\n",
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 err_free_handle:
-	array_handle_free(handle);
+	constructor_handle_free(handle);
 	return 1;
 err_not_end:
-	printf("amc: array_structure: %lld,%lld: Not end!\n",
+	printf("amc: constructor_array: %lld,%lld: Not end!\n",
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
 
-int array_structure_elem(const char *se, struct file *f, void *data)
-{
-	struct structure_array_handle *handle = data;
-	struct yz_array *arr = handle->sym->result_type.v;
-	struct expr *expr = NULL;
-	yz_val *val = NULL;
-	if (handle->index > arr->len - 1)
-		goto err_too_many_elem;
-	if ((expr = parse_expr(f, 1, handle->scope)) == NULL)
-		goto err_cannot_parse_expr;
-	if (expr_apply(expr, handle->scope) > 0)
-		goto err_cannot_apply_expr;
-	if ((val = identifier_expr_val_handle(&expr, &arr->type)) == NULL)
-		goto err_cannot_apply_expr;
-	handle->vs[handle->index] = val;
-	handle->index += 1;
-	return token_list_elem_end(',', f);
-err_too_many_elem:
-	printf("amc: let_structure_array_elem: %lld,%lld: "
-			"Too many elements!\n",
-			f->cur_line, f->cur_column);
-	return 1;
-err_cannot_parse_expr:
-	printf("amc: let_structure_array_elem: %lld,%lld: "
-			"Cannot parse expr!\n",
-			f->cur_line, f->cur_column);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
-err_cannot_apply_expr:
-	printf("amc: let_structure_array_elem: %lld,%lld: "
-			"Cannot apply expr!\n",
-			f->cur_line, f->cur_column);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
-}
-
-int parse_type_array(struct file *f, yz_val *type)
+int parse_type_array(struct file *f, yz_val *type, struct scope *scope)
 {
 	yz_array *arr = NULL;
 	int ret = 0;
@@ -249,7 +232,7 @@ int parse_type_array(struct file *f, yz_val *type)
 	arr->len = -1;
 	type->type = YZ_ARRAY;
 	type->v = arr;
-	if ((ret = parse_type(f, &arr->type)) > 0)
+	if ((ret = parse_type(f, &arr->type, scope)) > 0)
 		goto err_free_arr;
 	if (f->src[f->pos] != ',') {
 		if (f->src[f->pos] != ']')

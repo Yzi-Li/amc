@@ -5,19 +5,19 @@
 #include "../utils/utils.h"
 
 enum YZ_TYPE {
-	AMC_ERR_TYPE, AMC_USER_TYPE,
+	AMC_ERR_TYPE,
 	AMC_SYM, AMC_EXPR,
+	YZ_STRUCT, YZ_PTR, YZ_ARRAY, YZ_CONST, YZ_NULL,
 	YZ_VOID, YZ_CHAR,
 	YZ_I8, YZ_I16, YZ_I32, YZ_I64,
 	YZ_U8, YZ_U16, YZ_U32, YZ_U64,
-	YZ_PTR, YZ_ARRAY, YZ_CONST, YZ_NULL
 };
 
 #define YZ_IS_DIGIT(X) (REGION_INT((X), YZ_I8, YZ_U64))
 #define YZ_IS_UNSIGNED_DIGIT(X) (REGION_INT((X), YZ_U8, YZ_U64))
 #define YZ_UNSIGNED_TO_SIGNED(X) ((X) - 4)
 
-static const unsigned int YZ_TYPE_OFFSET = 4;
+static const unsigned int YZ_TYPE_OFFSET = 8;
 
 /**
  * @field type: For builtin type.

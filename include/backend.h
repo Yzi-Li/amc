@@ -9,6 +9,8 @@
 #include "backend/loop.h"
 #include "backend/operator.h"
 #include "backend/scope.h"
+#include "backend/struct.h"
+#include "backend/symbol.h"
 
 #define backend_call(FUNC) backends[cur_backend]->FUNC
 
@@ -48,9 +50,12 @@ struct backend {
 	backend_func_def_f       func_def;
 	backend_func_ret_f       func_ret;
 	backend_op_cmd_f         ops[OP_LEN];
-	backend_scope_begin_f    scope_begin;
-	backend_scope_end_f      scope_end;
-	backend_syscall_f        syscall;
+	backend_scope_begin_f        scope_begin;
+	backend_scope_end_f          scope_end;
+	backend_struct_def_f         struct_def;
+	backend_struct_get_elem_f    struct_get_elem;
+	backend_symbol_status_free_f symbol_status_free;
+	backend_syscall_f            syscall;
 	backend_var_set_f        var_set;
 	backend_var_immut_init_f var_immut_init;
 	backend_while_begin_f    while_begin;

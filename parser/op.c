@@ -20,7 +20,9 @@ static int op_extract_val_check_val(yz_val *v);
 static int op_extract_val_handle_expr(struct expr *e);
 static int op_get_addr_handle_val(struct expr *e);
 
-static int op_assign_check_vall(yz_val *val);
+static int op_assign_get_vall(struct expr *e, struct symbol **result);
+static int op_assign_get_vall_expr(struct expr *e, struct symbol **result);
+static int op_assign_get_vall_sym(struct symbol *sym, struct symbol **result);
 static int op_cmp_ptr_and_null(struct expr *e);
 
 int op_unary_extract_val(struct expr *e, struct scope *scope)
@@ -119,15 +121,30 @@ int op_get_addr_handle_val(struct expr *e)
 	return 0;
 }
 
-int op_assign_check_vall(yz_val *val)
+int op_assign_get_vall(struct expr *e, struct symbol **result)
 {
-	struct symbol *sym = val->v;
-	if (val->type != AMC_SYM)
+	if (e->vall->type == AMC_SYM)
+		return op_assign_get_vall_sym(e->vall->v, result);
+	if (e->vall->type == AMC_EXPR)
+		return op_assign_get_vall_expr(e->vall->v, result);
+	return 1;
+}
+
+int op_assign_get_vall_expr(struct expr *e, struct symbol **result)
+{
+	if (e->op->id != OP_EXTRACT_VAL)
 		return 1;
-	if (sym->args != NULL)
+	if (e->valr->type != AMC_SYM)
 		return 1;
-	if (sym->argc == 0)
+	*result = e->valr->v;
+	return 0;
+}
+
+int op_assign_get_vall_sym(struct symbol *sym, struct symbol **result)
+{
+	if (sym->args != NULL && sym->argc == 0)
 		return 1;
+	*result = sym;
 	return 0;
 }
 
@@ -168,8 +185,8 @@ int op_apply_special(struct expr *e, struct scope *scope)
 
 int op_assign(struct file *f, struct expr *e, struct scope *scope)
 {
-	struct symbol *sym = e->vall->v;
-	if (op_assign_check_vall(e->vall))
+	struct symbol *sym = NULL;
+	if (op_assign_get_vall(e, &sym))
 		return 1;
 	return identifier_assign_val(f, sym, e->op->id, scope);
 }

@@ -1,6 +1,5 @@
 #include "include/asf.h"
 #include "include/call.h"
-#include "include/identifier.h"
 #include "include/imm.h"
 #include "include/mov.h"
 #include "include/register.h"
@@ -49,7 +48,7 @@ int func_ret_expr(struct expr *expr, str **s)
 int func_ret_identifier(struct symbol *sym, str **s)
 {
 	enum ASF_REGS dest = asf_reg_get(asf_yz_type2bytes(&sym->result_type));
-	struct asf_stack_element *src = asf_identifier_get(sym->name);
+	struct asf_stack_element *src = sym->backend_status;
 	if (src == NULL)
 		return 1;
 	if ((*s = asf_inst_mov(ASF_MOV_M2R, src, &dest)) == NULL)

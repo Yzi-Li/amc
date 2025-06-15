@@ -1,10 +1,9 @@
 #ifndef AMC_BE_IDENTIFIER_H
 #define AMC_BE_IDENTIFIER_H
-#include "../../../include/backend/scope.h"
+#include "stack.h"
+#include "../../../include/backend/symbol.h"
 
-void asf_identifier_free_id(int num);
-struct asf_stack_element *asf_identifier_get(char *name);
-int asf_identifier_reg(char *name, struct asf_stack_element *src,
-		backend_scope_status *raw_status);
+int asf_identifier_reg(backend_symbol_status **raw_sym_stat,
+		struct asf_stack_element *src);
 
 #endif

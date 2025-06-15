@@ -1,6 +1,5 @@
 #include "include/asf.h"
 #include "include/call.h"
-#include "include/identifier.h"
 #include "include/mov.h"
 #include "include/register.h"
 #include "include/stack.h"
@@ -68,18 +67,12 @@ int call_push_arg_identifier(str *s, struct symbol *sym, int index)
 {
 	str *tmp = NULL;
 	enum ASF_REGS dest = asf_call_arg_regs[index];
-	struct asf_stack_element *src = asf_identifier_get(sym->name);
-	if (src == NULL)
-		goto err_identifier_not_found;
+	struct asf_stack_element *src = sym->backend_status;
 	dest += asf_reg_get(src->bytes);
 	tmp = asf_inst_mov(ASF_MOV_M2R, src, &dest);
 	str_append(s, tmp->len - 1, tmp->s);
 	str_free(tmp);
 	return 0;
-err_identifier_not_found:
-	printf("amc[backend.asf]: call_push_arg_identifier: "
-			"\"%s\"\n", sym->name);
-	return 1;
 }
 
 int call_push_arg_imm(str *s, yz_val *v, int index)

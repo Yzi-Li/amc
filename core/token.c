@@ -116,7 +116,7 @@ int token_next(str *token, struct file *f)
 		token->len++;
 		file_pos_next(f);
 	}
-	file_try_skip_space(f);
+	file_skip_space(f);
 	return 0;
 }
 

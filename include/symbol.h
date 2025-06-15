@@ -3,10 +3,12 @@
 #include "../utils/cint.h"
 #include "../utils/str/str.h"
 #include "backend/scope.h"
+#include "backend/symbol.h"
 #include "comptime/hook.h"
 #include "comptime/symbol.h"
 #include "file.h"
 #include "type.h"
+#include "struct.h"
 #include <limits.h>
 
 struct scope;
@@ -47,6 +49,7 @@ struct symbol {
 	struct symbol **args;
 
 	struct hooks *hooks;
+	backend_symbol_status *backend_status;
 };
 
 struct symbol_group {
@@ -66,8 +69,14 @@ struct scope {
 	struct symbol *fn;
 	int indent;
 	struct scope *parent;
+
 	backend_scope_status *status;
 	enum SCOPE_STATUS_TYPE status_type;
+
+	struct {
+		yz_struct **elems;
+		int count;
+	} structures;
 	struct symbol_group sym_groups[SYM_GROUPS_SIZE];
 };
 
@@ -78,7 +87,8 @@ int symbol_find_in_group(str *token, struct symbol_group *group,
 		struct symbol **result);
 int symbol_find_in_group_in_scope(str *token, struct symbol **result,
 		struct scope *scope, enum SYMG group_type);
-void symbol_group_free(struct symbol_group *group);
+void symbol_free(struct symbol *sym);
+void symbol_group_free(struct symbol **syms, int count);
 int symbol_register(struct symbol *symbol, struct symbol_group *group);
 
 #endif

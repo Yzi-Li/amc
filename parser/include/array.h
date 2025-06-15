@@ -3,8 +3,7 @@
 #include "../../include/symbol.h"
 
 int array_get_elem(struct file *f, yz_val *val, struct scope *scope);
-int array_structure(struct file *f, struct symbol *sym, struct scope *scope);
-int array_structure_elem(const char *se, struct file *f, void *data);
-int parse_type_array(struct file *f, yz_val *type);
+int constructor_array(struct file *f, struct symbol *sym, struct scope *scope);
+int parse_type_array(struct file *f, yz_val *type, struct scope *scope);
 
 #endif

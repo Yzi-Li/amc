@@ -90,6 +90,9 @@ const char *yz_get_type_name(yz_val *val)
 	case AMC_EXPR:
 		return "AMC_EXPR";
 		break;
+	case YZ_STRUCT:
+		return "YZ_STRUCT";
+		break;
 	case YZ_PTR:
 		return yz_type_err_ptr(val);
 		break;
@@ -111,7 +114,6 @@ enum YZ_TYPE yz_type_get(str *s)
 		if (strncmp(s->s, yz_type_table[i].name, s->len) == 0)
 			return yz_type_table[i].type;
 	}
-
 	return AMC_ERR_TYPE;
 }
 

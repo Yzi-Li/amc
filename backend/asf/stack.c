@@ -1,6 +1,5 @@
 #include "include/bytes.h"
 #include "include/call.h"
-#include "include/identifier.h"
 #include "include/mov.h"
 #include "include/register.h"
 #include "include/stack.h"
@@ -95,7 +94,7 @@ str *asf_inst_push_expr(struct expr *expr)
 
 str *asf_inst_push_identifier(struct symbol *sym)
 {
-	struct asf_stack_element *src = asf_identifier_get(sym->name);
+	struct asf_stack_element *src = sym->backend_status;
 	return asf_inst_push_mem(src);
 }
 

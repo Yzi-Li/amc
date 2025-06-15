@@ -3,6 +3,7 @@
 #include "include/identifier.h"
 #include "include/keywords.h"
 #include "include/null.h"
+#include "include/struct.h"
 #include "include/token.h"
 #include "include/type.h"
 #include "../include/backend.h"
@@ -16,7 +17,6 @@
 
 static int identifier_assign_backend_call(struct symbol *sym, yz_val *val,
 		enum OP_ID mode, struct scope *scope);
-static int let_check_defined(struct file *f, str *name, struct scope *scope);
 static int let_check_val_type(yz_val *src, yz_val *dest);
 static int let_handle_val_type(yz_val *src, yz_val *dest);
 static int let_init_constructor(struct file *f, struct symbol *sym,
@@ -25,25 +25,21 @@ static int let_init_null(struct file *f, struct symbol *sym,
 		struct scope *scope);
 static int let_init_val(struct file *f, struct symbol *sym,
 		struct scope *scope);
-static int let_read_def(struct file *f, str *name);
-static int let_read_def_type(struct file *f, yz_val *type);
-static struct symbol *let_reg_sym(struct file *f, str *name,
-		int can_null, int mut,
+static int let_reg_sym(struct file *f, struct symbol *sym,
 		struct scope *scope);
 
 int identifier_assign_backend_call(struct symbol *sym, yz_val *val,
 		enum OP_ID mode, struct scope *scope)
 {
 	if (sym->flags.mut) {
-		if (backend_call(var_set)(sym->name, val, mode, scope->status))
+		if (backend_call(var_set)(&sym->backend_status, mode, val))
 			return 1;
 	} else {
 		if (sym->flags.is_init)
 			goto err_sym_is_immut;
 		if (mode != OP_ASSIGN)
 			goto err_unsupport_op;
-		if (backend_call(var_immut_init)(sym->name, val,
-					scope->status))
+		if (backend_call(var_immut_init)(&sym->backend_status, val))
 			return 1;
 	}
 	sym->flags.is_init = 1;
@@ -55,24 +51,6 @@ err_sym_is_immut:
 err_unsupport_op:
 	printf("amc: identifier_assign_backend_call: "
 			"Unsupport operator for immutable identifier!\n");
-	return 1;
-}
-
-int let_check_defined(struct file *f, str *name, struct scope *scope)
-{
-	char *err_msg;
-	struct symbol *sym;
-	if (symbol_find_in_group_in_scope(name, &sym, scope, SYMG_SYM))
-		goto err_sym_defined;
-	return 0;
-err_sym_defined:
-	err_msg = str2chr(name->s, name->len);
-	printf("amc: let_check_defined: %lld,%lld: Symbol defined!\n"
-			"| Token: \"%s\"\n",
-			f->cur_line, f->cur_column,
-			err_msg);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	free(err_msg);
 	return 1;
 }
 
@@ -111,7 +89,10 @@ int let_init_constructor(struct file *f, struct symbol *sym,
 		file_line_next(f);
 	switch (sym->result_type.type) {
 	case YZ_ARRAY:
-		return array_structure(f, sym, scope);
+		return constructor_array(f, sym, scope);
+		break;
+	case YZ_STRUCT:
+		return constructor_struct(f, sym, scope);
 		break;
 	default:
 		return 1;
@@ -131,11 +112,11 @@ int let_init_null(struct file *f, struct symbol *sym, struct scope *scope)
 		goto err_identifier_cannot_be_null;
 	name = str2chr(sym->name, sym->name_len);
 	if (sym->flags.mut) {
-		if (backend_call(var_set)(name, &val, OP_ASSIGN,
-					scope->status))
+		if (backend_call(var_set)(&sym->backend_status, OP_ASSIGN,
+					&val))
 			goto err_free_name;
 	} else {
-		if (backend_call(var_immut_init)(name, &val, scope->status))
+		if (backend_call(var_immut_init)(&sym->backend_status, &val))
 			goto err_free_name;
 	}
 	free(name);
@@ -166,88 +147,27 @@ int let_init_val(struct file *f, struct symbol *sym, struct scope *scope)
 	return keyword_end(f);
 }
 
-int let_read_def(struct file *f, str *name)
+int let_reg_sym(struct file *f, struct symbol *sym, struct scope *scope)
 {
-	char *err_msg;
-	int mut = 0;
-	i64 orig_column = f->cur_column,
-	    orig_line = f->cur_line;
-	if (token_next(name, f))
-		return 2;
-	if (name->len == 3 && strncmp(name->s, "mut", 3) == 0) {
-		name->len = 0;
-		if (token_next(name, f))
-			return 2;
-		mut = 1;
-	}
-	if (name->s[name->len - 1] != ':')
-		goto err_type_indicator_not_found;
-	name->len -= 1;
-	return mut;
-err_type_indicator_not_found:
-	err_msg = str2chr(name->s, name->len);
-	printf("amc: let_read_def: %lld,%lld: Type indicator not found!\n"
-			"| Name(Token): \"%s\"\n",
-			orig_line, orig_column,
-			err_msg),
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	free(err_msg);
-	return 2;
-}
-
-int let_read_def_type(struct file *f, yz_val *type)
-{
-	i64 orig_column = f->cur_column,
-	    orig_line = f->cur_line;
-	int ret = 0;
-	if ((ret = parse_type(f, type)) > 0)
-		goto err_unsupport_type;
-	return ret;
-err_unsupport_type:
-	printf("amc: parse_let: %lld,%lld: Unsupport type!\n",
-			orig_line, orig_column);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
-}
-
-struct symbol *let_reg_sym(struct file *f, str *name, int can_null, int mut,
-		struct scope *scope)
-{
-	struct symbol *result = NULL;
-	if (let_check_defined(f, name, scope))
-		return NULL;
-	result = calloc(1, sizeof(*result));
-	result->argc = 1;
-	result->args = NULL;
-	result->name = str2chr(name->s, name->len);
-	result->name_len = name->len;
-	result->flags.can_null = can_null;
-	result->flags.mut = mut;
-	result->parse_function = NULL;
-	if (symbol_register(result, &scope->sym_groups[SYMG_SYM]))
+	sym->argc = 1;
+	if (symbol_register(sym, &scope->sym_groups[SYMG_SYM]))
 		goto err_cannot_register_sym;
-	return result;
+	return 0;
 err_cannot_register_sym:
 	printf("amc: let_reg_sym: %lld,%lld: Cannot register symbol!\n",
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
-	free_safe(result);
-	return NULL;
+	return 1;
 }
 
 int parse_let(struct file *f, struct symbol *sym, struct scope *scope)
 {
-	int can_null = 0, mut = 0;
-	str name_tok = TOKEN_NEW;
-	yz_val type = {};
 	struct symbol *result = NULL;
-	if ((mut = let_read_def(f, &name_tok)) > 1)
-		return 1;
-	if ((can_null = let_read_def_type(f, &type)) > 0)
-		return 1;
-	if ((result = let_reg_sym(f, &name_tok, can_null, mut, scope)) == NULL)
-		return 1;
-	result->result_type = type;
+	result = calloc(1, sizeof(*result));
+	if (parse_type_name_pair(f, result, scope))
+		goto err_free_result;
+	if (let_reg_sym(f, result, scope))
+		goto err_free_result;
 	if (f->src[f->pos] == '\n')
 		return file_line_next(f);
 	if (parse_comment(f))
@@ -258,6 +178,8 @@ int parse_let(struct file *f, struct symbol *sym, struct scope *scope)
 err_syntax_err:
 	printf("amc: parse_let: %lld,%lld: Syntax error!\n",
 			f->cur_line, f->cur_column);
+err_free_result:
+	symbol_free(result);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
@@ -319,8 +241,6 @@ yz_val *identifier_expr_val_handle(struct expr **e, yz_val *type)
 		goto err_get_type;
 	return val;
 err_get_type:
-	printf("|< amc: let_expr_val_handle\n");
-	backend_stop(BE_STOP_SIGNAL_ERR);
 	return NULL;
 }
 
@@ -337,6 +257,12 @@ int identifier_read(struct file *f, yz_val *val, struct scope *scope)
 	val->v = sym;
 	if (f->src[f->pos] == '[')
 		return array_get_elem(f, val, scope);
+	if (f->src[f->pos] == '.') {
+		if (sym->result_type.type != YZ_STRUCT)
+			goto err_syntax_err;
+		return struct_get_elem(f, val, scope);
+	}
+	file_skip_space(f);
 	return 0;
 err_identifier_not_found:
 	err_msg = str2chr(token.s, token.len);
@@ -345,5 +271,15 @@ err_identifier_not_found:
 			f->cur_line, f->cur_column,
 			err_msg);
 	free(err_msg);
-	return 2;
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 1;
+err_syntax_err:
+	err_msg = str2chr(token.s, token.len);
+	printf("amc: identifier_read: %lld,%lld: "
+			"Identifier: '%s' not struct!\n",
+			f->cur_line, f->cur_column,
+			err_msg);
+	free(err_msg);
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 1;
 }

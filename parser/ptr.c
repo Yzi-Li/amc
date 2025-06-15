@@ -3,7 +3,7 @@
 #include "../include/ptr.h"
 #include <stdlib.h>
 
-int parse_type_ptr(struct file *f, yz_val *ptr)
+int parse_type_ptr(struct file *f, yz_val *ptr, struct scope *scope)
 {
 	yz_ptr *box = NULL;
 	file_pos_next(f);
@@ -11,7 +11,7 @@ int parse_type_ptr(struct file *f, yz_val *ptr)
 	box = malloc(sizeof(yz_ptr));
 	ptr->type = YZ_PTR;
 	ptr->v = box;
-	if (parse_type(f, &box->ref))
+	if (parse_type(f, &box->ref, scope))
 		return 1;
 	if (f->src[f->pos] == '?') {
 		file_pos_next(f);

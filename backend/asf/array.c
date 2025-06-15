@@ -106,26 +106,20 @@ int array_get_elem_from_sym(struct asf_stack_element *base, struct symbol *sym)
 {
 	enum ASF_REGS dest = ASF_REG_RAX;
 	struct object_node *node = NULL;
-	struct asf_stack_element *src = NULL;
 	if (sym->args == NULL && sym->argc > 1) {
 		if (sym->argc - 2 > asf_call_arg_regs_len)
 			return 1;
 		return array_get_elem_from_reg(base,
 				asf_call_arg_regs[sym->argc - 2]);
 	} else if (sym->args == NULL && sym->argc == 1) {
-		if ((src = asf_identifier_get(sym->name)) == NULL)
-			goto err_identifier_not_found;
 		node = malloc(sizeof(*node));
 		if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 			goto err_free_node;
-		if ((node->s = asf_inst_mov(ASF_MOV_M2R, src, &dest)) == NULL)
+		if ((node->s = asf_inst_mov(ASF_MOV_M2R, sym->backend_status,
+						&dest)) == NULL)
 			goto err_inst_failed;
 	}
 	return array_get_elem_from_reg(base, ASF_REG_RAX);
-err_identifier_not_found:
-	printf("amc[backend.asf:%s]: array_get_elem_from_sym: "
-			"Identifier: \"%s\" not found!\n", sym->name, __FILE__);
-	return 1;
 err_inst_failed:
 	printf("amc[backend.asf:%s]: array_get_elem_from_sym: "
 			"Instruction failed!\n", __FILE__);
@@ -134,14 +128,13 @@ err_free_node:
 	return 1;
 }
 
-int asf_array_def(char *name, yz_val **vs, int len,
-		backend_scope_status *raw_status)
+int asf_array_def(backend_symbol_status **raw_sym_stat, yz_val **vs, int len)
 {
 	for (int i = len - 1; i != -1; i--) {
 		if (array_elem_push(vs[i]))
 			return 1;
 	}
-	if (asf_identifier_reg(name, asf_stack_top, raw_status))
+	if (asf_identifier_reg(raw_sym_stat, asf_stack_top))
 		goto err_identifier_reg_failed;
 	return 0;
 err_identifier_reg_failed:
@@ -150,10 +143,10 @@ err_identifier_reg_failed:
 	return 1;
 }
 
-int asf_array_get_elem(char *name, yz_val *offset)
+int asf_array_get_elem(backend_symbol_status *raw_sym_stat, yz_val *offset)
 {
 	struct asf_stack_element *base = NULL;
-	if ((base = asf_identifier_get(name)) == NULL)
+	if ((base = raw_sym_stat) == NULL)
 		goto err_identifier_not_found;
 	if (offset->type == AMC_SYM) {
 		return array_get_elem_from_sym(base, offset->v);

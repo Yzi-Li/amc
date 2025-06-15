@@ -29,6 +29,7 @@ BE_ASF_SRC =\
 	register.c\
 	scope.c\
 	stack.c\
+	struct.c\
 	suffix.c
 
 BACKEND_SRC += $(addprefix asf/, $(BE_ASF_SRC))

@@ -36,11 +36,11 @@ static int func_def_check_main(const char *name, int len);
 static int func_def_end_scope(struct symbol *fn, struct scope *scope);
 static int func_def_main(struct file *f, struct scope *fn_scope);
 static int func_def_read_arg(const char *se, struct file *f, void *data);
-static int func_def_read_arg_name(const char *se, struct file *f, str *name);
 static int func_def_read_args(struct file *f, struct symbol *fn,
 		struct scope *scope);
 static int func_def_read_name(struct file *f, struct symbol *fn);
-static int func_def_read_type(struct file *f, struct symbol *sym);
+static int func_def_read_type(struct file *f, struct symbol *sym,
+		struct scope *scope);
 static int func_ret_get_val(yz_val *val, struct symbol *fn, struct expr *expr);
 
 yz_val *func_call_arg_handle(struct expr *expr, struct symbol *arg)
@@ -231,16 +231,11 @@ err_free_fn:
 
 int func_def_read_arg(const char *se, struct file *f, void *data)
 {
-	str name = TOKEN_NEW;
 	struct symbol *sym = NULL;
 	struct scope *scope = data;
-	if (func_def_read_arg_name(se, f, &name))
-		return 1;
 	sym = calloc(1, sizeof(*sym));
-	if (func_def_read_type(f, sym))
-		goto err_unsupport_type;
-	sym->name = str2chr(name.s, name.len);
-	sym->name_len = name.len;
+	if (parse_type_name_pair(f, sym, scope))
+		goto err_free_sym;
 	sym->parse_function = NULL;
 	sym->argc = 2 + scope->fn->argc;
 	sym->args = NULL;
@@ -249,27 +244,9 @@ int func_def_read_arg(const char *se, struct file *f, void *data)
 	if (symbol_args_append(scope->fn, sym))
 		goto err_free_sym;
 	return token_list_elem_end(',', f);
-err_unsupport_type:
-	printf("amc: func_def_reg_arg: Unsupport type!\n");
 err_free_sym:
 	free_safe(sym);
 	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
-}
-
-int func_def_read_arg_name(const char *se, struct file *f, str *name)
-{
-	char *end = NULL;
-	if ((end = token_read_before(" :\n\t,)", name, f)) == NULL)
-		goto err_read_token_failed;
-	file_skip_space(f);
-	keyword_end(f);
-	file_skip_space(f);
-	if (f->src[f->pos] != ':')
-		return 1;
-	return 0;
-err_read_token_failed:
-	printf("amc: func_def_read_arg_name: Read name failed!\n");
 	return 1;
 }
 
@@ -319,14 +296,14 @@ err_eof:
 	return 1;
 }
 
-int func_def_read_type(struct file *f, struct symbol *sym)
+int func_def_read_type(struct file *f, struct symbol *sym, struct scope *scope)
 {
 	int ret = 0;
 	if (f->src[f->pos] != ':')
 		return 1;
 	file_pos_next(f);
 	file_skip_space(f);
-	if ((ret = parse_type(f, &sym->result_type)) > 0)
+	if ((ret = parse_type(f, &sym->result_type, scope)) > 0)
 		goto err_cannot_get_type;
 	if (ret == -1)
 		sym->flags.can_null = 1;
@@ -412,7 +389,7 @@ int parse_func_def(struct file *f, struct symbol *sym, struct scope *scope)
 		return func_def_main(f, &fn_scope);
 	if (f->src[f->pos] != ':' && func_def_read_args(f, result, &fn_scope))
 		goto err_free_result;
-	if (func_def_read_type(f, result))
+	if (func_def_read_type(f, result, &fn_scope))
 		goto err_free_result;
 	result->flags.in_block = 1;
 	result->parse_function = parse_func_call;
