@@ -73,9 +73,7 @@ int op_check_is_identifier(yz_val *v)
 	if (v->type != AMC_SYM)
 		goto err_val_not_identifier;
 	sym = v->v;
-	if (sym->args != NULL)
-		goto err_val_not_identifier;
-	if (sym->args == NULL && sym->argc == 0)
+	if (sym->type != SYM_IDENTIFIER)
 		goto err_val_not_identifier;
 	return 1;
 err_val_not_identifier:

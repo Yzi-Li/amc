@@ -20,6 +20,14 @@ enum SYMG {
 
 #define SYM_GROUPS_SIZE 2
 
+enum SYM_TYPE {
+	SYM_FUNC,
+	SYM_FUNC_ARG,
+	SYM_IDENTIFIER,
+	SYM_KEYWORD,
+	SYM_STRUCT_ELEM
+};
+
 struct symbol_flag {
 	unsigned int can_null:1,
 	             only_declaration:1,
@@ -37,19 +45,14 @@ struct symbol {
 	int (*parse_function)(struct file *f, struct symbol *sym,
 			struct scope *scope);
 	struct symbol_flag flags;
+	enum SYM_TYPE type;
 
-/**
- * if args == NULL and argc == 1 =>
- *   symbol is identifier.
- * if args == NULL and argc > 1 =>
- *   func_args[argc - 2] is argument.
- */
 	u8 argc;
 	yz_val result_type;
 	struct symbol **args;
 
-	struct hooks *hooks;
 	backend_symbol_status *backend_status;
+	struct hooks *hooks;
 };
 
 struct symbol_group {

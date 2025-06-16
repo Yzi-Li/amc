@@ -5,6 +5,7 @@
 #include "include/stack.h"
 #include "include/suffix.h"
 #include "../../include/ptr.h"
+#include "../../include/symbol.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -15,12 +16,12 @@ int op_ptr_extract_get_addr(enum ASF_REGS *dest, struct symbol *sym)
 {
 	struct object_node *node = NULL;
 	struct asf_stack_element *src = NULL;
-	if (sym->args == NULL && sym->argc == 0)
+	if (sym->type == SYM_FUNC)
 		return 1;
-	if (sym->args == NULL && sym->argc > 1) {
-		if (sym->argc - 2 > asf_call_arg_regs_len)
+	if (sym->type == SYM_FUNC_ARG) {
+		if (sym->argc > asf_call_arg_regs_len)
 			return 1;
-		*dest = asf_call_arg_regs[sym->argc - 2];
+		*dest = asf_call_arg_regs[sym->argc];
 		return 0;
 	}
 	node = malloc(sizeof(*node));

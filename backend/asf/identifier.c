@@ -1,41 +1,33 @@
 #include "include/asf.h"
-#include "include/call.h"
 #include "include/identifier.h"
 #include "include/imm.h"
 #include "include/mov.h"
 #include "include/op.h"
 #include "include/register.h"
 #include "include/stack.h"
-#include "../../include/symbol.h"
+#include "include/val.h"
 #include "../../include/backend/object.h"
 #include <stdlib.h>
 #include <string.h>
 
-
 static int identifier_change_get_op_inst(struct object_node *parent,
 		enum ASF_REGS src, int is_unsigned, enum OP_ID mode);
-static int identifier_change_save_reg(struct object_node *parent,
-		enum ASF_REGS src, enum ASF_REGS *dest);
-static int identifier_change_val_from_reg(struct asf_stack_element *dest,
-		enum OP_ID mode, enum ASF_REGS src, int is_unsigned);
-static int identifier_change_val_from_mem(struct asf_stack_element *dest,
-		enum OP_ID mode, struct asf_stack_element *src);
 static int identifier_change_val_from_imm(struct asf_stack_element *dest,
 		enum OP_ID mode, struct asf_imm *imm);
-static int identifier_get_val(enum ASF_MOV_TYPE mode, enum ASF_REGS dest,
-		void *src);
-static str *identifier_set_arr(struct asf_stack_element *dest, enum OP_ID mode,
-		yz_array *arr);
-static str *identifier_set_expr(struct asf_stack_element *dest,
-		enum OP_ID mode, struct expr *src);
-static str *identifier_set_identifier(struct asf_stack_element *dest,
-		enum OP_ID mode, struct symbol *src);
+static int identifier_change_val_from_mem(struct asf_stack_element *dest,
+		enum OP_ID mode, struct asf_stack_element *src);
+static int identifier_change_val_from_reg(struct asf_stack_element *dest,
+		enum OP_ID mode, enum ASF_REGS src, int is_unsigned);
+static int identifier_get_val(enum ASF_MOV_TYPE mode, void *src,
+		enum ASF_REGS dest);
+static str *identifier_set_const(struct asf_stack_element *dest,
+		enum OP_ID mode, int src);
 static str *identifier_set_imm(struct asf_stack_element *dest, enum OP_ID mode,
-		yz_val *src);
-static str *identifier_set_null(struct asf_stack_element *dest,
-		enum OP_ID mode, yz_val *src);
-static str *identifier_set_sym(struct asf_stack_element *dest, enum OP_ID mode,
-		struct symbol *src);
+		struct asf_imm *src);
+static str *identifier_set_mem(struct asf_stack_element *dest,
+		enum OP_ID mode, struct asf_stack_element *src);
+static str *identifier_set_reg(struct asf_stack_element *dest,
+		enum OP_ID mode, enum ASF_REGS src);
 static str *identifier_set(struct asf_stack_element *dest, enum OP_ID mode,
 		yz_val *src);
 
@@ -77,48 +69,15 @@ err_free_node:
 	return 1;
 }
 
-int identifier_change_save_reg(struct object_node *parent, enum ASF_REGS src,
-		enum ASF_REGS *dest)
+int identifier_change_val_from_imm(struct asf_stack_element *dest,
+		enum OP_ID mode, struct asf_imm *imm)
 {
-	struct object_node *node = NULL;
-	*dest = ASF_REG_RBX + asf_reg_get(asf_regs[src].bytes);
-	node = malloc(sizeof(*node));
-	if (object_insert(node, parent->prev, parent))
-		goto err_free_node;
-	if ((node->s = asf_inst_mov(ASF_MOV_R2R, &src, dest)) == NULL)
-		goto err_inst_failed;
-	return 0;
-err_inst_failed:
-	printf("amc[backend.asf]: change_val_from_reg: "
-			"Get instruction failed!\n");
-err_free_node:
-	free(node);
-	return 1;
-}
-
-int identifier_change_val_from_reg(struct asf_stack_element *dest,
-		enum OP_ID mode, enum ASF_REGS src, int is_unsigned)
-{
-	enum ASF_REGS tmp = ASF_REG_RAX;
-	struct object_node *node = NULL;
-	tmp = asf_reg_get(asf_regs[src].bytes);
-	node = malloc(sizeof(*node));
-	if (object_insert(node, objs[cur_obj][ASF_OBJ_TEXT].last->prev,
-				objs[cur_obj][ASF_OBJ_TEXT].last))
-		goto err_free_node;
-	if (*asf_regs[tmp].purpose != ASF_REG_PURPOSE_NULL || src == tmp)
-		if (identifier_change_save_reg(node, tmp, &src))
-			return 1;
-	if ((node->s = asf_inst_mov(ASF_MOV_M2R, dest, &tmp)) == NULL)
-		goto err_inst_failed;
-	return identifier_change_get_op_inst(node->next, src, is_unsigned,
-			mode);
-err_inst_failed:
-	printf("amc[backend.asf]: change_val_from_reg: "
-			"Get instruction failed!\n");
-err_free_node:
-	free(node);
-	return 1;
+	enum ASF_REGS tmp = ASF_REG_RBX;
+	tmp += asf_reg_get(imm->type);
+	if (identifier_get_val(ASF_MOV_I2R, imm, tmp))
+		return 1;
+	return identifier_change_val_from_reg(dest, mode, tmp,
+			imm->type > ASF_BYTES_U_OFFSET);
 }
 
 int identifier_change_val_from_mem(struct asf_stack_element *dest,
@@ -128,26 +87,27 @@ int identifier_change_val_from_mem(struct asf_stack_element *dest,
 	base = asf_reg_get(src->bytes);
 	dest += base;
 	tmp += base;
-	if (identifier_get_val(ASF_MOV_M2R, tmp, src))
+	if (identifier_get_val(ASF_MOV_M2R, src, tmp))
 		return 1;
 	return identifier_change_val_from_reg(dest, mode, tmp,
 			src->bytes > ASF_BYTES_U_OFFSET);
 }
 
-int identifier_change_val_from_imm(struct asf_stack_element *dest,
-		enum OP_ID mode, struct asf_imm *imm)
+int identifier_change_val_from_reg(struct asf_stack_element *dest,
+		enum OP_ID mode, enum ASF_REGS src, int is_unsigned)
 {
-	enum ASF_REGS tmp = ASF_REG_RBX;
-	tmp += asf_reg_get(imm->type);
-	if (identifier_get_val(ASF_MOV_I2R, tmp, imm))
+	enum ASF_REGS tmp = ASF_REG_RAX;
+	tmp = asf_reg_get(asf_regs[src].bytes);
+	if (identifier_get_val(ASF_MOV_M2R, dest, tmp))
 		return 1;
-	return identifier_change_val_from_reg(dest, mode, tmp,
-			imm->type > ASF_BYTES_U_OFFSET);
+	return identifier_change_get_op_inst(objs[cur_obj][ASF_OBJ_TEXT].last,
+			src, is_unsigned, mode);
 }
 
-int identifier_get_val(enum ASF_MOV_TYPE mode, enum ASF_REGS dest, void *src)
+int identifier_get_val(enum ASF_MOV_TYPE mode, void *src, enum ASF_REGS dest)
 {
-	struct object_node *node = malloc(sizeof(*node));
+	struct object_node *node = NULL;
+	node = malloc(sizeof(*node));
 	if (object_insert(node, objs[cur_obj][ASF_OBJ_TEXT].last->prev,
 				objs[cur_obj][ASF_OBJ_TEXT].last))
 		goto err_free_node;
@@ -162,85 +122,43 @@ err_free_node:
 	return 1;
 }
 
-str *identifier_set_arr(struct asf_stack_element *dest, enum OP_ID mode,
-		yz_array *arr)
+str *identifier_set_const(struct asf_stack_element *dest, enum OP_ID mode,
+		int src)
 {
-	if (arr->type.type != YZ_CHAR)
+	return asf_inst_mov(ASF_MOV_C2M, &src, dest);
+}
+
+str *identifier_set_imm(struct asf_stack_element *dest, enum OP_ID mode,
+		struct asf_imm *src)
+{
+	enum ASF_REGS reg = ASF_REG_RAX;
+	if (mode == OP_ASSIGN)
+		return asf_inst_mov(ASF_MOV_I2M, src, dest);
+	if (identifier_change_val_from_imm(dest, mode, src))
 		return NULL;
-	return asf_inst_mov(ASF_MOV_C2M, &arr->type.i, dest);
+	reg = asf_reg_get(src->type);
+	return asf_inst_mov(ASF_MOV_R2M, &reg, dest);
 }
 
-str *identifier_set_expr(struct asf_stack_element *dest, enum OP_ID mode,
-		struct expr *expr)
-{
-	enum ASF_BYTES bytes = asf_yz_type_raw2bytes(*expr->sum_type);
-	enum ASF_REGS src = asf_reg_get(bytes);
-	if (mode != OP_ASSIGN)
-		if (identifier_change_val_from_reg(dest, mode, src,
-					bytes > ASF_BYTES_U_OFFSET))
-			return NULL;
-	return asf_inst_mov(ASF_MOV_R2M, &src, dest);
-}
-
-str *identifier_set_identifier(struct asf_stack_element *dest, enum OP_ID mode,
-		struct symbol *src)
+str *identifier_set_mem(struct asf_stack_element *dest, enum OP_ID mode,
+		struct asf_stack_element *src)
 {
 	enum ASF_REGS src_reg = ASF_REG_RAX;
 	if (mode != OP_ASSIGN) {
 		src_reg = asf_reg_get(dest->bytes);
-		if (identifier_change_val_from_mem(dest, mode,
-					src->backend_status))
+		if (identifier_change_val_from_mem(dest, mode, src))
 			return NULL;
 		return asf_inst_mov(ASF_MOV_R2M, &src_reg, dest);
 	}
-	return asf_inst_mov(ASF_MOV_M2M, src->backend_status, dest);
+	return asf_inst_mov(ASF_MOV_M2M, src, dest);
 }
 
-str *identifier_set_imm(struct asf_stack_element *dest, enum OP_ID mode,
-		yz_val *val)
+str *identifier_set_reg(struct asf_stack_element *dest, enum OP_ID mode,
+		enum ASF_REGS src)
 {
-	struct asf_imm imm = {
-		.type = asf_yz_type_raw2bytes(val->type),
-		.iq = val->l
-	};
-	enum ASF_REGS src = ASF_REG_RAX;
-	if (mode == OP_ASSIGN)
-		return asf_inst_mov(ASF_MOV_I2M, &imm, dest);
-	if (identifier_change_val_from_imm(dest, mode, &imm))
-		return NULL;
-	src = asf_reg_get(imm.type);
-	return asf_inst_mov(ASF_MOV_R2M, &src, dest);
-}
-
-str *identifier_set_null(struct asf_stack_element *dest, enum OP_ID mode,
-		yz_val *val)
-{
-	struct asf_imm imm = {
-		.type = ASF_BYTES_U64,
-		.iq = 0
-	};
-	if (mode != OP_ASSIGN)
-		return NULL;
-	return asf_inst_mov(ASF_MOV_I2M, &imm, dest);
-}
-
-str *identifier_set_sym(struct asf_stack_element *dest, enum OP_ID mode,
-		struct symbol *sym)
-{
-	enum ASF_BYTES bytes = asf_yz_type2bytes(&sym->result_type);
-	enum ASF_REGS src = asf_reg_get(bytes);
-	if (sym->args == NULL && sym->argc == 1)
-		return identifier_set_identifier(dest, mode, sym);
-	if (sym->args == NULL && sym->argc > 1) {
-		if (sym->argc - 2 > asf_call_arg_regs_len)
-			return NULL;
-		src += asf_call_arg_regs[sym->argc - 2];
-	}
 	if (mode != OP_ASSIGN) {
-		if (identifier_change_val_from_reg(dest, mode, src,
-					bytes > ASF_BYTES_U_OFFSET))
+		if (identifier_change_val_from_reg(dest, mode, src, 0))
 			return NULL;
-		src = asf_reg_get(asf_regs[src].bytes);
 	}
 	return asf_inst_mov(ASF_MOV_R2M, &src, dest);
 }
@@ -248,17 +166,19 @@ str *identifier_set_sym(struct asf_stack_element *dest, enum OP_ID mode,
 str *identifier_set(struct asf_stack_element *dest, enum OP_ID mode,
 		yz_val *src)
 {
-	if (src->type == AMC_EXPR) {
-		return identifier_set_expr(dest, mode, src->v);
-	} else if (src->type == AMC_SYM) {
-		return identifier_set_sym(dest, mode, src->v);
-	} else if (src->type == YZ_NULL) {
-		return identifier_set_null(dest, mode, src);
-	} else if (src->type == YZ_ARRAY) {
-		return identifier_set_arr(dest, mode, src->v);
-	} else if (YZ_IS_DIGIT(src->type)) {
-		return identifier_set_imm(dest, mode, src);
+	struct asf_val val = {};
+	if (asf_val_get(src, &val))
+		goto err_unsupport_type;
+	if (val.type == ASF_VAL_CONST) {
+		return identifier_set_const(dest, mode, val.const_id);
+	} else if (val.type == ASF_VAL_IMM) {
+		return identifier_set_imm(dest, mode, &val.imm);
+	} else if (val.type == ASF_VAL_MEM) {
+		return identifier_set_mem(dest, mode, val.mem);
+	} else if (val.type == ASF_VAL_REG) {
+		return identifier_set_reg(dest, mode, val.reg);
 	}
+err_unsupport_type:
 	printf("amc[backend.asf:%s]: identifier_set: Unsupport type: \"%s\"\n",
 			__FILE__, yz_get_type_name(src));
 	return NULL;

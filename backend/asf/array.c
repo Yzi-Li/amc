@@ -1,21 +1,21 @@
 #include "include/asf.h"
-#include "include/call.h"
 #include "include/identifier.h"
 #include "include/mov.h"
 #include "include/stack.h"
 #include "include/suffix.h"
+#include "include/val.h"
 #include "../../include/backend/object.h"
 #include <stdlib.h>
 #include <string.h>
 
 static int array_elem_push(yz_val *val);
 static int array_elem_push_empty(yz_val *type);
-static int array_get_elem_from_imm(struct asf_stack_element *base,
-		yz_val *val);
-static int array_get_elem_from_reg(struct asf_stack_element *base,
+static str *array_get_elem_from_imm(struct asf_stack_element *base,
+		struct asf_imm *src);
+static str *array_get_elem_from_mem(struct asf_stack_element *base,
+		struct asf_stack_element *src);
+static str *array_get_elem_from_reg(struct asf_stack_element *base,
 		enum ASF_REGS src);
-static int array_get_elem_from_sym(struct asf_stack_element *base,
-		struct symbol *sym);
 
 int array_elem_push(yz_val *val)
 {
@@ -58,74 +58,51 @@ err_free_node:
 	return 1;
 }
 
-int array_get_elem_from_imm(struct asf_stack_element *base, yz_val *val)
+str *array_get_elem_from_imm(struct asf_stack_element *base,
+		struct asf_imm *src)
 {
 	enum ASF_REGS dest = asf_reg_get(base->bytes);
-	struct object_node *node = NULL;
 	int offset = 0;
+	str *s = str_new();
 	const char *temp = "mov%c -%lld(%%rbp), %%%s\n";
-	node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-		goto err_free_node;
-	node->s = str_new();
-	offset = base->bytes * val->l;
-	str_expand(node->s, strlen(temp) - 4 + ullen(offset));
-	snprintf(node->s->s, node->s->len, temp,
+	offset = base->bytes * src->iq;
+	str_expand(s, strlen(temp) - 4 + ullen(offset));
+	snprintf(s->s, s->len, temp,
 			asf_suffix_get(base->bytes),
 			base->addr - offset,
 			asf_regs[dest].name);
-	return 0;
-err_free_node:
-	free(node);
-	return 1;
+	return s;
 }
 
-int array_get_elem_from_reg(struct asf_stack_element *base, enum ASF_REGS src)
-{
-	enum ASF_REGS dest = asf_reg_get(base->bytes);
-	struct object_node *node = NULL;
-	const char *temp = "mov%c -%lld(%%rbp,%%%s,%lld), %%%s\n";
-	node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-		goto err_free_node;
-	node->s = str_new();
-	str_expand(node->s, strlen(temp) - 8 + ullen(base->addr));
-	snprintf(node->s->s, node->s->len, temp,
-			asf_suffix_get(base->bytes),
-			base->addr,
-			asf_regs[src].name,
-			base->bytes,
-			asf_regs[dest].name);
-	return 0;
-err_free_node:
-	free(node);
-	return 1;
-}
-
-int array_get_elem_from_sym(struct asf_stack_element *base, struct symbol *sym)
+str *array_get_elem_from_mem(struct asf_stack_element *base,
+		struct asf_stack_element *src)
 {
 	enum ASF_REGS dest = ASF_REG_RAX;
 	struct object_node *node = NULL;
-	if (sym->args == NULL && sym->argc > 1) {
-		if (sym->argc - 2 > asf_call_arg_regs_len)
-			return 1;
-		return array_get_elem_from_reg(base,
-				asf_call_arg_regs[sym->argc - 2]);
-	} else if (sym->args == NULL && sym->argc == 1) {
-		node = malloc(sizeof(*node));
-		if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-			goto err_free_node;
-		if ((node->s = asf_inst_mov(ASF_MOV_M2R, sym->backend_status,
-						&dest)) == NULL)
-			goto err_inst_failed;
-	}
-	return array_get_elem_from_reg(base, ASF_REG_RAX);
-err_inst_failed:
-	printf("amc[backend.asf:%s]: array_get_elem_from_sym: "
-			"Instruction failed!\n", __FILE__);
+	node = malloc(sizeof(*node));
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+		goto err_free_node;
+	if ((node->s = asf_inst_mov(ASF_MOV_M2R, src, &dest)) == NULL)
+		goto err_free_node;
+	return array_get_elem_from_reg(base, dest);
 err_free_node:
 	free(node);
-	return 1;
+	return NULL;
+}
+
+str *array_get_elem_from_reg(struct asf_stack_element *base, enum ASF_REGS src)
+{
+	enum ASF_REGS dest = asf_reg_get(base->bytes);
+	str *s = str_new();
+	const char *temp = "mov%c -%lld(%%rbp,%%%s,%lld), %%%s\n";
+	str_expand(s, strlen(temp) - 8 + ullen(base->addr));
+	snprintf(s->s, s->len, temp,
+			asf_suffix_get(base->bytes),
+			base->addr,
+			asf_regs[src - asf_reg_get(asf_regs[src].bytes)].name,
+			base->bytes,
+			asf_regs[dest].name);
+	return s;
 }
 
 int asf_array_def(backend_symbol_status **raw_sym_stat, yz_val **vs, int len)
@@ -146,18 +123,38 @@ err_identifier_reg_failed:
 int asf_array_get_elem(backend_symbol_status *raw_sym_stat, yz_val *offset)
 {
 	struct asf_stack_element *base = NULL;
+	struct object_node *node = NULL;
+	struct asf_val val = {};
 	if ((base = raw_sym_stat) == NULL)
 		goto err_identifier_not_found;
-	if (offset->type == AMC_SYM) {
-		return array_get_elem_from_sym(base, offset->v);
-	} else if (offset->type == AMC_EXPR) {
-		return array_get_elem_from_reg(base, ASF_REG_RAX);
-	} else if (YZ_IS_DIGIT(offset->type)) {
-		return array_get_elem_from_imm(base, offset);
+	if (asf_val_get(offset, &val))
+		return 1;
+	node = malloc(sizeof(*node));
+	if (val.type == ASF_VAL_IMM) {
+		if ((node->s = array_get_elem_from_imm(base, &val.imm))
+				== NULL)
+			goto err_inst_failed;
+	} else if (val.type == ASF_VAL_MEM) {
+		if ((node->s = array_get_elem_from_mem(base, val.mem)) == NULL)
+			goto err_inst_failed;
+	} else if (val.type == ASF_VAL_REG) {
+		if ((node->s = array_get_elem_from_reg(base, val.reg)) == NULL)
+			goto err_inst_failed;
 	}
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+		goto err_free_node_and_str;
 	return 0;
 err_identifier_not_found:
 	printf("amc[backend.asf]: asf_array_get_elem: "
 			"Identifier not found!\n");
 	return 1;
+err_inst_failed:
+	printf("amc[backend.asf]: asf_array_get_elem: "
+			"Get instruction failed!\n");
+err_free_node:
+	free(node);
+	return 1;
+err_free_node_and_str:
+	str_free(node->s);
+	goto err_free_node;
 }

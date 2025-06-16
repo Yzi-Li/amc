@@ -21,7 +21,6 @@ static int struct_def_read_name(struct file *f, str *name);
 static int struct_def_read_start(struct file *f, const char *name);
 static int struct_def_reg(yz_struct *src, struct scope *scope);
 static int struct_def_reg_elem(yz_struct *src, struct symbol *elem);
-static int struct_get_elem_handle_val(yz_val *val, struct symbol *elem);
 static int struct_get_elem_read_name(struct file *f, str *name);
 /**
  * @return: elem index.
@@ -44,6 +43,7 @@ int constructor_struct_elem(const char *se, struct file *f, void *data)
 					&src->elems[handle->index]
 					->result_type)) == NULL)
 		goto err_cannot_apply_expr;
+	src->elems[handle->index]->flags.is_init = 1;
 	handle->vs[handle->index] = val;
 	handle->index += 1;
 	return token_list_elem_end(',', f);
@@ -82,6 +82,7 @@ int struct_def_read_elem(struct file *f, yz_struct *src, struct scope *scope)
 	if (parse_comment(f))
 		return 0;
 	elem = calloc(1, sizeof(*elem));
+	elem->type = SYM_STRUCT_ELEM;
 	if (parse_type_name_pair(f, elem, scope))
 		goto err_free_elem;
 	if (struct_def_reg_elem(src, elem))
@@ -149,24 +150,6 @@ int struct_def_reg_elem(yz_struct *src, struct symbol *elem)
 	src->elems = realloc(src->elems, sizeof(*src->elems)
 			* src->elem_count);
 	src->elems[src->elem_count - 1] = elem;
-	return 0;
-}
-
-int struct_get_elem_handle_val(yz_val *val, struct symbol *elem)
-{
-	struct expr *expr = NULL;
-	expr = malloc(sizeof(*expr));
-	expr->vall = NULL;
-	expr->valr = malloc(sizeof(*expr->valr));
-	expr->valr->type = AMC_SYM;
-	expr->valr->v = elem;
-	expr->op = malloc(sizeof(*expr->op));
-	expr->op->id = OP_EXTRACT_VAL;
-	expr->op->priority = 0;
-	expr->op->sym = NULL;
-	expr->sum_type = &elem->result_type.type;
-	val->type = AMC_EXPR;
-	val->v = expr;
 	return 0;
 }
 
@@ -275,7 +258,7 @@ int struct_get_elem(struct file *f, yz_val *val, struct scope *scope)
 	struct symbol *sym = val->v;
 	yz_struct *src = sym->result_type.v;
 	str token = TOKEN_NEW;
-	if (sym->result_type.type != YZ_STRUCT)
+	if (sym->type != SYM_STRUCT_ELEM)
 		return 1;
 	if (struct_get_elem_read_name(f, &token))
 		goto err_print_pos;
@@ -283,7 +266,7 @@ int struct_get_elem(struct file *f, yz_val *val, struct scope *scope)
 		goto err_print_pos;
 	if (backend_call(struct_get_elem)(sym->backend_status, src, ret))
 		goto err_backend_failed;
-	return struct_get_elem_handle_val(val, src->elems[ret]);
+	return 0;
 err_print_pos:
 	printf("| struct_get_elem: %lld,%lld\n",
 			f->cur_line, f->cur_column);

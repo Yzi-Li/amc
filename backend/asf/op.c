@@ -161,7 +161,7 @@ str *op_get_vall_sym(struct object_node *parent, struct expr *e,
 {
 	enum ASF_REGS reg = ASF_REG_RAX;
 	struct symbol *src = e->vall->v;
-	if (src->args == NULL && src->argc > 0
+	if (src->type != SYM_FUNC
 			&& *asf_regs[dest].purpose != ASF_REG_PURPOSE_NULL
 			&& e->valr->type != AMC_EXPR
 			&& e->valr->type != AMC_SYM) {
@@ -169,12 +169,12 @@ str *op_get_vall_sym(struct object_node *parent, struct expr *e,
 			return NULL;
 	}
 	*asf_regs[dest].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
-	if (src->args == NULL && src->argc == 1)
+	if (src->type == SYM_IDENTIFIER)
 		return op_get_vall_identifier(parent, e->vall->v, dest);
-	if (src->args == NULL && src->argc > 1) {
-		if (src->argc - 2 > asf_call_arg_regs_len)
+	if (src->type == SYM_FUNC_ARG) {
+		if (src->argc > asf_call_arg_regs_len)
 			return NULL;
-		reg = asf_call_arg_regs[src->argc - 2]
+		reg = asf_call_arg_regs[src->argc]
 			+ asf_reg_get(asf_yz_type_raw2bytes(*e->sum_type));
 		return op_get_val_from_reg(parent, reg, dest);
 	}
@@ -192,16 +192,13 @@ str *op_get_valr_expr(struct object_node *parent, struct expr *src,
 
 str *op_get_valr_identifier(struct object_node *parent, struct symbol *src)
 {
-	char *name = str2chr(src->name, src->name_len);
 	struct asf_stack_element *identifier = src->backend_status;
 	if (identifier == NULL)
 		goto err_identifier_not_found;
-	free(name);
 	return asf_stack_get_element(identifier, 0);
 err_identifier_not_found:
 	printf("amc[backend.asf:%s]: op_get_valr_identifier: "
-			"Identifier not found: \"%s\"!\n", __FILE__, name);
-	free(name);
+			"Identifier not found: \"%s\"!\n", __FILE__, src->name);
 	return NULL;
 }
 
@@ -247,12 +244,12 @@ str *op_get_valr_sym(struct object_node *parent, struct expr *e,
 {
 	struct symbol *src = e->valr->v;
 	enum ASF_REGS reg = asf_reg_get(asf_yz_type2bytes(&src->result_type));
-	if (src->args == NULL && src->argc == 1)
+	if (src->type == SYM_IDENTIFIER)
 		return op_get_valr_identifier(parent, src);
-	if (src->args == NULL && src->argc > 1) {
-		if (src->argc - 2 > asf_call_arg_regs_len)
+	if (src->type == SYM_FUNC_ARG) {
+		if (src->argc > asf_call_arg_regs_len)
 			return NULL;
-		reg += asf_call_arg_regs[src->argc - 2];
+		reg += asf_call_arg_regs[src->argc];
 		return op_get_val_from_reg(parent, reg, dest);
 	}
 	if (e->vall->type != AMC_SYM)

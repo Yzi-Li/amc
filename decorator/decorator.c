@@ -1,8 +1,6 @@
 #include "../include/backend.h"
 #include "../include/decorator/decorator.h"
-#include "../include/symbol.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 static int dec_syscall(struct hook_callee *callee);
@@ -20,13 +18,6 @@ int dec_syscall(struct hook_callee *callee)
 	if (backend_call(syscall)(callee->args[0]->i))
 		goto err_backend_failed;
 	return 0;
-/*
-err_defined:
-	printf("amc: dec_syscall: Symbol: '%s' can "
-			"only be declared but not defined.\n",
-			sym->name);
-	return 1;
-*/
 err_arg_failed:
 	printf("amc: dec_syscall: Argument failed\n");
 	return 1;

@@ -6,5 +6,5 @@ fn write(fd: u32,
 fn main: i32 =>
 	let c: mut [char] = "Hello!"
 	c = "H"
-	[write 1, "Hello world!\n", 6]
+	[write 1, "Hello world!\n", 13]
 	ret 0

@@ -3,19 +3,33 @@
 #include "../utils/utils.h"
 #include <string.h>
 
+#define KW_DEF(NAME, NAME_LEN, PARSE_FUNC,            \
+		REC, TOPLEVEL, IN_BLOCK)              \
+	{                                             \
+		.name           = NAME,               \
+		.name_len       = NAME_LEN,           \
+		.parse_function = PARSE_FUNC,         \
+		.flags = {                            \
+			.can_null         = 0,        \
+			.only_declaration = 0,        \
+			.rec              = REC,      \
+			.toplevel         = TOPLEVEL, \
+			.in_block         = IN_BLOCK, \
+			.is_init          = 0,        \
+			.mut              = 0         \
+		}                                     \
+	}
+
 static struct symbol keywords[] = {
-	//{"const",  5, parse_const,  {0, 0, 0, 0, 1, 0}},
-	{"elif",   4, parse_elif,     {0, 0, 1, 0, 1, 0}},
-	{"else",   4, parse_else,     {0, 0, 1, 0, 1, 0}},
-	{"fn",     2, parse_func_def, {0, 0, 0, 1, 0, 0}},
-	//{"for",    3, parse_for,    {0, 0, 0, 0, 1, 0}},
-	{"if",     2, parse_if,       {0, 0, 1, 0, 1, 0}},
-	//{"import", 6, parse_import, {0, 0, 0, 1, 0, 0}},
-	{"let",    3, parse_let,      {0, 0, 0, 1, 1, 0}},
-	//{"module", 6, parse_module, {0, 0, 0, 1, 0, 0}},
-	{"ret",    3, parse_func_ret, {0, 0, 0, 0, 1, 0}},
-	{"struct", 6, parse_struct,   {0, 0, 0, 1, 1, 0}},
-	{"while",  5, parse_while,    {0, 0, 1, 0, 1, 0}},
+	KW_DEF("elif",   4, parse_elif,     1, 0, 1),
+	KW_DEF("elif",   4, parse_elif,     1, 0, 1),
+	KW_DEF("else",   4, parse_else,     1, 0, 1),
+	KW_DEF("fn",     2, parse_func_def, 0, 1, 0),
+	KW_DEF("if",     2, parse_if,       1, 0, 1),
+	KW_DEF("let",    3, parse_let,      0, 1, 1),
+	KW_DEF("ret",    3, parse_func_ret, 0, 0, 1),
+	KW_DEF("struct", 6, parse_struct,   0, 1, 1),
+	KW_DEF("while",  5, parse_while,    1, 0, 1),
 };
 
 int keyword_end(struct file *f)

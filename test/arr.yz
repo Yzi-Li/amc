@@ -5,4 +5,6 @@ fn main: i32 =>
 	let a: [i32, 3] = { 0, 1, 2 }
 	let b: u32 = 1
 	let c: i32 = a[0]
+	let d: i32 = a[b]
+	let e: i32 = a[[func 1]]
 	ret c

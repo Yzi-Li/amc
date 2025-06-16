@@ -5,8 +5,7 @@
 #include "include/stack.h"
 #include "include/suffix.h"
 #include "../../utils/utils.h"
-#include <stdint.h>
-#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 static str *mov_c2m(int src, struct asf_stack_element *dest);

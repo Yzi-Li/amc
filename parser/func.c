@@ -236,9 +236,10 @@ int func_def_read_arg(const char *se, struct file *f, void *data)
 	sym = calloc(1, sizeof(*sym));
 	if (parse_type_name_pair(f, sym, scope))
 		goto err_free_sym;
-	sym->parse_function = NULL;
 	sym->argc = 2 + scope->fn->argc;
 	sym->args = NULL;
+	sym->parse_function = NULL;
+	sym->type = SYM_FUNC_ARG;
 	if (symbol_register(sym, &scope->sym_groups[SYMG_SYM]))
 		goto err_free_sym;
 	if (symbol_args_append(scope->fn, sym))
@@ -392,8 +393,9 @@ int parse_func_def(struct file *f, struct symbol *sym, struct scope *scope)
 	if (func_def_read_type(f, result, &fn_scope))
 		goto err_free_result;
 	result->flags.in_block = 1;
-	result->parse_function = parse_func_call;
 	result->hooks = sym->hooks;
+	result->parse_function = parse_func_call;
+	result->type = SYM_FUNC;
 	if ((ret = func_def_block_start(f, result)) > 0)
 		goto err_free_result;
 	if (symbol_register(result, &scope->sym_groups[SYMG_FUNC]))
@@ -409,7 +411,7 @@ int parse_func_def(struct file *f, struct symbol *sym, struct scope *scope)
 	return func_def_end_scope(result, &fn_scope);
 err_free_result:
 	free_safe(result);
-	free(result->name);
+	free_safe(result->name);
 	return 1;
 }
 

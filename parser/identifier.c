@@ -17,8 +17,8 @@
 
 static int identifier_assign_backend_call(struct symbol *sym, yz_val *val,
 		enum OP_ID mode, struct scope *scope);
+static int identifier_handle_val_type(yz_val *src, yz_val *dest);
 static int let_check_val_type(yz_val *src, yz_val *dest);
-static int let_handle_val_type(yz_val *src, yz_val *dest);
 static int let_init_constructor(struct file *f, struct symbol *sym,
 		struct scope *scope);
 static int let_init_null(struct file *f, struct symbol *sym,
@@ -35,8 +35,6 @@ int identifier_assign_backend_call(struct symbol *sym, yz_val *val,
 		if (backend_call(var_set)(&sym->backend_status, mode, val))
 			return 1;
 	} else {
-		if (sym->flags.is_init)
-			goto err_sym_is_immut;
 		if (mode != OP_ASSIGN)
 			goto err_unsupport_op;
 		if (backend_call(var_immut_init)(&sym->backend_status, val))
@@ -44,14 +42,20 @@ int identifier_assign_backend_call(struct symbol *sym, yz_val *val,
 	}
 	sym->flags.is_init = 1;
 	return 0;
-err_sym_is_immut:
-	printf("amc: identifier_assign_backend_call: "
-			"Symbol: \"%s\" is immutable!\n", sym->name);
-	return 1;
 err_unsupport_op:
 	printf("amc: identifier_assign_backend_call: "
 			"Unsupport operator for immutable identifier!\n");
 	return 1;
+}
+
+int identifier_handle_val_type(yz_val *src, yz_val *dest)
+{
+	if (let_check_val_type(src, dest))
+		return 1;
+	if (!YZ_IS_DIGIT(src->type) || !YZ_IS_DIGIT(dest->type))
+		return 0;
+	src->type = dest->type;
+	return 0;
 }
 
 int let_check_val_type(yz_val *src, yz_val *dest)
@@ -68,16 +72,6 @@ err_wrong_type:
 			yz_get_type_name(src));
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
-}
-
-int let_handle_val_type(yz_val *src, yz_val *dest)
-{
-	if (let_check_val_type(src, dest))
-		return 1;
-	if (!YZ_IS_DIGIT(src->type) || !YZ_IS_DIGIT(dest->type))
-		return 0;
-	src->type = dest->type;
-	return 0;
 }
 
 int let_init_constructor(struct file *f, struct symbol *sym,
@@ -162,8 +156,8 @@ err_cannot_register_sym:
 
 int parse_let(struct file *f, struct symbol *sym, struct scope *scope)
 {
-	struct symbol *result = NULL;
-	result = calloc(1, sizeof(*result));
+	struct symbol *result = calloc(1, sizeof(*result));
+	result->type = SYM_IDENTIFIER;
 	if (parse_type_name_pair(f, result, scope))
 		goto err_free_result;
 	if (let_reg_sym(f, result, scope))
@@ -192,6 +186,8 @@ int identifier_assign_val(struct file *f, struct symbol *sym, enum OP_ID mode,
 	    orig_line = f->cur_line;
 	yz_val *val = NULL;
 	sym->flags.comptime_flag.checked_null = 0;
+	if (!sym->flags.mut && sym->flags.is_init)
+		goto err_sym_is_immut;
 	if (strncmp(CHR_NULL, &f->src[f->pos], strlen(CHR_NULL)) == 0)
 		return let_init_null(f, sym, scope);
 	if ((expr = parse_expr(f, 1, scope)) == NULL)
@@ -208,6 +204,11 @@ int identifier_assign_val(struct file *f, struct symbol *sym, enum OP_ID mode,
 	if (f->src[f->pos] == ']')
 		file_pos_next(f);
 	return 0;
+err_sym_is_immut:
+	printf("amc: identifier_assign_val: %lld,%lld: "
+			"Symbol: \"%s\" is immutable!\n",
+			orig_line, orig_column, sym->name);
+	return 1;
 err_cannot_parse_expr:
 	printf("| identifier_assign_val: %lld,%lld: Cannot parse expr!\n",
 			orig_line, orig_column);
@@ -230,14 +231,14 @@ yz_val *identifier_expr_val_handle(struct expr **e, yz_val *type)
 	yz_val *val = NULL;
 	if ((*e)->op == NULL && (*e)->valr == NULL) {
 		val = (*e)->vall;
-		if (let_handle_val_type(val, type))
+		if (identifier_handle_val_type(val, type))
 			goto err_get_type;
 		return val;
 	}
 	val = calloc(1, sizeof(*val));
 	val->type = AMC_EXPR;
 	val->v = *e;
-	if (let_handle_val_type(val, type))
+	if (identifier_handle_val_type(val, type))
 		goto err_get_type;
 	return val;
 err_get_type:
