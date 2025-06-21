@@ -1,11 +1,12 @@
 ; Must have a white space
 ;    here v
 struct Str =>
-	len: mut i32
-	siz: i32
-	;s: [char]
+	len: i32
+	siz: mut i32
+	s: mut *i32
 
 fn main: i32 =>
-	let test: Str = { 0, 1 }
+	let test: mut Str = { 0, 1, null }
 	let a: i32 = test.siz
+	test.siz += 1
 	ret 0

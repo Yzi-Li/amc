@@ -6,7 +6,9 @@
 #include "include/struct.h"
 #include "include/token.h"
 #include "include/type.h"
+#include "include/utils.h"
 #include "../include/backend.h"
+#include "../include/comptime/mut.h"
 #include "../include/token.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,11 +23,15 @@ static int struct_def_read_name(struct file *f, str *name);
 static int struct_def_read_start(struct file *f, const char *name);
 static int struct_def_reg(yz_struct *src, struct scope *scope);
 static int struct_def_reg_elem(yz_struct *src, struct symbol *elem);
+static int struct_get_elem_handle_val(yz_val *val, int index,
+		struct symbol *dest);
 static int struct_get_elem_read_name(struct file *f, str *name);
 /**
  * @return: elem index.
  */
 static int struct_get_elem_read_elem(str *name, yz_struct *src);
+static int struct_set_elem_backend_call(struct symbol *sym, int index,
+		yz_val *val, enum OP_ID mode);
 
 int constructor_struct_elem(const char *se, struct file *f, void *data)
 {
@@ -153,6 +159,18 @@ int struct_def_reg_elem(yz_struct *src, struct symbol *elem)
 	return 0;
 }
 
+int struct_get_elem_handle_val(yz_val *val, int index, struct symbol *dest)
+{
+	yz_extracted_val *v = malloc(sizeof(yz_extracted_val));
+	v->index = index;
+	v->sym = val->v;
+	v->dest = dest;
+	v->type = YZ_EXTRACTED_STRUCT;
+	val->v = v;
+	val->type = AMC_EXTRACTED_VAL;
+	return 0;
+}
+
 int struct_get_elem_read_name(struct file *f, str *name)
 {
 	if (f->src[f->pos] != '.')
@@ -178,6 +196,20 @@ int struct_get_elem_read_elem(str *name, yz_struct *src)
 			return i;
 	}
 	return -1;
+}
+
+int struct_set_elem_backend_call(struct symbol *sym, int index, yz_val *val, enum OP_ID mode)
+{
+	if (sym->flags.mut) {
+		if (backend_call(struct_set_elem)(sym, index, val, mode))
+			return 1;
+	} else {
+		if (mode != OP_ASSIGN)
+			return 1;
+		if (backend_call(struct_set_elem)(sym, index, val, mode))
+			return 1;
+	}
+	return 0;
 }
 
 int constructor_struct(struct file *f, struct symbol *sym, struct scope *scope)
@@ -258,15 +290,13 @@ int struct_get_elem(struct file *f, yz_val *val, struct scope *scope)
 	struct symbol *sym = val->v;
 	yz_struct *src = sym->result_type.v;
 	str token = TOKEN_NEW;
-	if (sym->type != SYM_STRUCT_ELEM)
-		return 1;
 	if (struct_get_elem_read_name(f, &token))
 		goto err_print_pos;
 	if ((ret = struct_get_elem_read_elem(&token, src)) == -1)
 		goto err_print_pos;
 	if (backend_call(struct_get_elem)(sym->backend_status, src, ret))
 		goto err_backend_failed;
-	return 0;
+	return struct_get_elem_handle_val(val, ret, src->elems[ret]);
 err_print_pos:
 	printf("| struct_get_elem: %lld,%lld\n",
 			f->cur_line, f->cur_column);
@@ -275,6 +305,24 @@ err_backend_failed:
 	printf("amc: struct_get_elem: %lld,%lld: Backend call failed!\n",
 			f->cur_line, f->cur_column);
 	return 1;
+}
+
+int struct_set_elem(struct file *f, struct symbol *sym, int index,
+		enum OP_ID mode, struct scope *scope)
+{
+	i64 orig_column = f->cur_column,
+	    orig_line = f->cur_line;
+	yz_val *val = NULL;
+	struct symbol *elem = ((yz_struct*)sym->result_type.v)->elems[index];
+	if (!comptime_check_struct_elem_can_assign(sym, elem))
+		return err_print_pos(__func__, NULL, orig_line, orig_column);
+	if (identifier_assign_get_val(f, scope, &elem->result_type, &val))
+		return 1;
+	if (struct_set_elem_backend_call(sym, index, val, mode))
+		return err_print_pos(__func__, "Backend call failed!",
+				orig_line, orig_column);
+	expr_free_val(val);
+	return 0;
 }
 
 yz_struct *struct_type_find(str *s, struct scope *scope)

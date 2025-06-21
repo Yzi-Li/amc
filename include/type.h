@@ -6,7 +6,7 @@
 
 enum YZ_TYPE {
 	AMC_ERR_TYPE,
-	AMC_SYM, AMC_EXPR,
+	AMC_SYM, AMC_EXPR, AMC_EXTRACTED_VAL,
 	YZ_STRUCT, YZ_PTR, YZ_ARRAY, YZ_CONST, YZ_NULL,
 	YZ_VOID, YZ_CHAR,
 	YZ_I8, YZ_I16, YZ_I32, YZ_I64,
@@ -17,7 +17,7 @@ enum YZ_TYPE {
 #define YZ_IS_UNSIGNED_DIGIT(X) (REGION_INT((X), YZ_U8, YZ_U64))
 #define YZ_UNSIGNED_TO_SIGNED(X) ((X) - 4)
 
-static const unsigned int YZ_TYPE_OFFSET = 8;
+static const unsigned int YZ_TYPE_OFFSET = 9;
 
 /**
  * @field type: For builtin type.
@@ -41,6 +41,18 @@ typedef struct yz_val {
 
 	enum YZ_TYPE type;
 } yz_val;
+
+typedef struct yz_extracted_val {
+	struct symbol *dest, *sym;
+	union {
+		int index;
+	};
+	enum {
+		YZ_EXTRACTED_ARRAY,
+		YZ_EXTRACTED_PTR,
+		YZ_EXTRACTED_STRUCT
+	} type;
+} yz_extracted_val;
 
 static const struct yz_type_group yz_type_table[] = {
 	{"void",  YZ_VOID,  0},

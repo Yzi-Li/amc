@@ -6,6 +6,8 @@
 
 static int val_get_arr(yz_array *arr, struct asf_val *result);
 static int val_get_expr(struct expr *src, struct asf_val *result);
+static int val_get_extracted_val(yz_extracted_val *src,
+		struct asf_val *result);
 static int val_get_identifier(struct symbol *src, struct asf_val *result);
 static int val_get_imm(yz_val *src, struct asf_val *result);
 static int val_get_sym(struct symbol *src, struct asf_val *result);
@@ -24,6 +26,13 @@ int val_get_expr(struct expr *src, struct asf_val *result)
 {
 	result->type = ASF_VAL_REG;
 	result->reg = asf_reg_get(asf_yz_type_raw2bytes(*src->sum_type));
+	return 0;
+}
+
+int val_get_extracted_val(yz_extracted_val *src, struct asf_val *result)
+{
+	result->type = ASF_VAL_REG;
+	result->reg = asf_reg_get(asf_yz_type2bytes(&src->dest->result_type));
 	return 0;
 }
 
@@ -77,6 +86,8 @@ int asf_val_get(yz_val *src, struct asf_val *result)
 		return val_get_expr(src->v, result);
 	} else if (src->type == AMC_SYM) {
 		return val_get_sym(src->v, result);
+	} else if (src->type == AMC_EXTRACTED_VAL) {
+		return val_get_extracted_val(src->v, result);
 	} else if (src->type == YZ_ARRAY) {
 		return val_get_arr(src->v, result);
 	} else if (src->type == YZ_NULL) {

@@ -1,6 +1,7 @@
 #include "include/expr.h"
 #include "include/identifier.h"
 #include "include/op.h"
+#include "include/struct.h"
 #include "../include/backend.h"
 #include "../include/comptime/ptr.h"
 #include "../include/ptr.h"
@@ -20,6 +21,8 @@ static int op_extract_val_check_val(yz_val *v);
 static int op_extract_val_handle_expr(struct expr *e);
 static int op_get_addr_handle_val(struct expr *e);
 
+static int op_assign_extracted_val(struct file *f, struct expr *e,
+		struct scope *scope);
 static int op_assign_get_vall(struct expr *e, struct symbol **result);
 static int op_assign_get_vall_expr(struct expr *e, struct symbol **result);
 static int op_assign_get_vall_sym(struct symbol *sym, struct symbol **result);
@@ -119,12 +122,24 @@ int op_get_addr_handle_val(struct expr *e)
 	return 0;
 }
 
+int op_assign_extracted_val(struct file *f, struct expr *e,
+		struct scope *scope)
+{
+	yz_extracted_val *src = e->vall->v;
+	if (src->type == YZ_EXTRACTED_STRUCT)
+		return struct_set_elem(f, src->sym, src->index, e->op->id, scope);
+	return 1;
+}
+
 int op_assign_get_vall(struct expr *e, struct symbol **result)
 {
 	if (e->vall->type == AMC_SYM)
 		return op_assign_get_vall_sym(e->vall->v, result);
 	if (e->vall->type == AMC_EXPR)
 		return op_assign_get_vall_expr(e->vall->v, result);
+	if (e->vall->type == AMC_EXTRACTED_VAL)
+		return -1;
+	printf("amc: op_assign_get_vall: Value left cannot be assigned.\n");
 	return 1;
 }
 
@@ -140,7 +155,7 @@ int op_assign_get_vall_expr(struct expr *e, struct symbol **result)
 
 int op_assign_get_vall_sym(struct symbol *sym, struct symbol **result)
 {
-	if (sym->args != NULL && sym->argc == 0)
+	if (sym->type != SYM_IDENTIFIER)
 		return 1;
 	*result = sym;
 	return 0;
@@ -183,8 +198,11 @@ int op_apply_special(struct expr *e, struct scope *scope)
 
 int op_assign(struct file *f, struct expr *e, struct scope *scope)
 {
+	int ret = 0;
 	struct symbol *sym = NULL;
-	if (op_assign_get_vall(e, &sym))
+	if ((ret = op_assign_get_vall(e, &sym)) > 1)
 		return 1;
+	if (ret == -1)
+		return op_assign_extracted_val(f, e, scope);
 	return identifier_assign_val(f, sym, e->op->id, scope);
 }

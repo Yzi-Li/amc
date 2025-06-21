@@ -1,5 +1,7 @@
 COMPTIME_SRC =\
+	inspector/mut.c\
 	inspector/ptr.c\
+	inspector/type.c\
 	hook.c
 
 COMPTIME_OBJ = $(COMPTIME_SRC:.c=.o)

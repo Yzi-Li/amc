@@ -7,4 +7,5 @@ fn main: i32 =>
 	let c: i32 = a[0]
 	let d: i32 = a[b]
 	let e: i32 = a[[func 1]]
+	a[0] = 2
 	ret c

@@ -3,6 +3,8 @@
 #include "../../include/expr.h"
 #include "../../include/symbol.h"
 
+int identifier_assign_get_val(struct file *f, struct scope *scope,
+		yz_val *dest_type, yz_val **result);
 int identifier_assign_val(struct file *f, struct symbol *sym, enum OP_ID mode,
 		struct scope *scope);
 yz_val *identifier_expr_val_handle(struct expr **e, yz_val *type);

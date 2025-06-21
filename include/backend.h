@@ -54,6 +54,7 @@ struct backend {
 	backend_scope_end_f          scope_end;
 	backend_struct_def_f         struct_def;
 	backend_struct_get_elem_f    struct_get_elem;
+	backend_struct_set_elem_f    struct_set_elem;
 	backend_symbol_status_free_f symbol_status_free;
 	backend_syscall_f            syscall;
 	backend_var_set_f        var_set;

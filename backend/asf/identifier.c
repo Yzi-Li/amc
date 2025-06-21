@@ -7,6 +7,7 @@
 #include "include/stack.h"
 #include "include/val.h"
 #include "../../include/backend/object.h"
+#include "../../include/symbol.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -28,8 +29,6 @@ static str *identifier_set_mem(struct asf_stack_element *dest,
 		enum OP_ID mode, struct asf_stack_element *src);
 static str *identifier_set_reg(struct asf_stack_element *dest,
 		enum OP_ID mode, enum ASF_REGS src);
-static str *identifier_set(struct asf_stack_element *dest, enum OP_ID mode,
-		yz_val *src);
 
 int identifier_change_get_op_inst(struct object_node *parent,
 		enum ASF_REGS src, int is_unsigned, enum OP_ID mode)
@@ -163,7 +162,46 @@ str *identifier_set_reg(struct asf_stack_element *dest, enum OP_ID mode,
 	return asf_inst_mov(ASF_MOV_R2M, &src, dest);
 }
 
-str *identifier_set(struct asf_stack_element *dest, enum OP_ID mode,
+int asf_var_set(struct symbol *sym, enum OP_ID mode, yz_val *val)
+{
+	struct object_node *node = malloc(sizeof(*node));
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+		goto err_free_node;
+	if (mode == OP_ASSIGN && sym->backend_status == NULL) {
+		if ((node->s = asf_inst_push(val)) == NULL)
+			goto err_inst_failed;
+		sym->backend_status = asf_stack_top;
+		return 0;
+	}
+	if ((node->s = asf_identifier_set(sym->backend_status, mode, val)) == NULL)
+		goto err_inst_failed;
+	return 0;
+err_inst_failed:
+	printf("amc[backend.asf]: asf_var_set: Get instruction failed!\n");
+err_free_node:
+	free(node);
+	return 1;
+}
+
+int asf_var_immut_init(struct symbol *sym, yz_val *val)
+{
+	return asf_var_set(sym, OP_ASSIGN, val);
+}
+
+int asf_identifier_reg(backend_symbol_status **raw_sym_stat,
+		struct asf_stack_element *src)
+{
+	if (*raw_sym_stat != NULL)
+		goto err_registered;
+	*raw_sym_stat = src;
+	return 0;
+err_registered:
+	printf("amc[backend.asf]: asf_identifier_reg: "
+			"Identifier registered!\n");
+	return 1;
+}
+
+str *asf_identifier_set(struct asf_stack_element *dest, enum OP_ID mode,
 		yz_val *src)
 {
 	struct asf_val val = {};
@@ -182,44 +220,4 @@ err_unsupport_type:
 	printf("amc[backend.asf:%s]: identifier_set: Unsupport type: \"%s\"\n",
 			__FILE__, yz_get_type_name(src));
 	return NULL;
-}
-
-int asf_var_set(backend_symbol_status **raw_sym_stat,
-		enum OP_ID mode, yz_val *val)
-{
-	struct object_node *node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-		goto err_free_node;
-	if (mode == OP_ASSIGN && *raw_sym_stat == NULL) {
-		if ((node->s = asf_inst_push(val)) == NULL)
-			goto err_inst_failed;
-		*raw_sym_stat = asf_stack_top;
-		return 0;
-	}
-	if ((node->s = identifier_set(*raw_sym_stat, mode, val)) == NULL)
-		goto err_inst_failed;
-	return 0;
-err_inst_failed:
-	printf("amc[backend.asf]: asf_var_set: Get instruction failed!\n");
-err_free_node:
-	free(node);
-	return 1;
-}
-
-int asf_var_immut_init(backend_symbol_status **raw_sym_stat, yz_val *val)
-{
-	return asf_var_set(raw_sym_stat, OP_ASSIGN, val);
-}
-
-int asf_identifier_reg(backend_symbol_status **raw_sym_stat,
-		struct asf_stack_element *src)
-{
-	if (*raw_sym_stat != NULL)
-		goto err_registered;
-	*raw_sym_stat = src;
-	return 0;
-err_registered:
-	printf("amc[backend.asf]: asf_identifier_reg: "
-			"Identifier registered!\n");
-	return 1;
 }

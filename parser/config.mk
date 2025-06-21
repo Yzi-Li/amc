@@ -16,6 +16,7 @@ PARSER_SRC =\
 	parser.c\
 	ptr.c\
 	struct.c\
-	type.c
+	type.c\
+	utils.c
 PARSER_OBJ = $(PARSER_SRC:.c=.o)
 PARSER_DEBUG_OBJ = $(PARSER_SRC:.c=.debug.o)

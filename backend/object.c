@@ -43,6 +43,25 @@ int object_insert(struct object_node *src, struct object_node *n1,
 	return 0;
 }
 
+int object_remove(struct object_head *h)
+{
+	struct object_node *last = h->last;
+	if (h == NULL)
+		return 1;
+	if (h->last == NULL)
+		return 1;
+	if (h->last == h->head) {
+		h->head = NULL;
+		h->last = NULL;
+	} else {
+		h->last->prev->next = NULL;
+		h->last = h->last->prev;
+	}
+	str_free(last->s);
+	free(last);
+	return 0;
+}
+
 int object_swap(struct object_node *n1, struct object_node *n2)
 {
 	if (backend_flag & BE_FLAG_STOPED)

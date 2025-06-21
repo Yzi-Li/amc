@@ -56,6 +56,7 @@ struct backend backend_asf = {
 
 	.struct_def      = asf_struct_def,
 	.struct_get_elem = asf_struct_get_elem,
+	.struct_set_elem = asf_struct_set_elem,
 
 	.symbol_status_free = asf_symbol_status_free,
 	.syscall = asf_syscall,
