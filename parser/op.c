@@ -1,4 +1,4 @@
-#include "include/expr.h"
+#include "include/array.h"
 #include "include/identifier.h"
 #include "include/op.h"
 #include "include/struct.h"
@@ -17,7 +17,7 @@ static int (*op_special_f[])(struct expr *e, struct scope *scope) = {
 };
 
 static int op_check_is_identifier(yz_val *v);
-static int op_extract_val_check_val(yz_val *v);
+static int op_extract_val_check_ptr(yz_val *v);
 static int op_extract_val_handle_expr(struct expr *e);
 static int op_get_addr_handle_val(struct expr *e);
 
@@ -32,14 +32,18 @@ int op_unary_extract_val(struct expr *e, struct scope *scope)
 {
 	if (!EXPR_IS_UNARY(e))
 		return 1;
-	if (e->op->sym == NULL)
-		return 0;
-	if (op_extract_val_check_val(e->valr))
-		goto err_check_failed;
+	if (e->op->sym == NULL) {
+		if (e->valr->type != AMC_EXTRACT_VAL)
+			return 1;
+	} else {
+		if (op_extract_val_check_ptr(e->valr))
+			goto err_check_failed;
+	}
 	if (backend_call(ops[e->op->id])(e))
 		goto err_backend_failed;
-	if (op_extract_val_handle_expr(e))
-		return 1;
+	if (e->op->sym != NULL)
+		if (op_extract_val_handle_expr(e))
+			return 1;
 	return 0;
 err_check_failed:
 	backend_stop(BE_STOP_SIGNAL_ERR);
@@ -84,19 +88,20 @@ err_val_not_identifier:
 	return 0;
 }
 
-int op_extract_val_check_val(yz_val *v)
+int op_extract_val_check_ptr(yz_val *v)
 {
-	struct symbol *sym = NULL;
+	struct symbol *ptr = NULL;
 	if (!op_check_is_identifier(v))
 		return 1;
-	sym = v->v;
-	if (sym->result_type.type != YZ_PTR)
-		goto err_val_not_ptr;
-	if (!comptime_ptr_check_can_use(sym))
+	ptr = v->v;
+	if (ptr->result_type.type != YZ_PTR)
+		goto err_not_ptr;
+	if (!comptime_ptr_check_can_use(ptr))
 		return 1;
 	return 0;
-err_val_not_ptr:
-	printf("amc: op_extract_val_check_type: Value is not pointer!\n");
+err_not_ptr:
+	printf("amc: op_extract_val_check_ptr: Value is not pointer!\n");
+	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
 
@@ -112,7 +117,7 @@ int op_get_addr_handle_val(struct expr *e)
 {
 	struct symbol *sym = e->valr->v;
 	yz_ptr *ptr = malloc(sizeof(yz_ptr));
-	expr_free_val(e->valr);
+	free_yz_val(e->valr);
 	e->valr = malloc(sizeof(*e->valr));
 	e->valr->v = ptr;
 	e->valr->type = YZ_PTR;
@@ -125,10 +130,28 @@ int op_get_addr_handle_val(struct expr *e)
 int op_assign_extracted_val(struct file *f, struct expr *e,
 		struct scope *scope)
 {
-	yz_extracted_val *src = e->vall->v;
-	if (src->type == YZ_EXTRACTED_STRUCT)
-		return struct_set_elem(f, src->sym, src->index, e->op->id, scope);
-	return 1;
+	yz_extract_val *src = NULL;
+	struct expr *src_expr = e->vall->v;
+	if (e->vall->type != AMC_EXPR)
+		return 1;
+	if (src_expr->valr->type != AMC_EXTRACT_VAL)
+		return 1;
+	src = src_expr->valr->v;
+	if (src->type == YZ_EXTRACT_STRUCT) {
+		if (struct_set_elem(f, src->sym, src->index, e->op->id,
+				scope))
+			return 1;
+	} else if (src->type == YZ_EXTRACT_ARRAY) {
+		if (array_set_elem(f, src->sym, src->offset, e->op->id,
+				scope))
+			return 1;
+	} else {
+		return 1;
+	}
+	free_expr(src_expr);
+	e->vall->type = AMC_ERR_TYPE;
+	e->vall->v = NULL;
+	return 0;
 }
 
 int op_assign_get_vall(struct expr *e, struct symbol **result)
@@ -137,8 +160,6 @@ int op_assign_get_vall(struct expr *e, struct symbol **result)
 		return op_assign_get_vall_sym(e->vall->v, result);
 	if (e->vall->type == AMC_EXPR)
 		return op_assign_get_vall_expr(e->vall->v, result);
-	if (e->vall->type == AMC_EXTRACTED_VAL)
-		return -1;
 	printf("amc: op_assign_get_vall: Value left cannot be assigned.\n");
 	return 1;
 }
@@ -147,10 +168,9 @@ int op_assign_get_vall_expr(struct expr *e, struct symbol **result)
 {
 	if (e->op->id != OP_EXTRACT_VAL)
 		return 1;
-	if (e->valr->type != AMC_SYM)
+	if (e->valr->type != AMC_EXTRACT_VAL)
 		return 1;
-	*result = e->valr->v;
-	return 0;
+	return -1;
 }
 
 int op_assign_get_vall_sym(struct symbol *sym, struct symbol **result)
@@ -200,9 +220,27 @@ int op_assign(struct file *f, struct expr *e, struct scope *scope)
 {
 	int ret = 0;
 	struct symbol *sym = NULL;
-	if ((ret = op_assign_get_vall(e, &sym)) > 1)
+	if (e->vall == NULL && e->valr == NULL)
+		return 0;
+	if ((ret = op_assign_get_vall(e, &sym)) > 0)
 		return 1;
 	if (ret == -1)
 		return op_assign_extracted_val(f, e, scope);
 	return identifier_assign_val(f, sym, e->op->id, scope);
+}
+
+struct expr *op_extract_val_expr_create(enum YZ_TYPE *sum_type,
+		yz_extract_val *val)
+{
+	struct expr *expr = malloc(sizeof(*expr));
+	expr->vall = NULL;
+	expr->valr = malloc(sizeof(*expr->valr));
+	expr->valr->type = AMC_EXTRACT_VAL;
+	expr->valr->v = val;
+	expr->op = malloc(sizeof(*expr->op));
+	expr->op->id = OP_EXTRACT_VAL;
+	expr->op->priority = 0;
+	expr->op->sym = NULL;
+	expr->sum_type = sum_type;
+	return expr;
 }

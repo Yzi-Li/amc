@@ -429,10 +429,10 @@ int parse_func_ret(struct file *f, struct symbol *sym, struct scope *scope)
 	if (backend_call(func_ret)(&val,
 				strncmp(scope->fn->name, "main", 4) == 0))
 		goto err_backend_failed;
-	expr_free(expr);
+	free_expr(expr);
 	return 0;
 err_free_expr:
-	expr_free(expr);
+	free_expr(expr);
 	return 1;
 err_get_val_failed:
 	printf("| parse_func_ret: %lld,%lld: Get value failed!\n",

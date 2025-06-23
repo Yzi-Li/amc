@@ -23,7 +23,8 @@ int object_append(struct object_head *h, struct object_node *n);
  */
 int object_insert(struct object_node *src, struct object_node *n1,
 		struct object_node *n2);
-int object_remove(struct object_head *h);
+int object_remove(struct object_head *h, struct object_node *n);
+int object_remove_last(struct object_head *h);
 int object_swap(struct object_node *n1, struct object_node *n2);
 void objects_free(struct object_head *o);
 

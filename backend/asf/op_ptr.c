@@ -2,6 +2,7 @@
 #include "include/call.h"
 #include "include/mov.h"
 #include "include/op.h"
+#include "include/op_val.h"
 #include "include/stack.h"
 #include "include/suffix.h"
 #include "../../include/ptr.h"
@@ -50,33 +51,6 @@ str *op_ptr_identifier_get(yz_ptr *ptr)
 	return result;
 }
 
-int asf_op_extract_val(struct expr *e)
-{
-	enum ASF_REGS dest = ASF_REG_RAX, src = ASF_REG_RAX;
-	struct object_node *node = NULL;
-	yz_ptr *ptr = NULL;
-	const char *temp = "mov%c (%%%s), %%%s\n";
-	if (e->valr->type != AMC_SYM)
-		return 1;
-	if (op_ptr_extract_get_addr(&src, e->valr->v))
-		return 1;
-	node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-		goto err_free_node;
-	node->s = str_new();
-	ptr = ((struct symbol*)e->valr->v)->result_type.v;
-	dest = asf_reg_get(asf_yz_type_raw2bytes(ptr->ref.type));
-	str_expand(node->s, strlen(temp));
-	snprintf(node->s->s, node->s->len, temp,
-			asf_suffix_get(asf_regs[dest].bytes),
-			asf_regs[src].name,
-			asf_regs[dest].name);
-	return 0;
-err_free_node:
-	free(node);
-	return 1;
-}
-
 int asf_op_get_addr(struct expr *e)
 {
 	enum ASF_REGS dest = ASF_REG_RAX;
@@ -99,6 +73,31 @@ int asf_op_get_addr(struct expr *e)
 	snprintf(node->s->s, node->s->len, temp,
 			asf_suffix_get(asf_regs[dest].bytes),
 			identifier->s,
+			asf_regs[dest].name);
+	return 0;
+err_free_node:
+	free(node);
+	return 1;
+}
+
+int asf_op_extract_ptr_val(struct symbol *sym)
+{
+	enum ASF_REGS dest = ASF_REG_RAX, src = ASF_REG_RAX;
+	struct object_node *node = NULL;
+	yz_ptr *ptr = NULL;
+	const char *temp = "mov%c (%%%s), %%%s\n";
+	if (op_ptr_extract_get_addr(&src, sym))
+		return 1;
+	node = malloc(sizeof(*node));
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+		goto err_free_node;
+	node->s = str_new();
+	ptr = sym->result_type.v;
+	dest = asf_reg_get(asf_yz_type_raw2bytes(ptr->ref.type));
+	str_expand(node->s, strlen(temp));
+	snprintf(node->s->s, node->s->len, temp,
+			asf_suffix_get(asf_regs[dest].bytes),
+			asf_regs[src].name,
 			asf_regs[dest].name);
 	return 0;
 err_free_node:

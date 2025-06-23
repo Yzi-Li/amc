@@ -41,7 +41,7 @@ struct backend {
 	int (*init)(int argc, char *argv[]);
 	int (*stop)(enum BE_STOP_SIGNAL bess);
 	backend_array_def_f      array_def;
-	backend_array_get_elem_f array_get_elem;
+	backend_array_set_elem_f array_set_elem;
 	backend_cond_elif_f      cond_elif;
 	backend_cond_else_f      cond_else;
 	backend_cond_if_f        cond_if;
@@ -53,7 +53,6 @@ struct backend {
 	backend_scope_begin_f        scope_begin;
 	backend_scope_end_f          scope_end;
 	backend_struct_def_f         struct_def;
-	backend_struct_get_elem_f    struct_get_elem;
 	backend_struct_set_elem_f    struct_set_elem;
 	backend_symbol_status_free_f symbol_status_free;
 	backend_syscall_f            syscall;

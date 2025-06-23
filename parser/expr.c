@@ -506,23 +506,6 @@ err_backend_call:
 	return 1;
 }
 
-void expr_free(struct expr *e)
-{
-	expr_free_val(e->vall);
-	expr_free_val(e->valr);
-	free_safe(e->op);
-	free(e);
-}
-
-void expr_free_val(yz_val *v)
-{
-	if (v == NULL)
-		return;
-	if (v->type == AMC_EXPR)
-		expr_free(v->v);
-	free(v);
-}
-
 struct expr *parse_expr(struct file *f, int top, struct scope *scope)
 {
 	struct expr *expr = calloc(1, sizeof(*expr));
@@ -541,4 +524,12 @@ struct expr *parse_expr(struct file *f, int top, struct scope *scope)
 err_free_expr:
 	free_safe(expr);
 	return NULL;
+}
+
+void free_expr(struct expr *e)
+{
+	free_yz_val(e->vall);
+	free_yz_val(e->valr);
+	free_safe(e->op);
+	free(e);
 }

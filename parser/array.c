@@ -4,7 +4,9 @@
 #include "include/expr.h"
 #include "include/identifier.h"
 #include "include/keywords.h"
+#include "include/op.h"
 #include "include/type.h"
+#include "include/utils.h"
 #include "../include/array.h"
 #include "../include/backend.h"
 #include "../include/token.h"
@@ -12,30 +14,28 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int array_get_elem_handle_val(yz_val *val);
+static int array_get_elem_handle_val(yz_val *val, yz_val *offset,
+		struct symbol *sym);
 static int array_get_len(struct file *f, yz_array *arr);
 static int array_get_len_check_mut(struct file *f);
 static int array_get_len_end(struct file *f, int len);
 static int array_get_len_from_num(struct file *f, int *len);
 static yz_val *array_read_offset(struct file *f, struct scope *scope);
+static int array_set_elem_backend_call(struct symbol *sym, yz_val *offset,
+		yz_val *val, enum OP_ID mode);
 static int constructor_array_elem(const char *se, struct file *f, void *data);
 
-int array_get_elem_handle_val(yz_val *val)
+int array_get_elem_handle_val(yz_val *val, yz_val *offset, struct symbol *sym)
 {
-	struct expr *expr = NULL;
-	struct symbol *sym = val->v;
-	expr = malloc(sizeof(*expr));
-	expr->vall = NULL;
-	expr->valr = malloc(sizeof(*expr->valr));
-	expr->valr->type = AMC_SYM;
-	expr->valr->v = val->v;
-	expr->op = malloc(sizeof(*expr->op));
-	expr->op->id = OP_EXTRACT_VAL;
-	expr->op->priority = 0;
-	expr->op->sym = NULL;
-	expr->sum_type = &((yz_array*)sym->result_type.v)->type.type;
+	yz_array *arr = sym->result_type.v;
+	yz_extract_val *v = malloc(sizeof(*v));
+	v->sym = sym;
+	v->elem = sym;
+	v->offset = offset;
+	v->type = YZ_EXTRACT_ARRAY;
 	val->type = AMC_EXPR;
-	val->v = expr;
+	if ((val->v = op_extract_val_expr_create(&arr->type.type, v)) == NULL)
+		return 1;
 	return 0;
 }
 
@@ -118,6 +118,14 @@ err_read_offset_failed:
 	return NULL;
 }
 
+int array_set_elem_backend_call(struct symbol *sym, yz_val *offset,
+		yz_val *val, enum OP_ID mode)
+{
+	if (backend_call(array_set_elem)(sym, offset, val, mode))
+		return 1;
+	return 0;
+}
+
 int constructor_array_elem(const char *se, struct file *f, void *data)
 {
 	struct constructor_handle *handle = data;
@@ -168,17 +176,10 @@ int array_get_elem(struct file *f, yz_val *val, struct scope *scope)
 		goto err_not_end;
 	file_pos_next(f);
 	file_skip_space(f);
-	if (backend_call(array_get_elem)(sym->backend_status, offset))
-		goto err_backend_failed;
-	return array_get_elem_handle_val(val);
+	return array_get_elem_handle_val(val, offset, sym);
 err_not_arr:
 	printf("amc: array_get_elem: %lld,%lld: Symbol: '%s' isn't array!\n",
 			f->cur_line, f->cur_column, sym->name);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
-err_backend_failed:
-	printf("amc: array_get_elem: %lld,%lld: Backend call failed!\n",
-			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_not_end:
@@ -186,6 +187,25 @@ err_not_end:
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
+}
+
+int array_set_elem(struct file *f, struct symbol *sym, yz_val *offset,
+		enum OP_ID mode, struct scope *scope)
+{
+	yz_array *arr = sym->result_type.v;
+	i64 orig_column = f->cur_column,
+	    orig_line = f->cur_line;
+	yz_val *val = NULL;
+	if (sym->result_type.type != YZ_ARRAY)
+		return err_print_pos(__func__, NULL,
+				f->cur_line, f->cur_column);
+	if (identifier_assign_get_val(f, scope, &arr->type, &val))
+		return 1;
+	if (array_set_elem_backend_call(sym, offset, val, mode))
+		return err_print_pos(__func__, "Backend call failed!",
+				orig_line, orig_column);
+	free_yz_val(val);
+	return 0;
 }
 
 int constructor_array(struct file *f, struct symbol *sym, struct scope *scope)

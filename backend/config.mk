@@ -26,6 +26,7 @@ BE_ASF_SRC =\
 	op_mul.c\
 	op_ptr.c\
 	op_sub.c\
+	op_val.c\
 	register.c\
 	scope.c\
 	stack.c\

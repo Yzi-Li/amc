@@ -8,4 +8,7 @@ fn main: i32 =>
 	let d: i32 = a[b]
 	let e: i32 = a[[func 1]]
 	a[0] = 2
+	a[1 + 1] = 2
+	a[[func 1]] = 2
+	a[b] = 2
 	ret c

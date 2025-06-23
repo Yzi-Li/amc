@@ -22,7 +22,7 @@ int block_parse_expr(struct file *f, struct scope *scope)
 		goto err_cannot_parse_expr;
 	if (expr_apply(expr, scope) > 0)
 		goto err_cannot_apply_expr;
-	expr_free(expr);
+	free_expr(expr);
 	file_pos_next(f);
 	return 0;
 err_cannot_parse_expr:

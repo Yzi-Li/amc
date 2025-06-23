@@ -25,10 +25,11 @@ enum OP_ID {
 	OP_ASSIGN_SUB,
 
 	OP_EXTRACT_VAL,
-	OP_GET_ADDR
+	OP_GET_ADDR,
+
+	OP_LEN
 };
 
-#define OP_LEN 20
 #define OP_SPECIAL_START 13
 
 #define OP_IS_CMP(ID) (REGION_INT(ID, OP_EQ, OP_GT))

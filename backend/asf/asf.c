@@ -12,7 +12,7 @@ struct backend backend_asf = {
 	.stop     = asf_stop,
 
 	.array_def      = asf_array_def,
-	.array_get_elem = asf_array_get_elem,
+	.array_set_elem = asf_array_set_elem,
 
 	.cond_elif = asf_cond_elif,
 	.cond_else = asf_cond_else,
@@ -55,7 +55,6 @@ struct backend backend_asf = {
 	.scope_end   = asf_scope_end,
 
 	.struct_def      = asf_struct_def,
-	.struct_get_elem = asf_struct_get_elem,
 	.struct_set_elem = asf_struct_set_elem,
 
 	.symbol_status_free = asf_symbol_status_free,

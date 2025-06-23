@@ -1,6 +1,7 @@
 #include "include/asf.h"
 #include "include/identifier.h"
 #include "include/mov.h"
+#include "include/op_val.h"
 #include "include/stack.h"
 #include "../../include/backend/object.h"
 #include <stdlib.h>
@@ -66,40 +67,11 @@ err_identifier_reg_failed:
 	return 1;
 }
 
-int asf_struct_get_elem(backend_symbol_status *raw_sym_stat, yz_struct *src,
-		int index)
-{
-	struct asf_stack_element *cur = raw_sym_stat;
-	enum ASF_REGS dest = ASF_REG_RAX;
-	struct object_node *node = NULL;
-	for (int i = 0; i < index; i++) {
-		if ((cur = cur->next) == NULL)
-			return 1;
-	}
-	dest = asf_reg_get(cur->bytes);
-	node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-		goto err_free_node;
-	if ((node->s = asf_inst_mov(ASF_MOV_M2R, cur, &dest)) == NULL)
-		goto err_inst_failed;
-	return 0;
-err_inst_failed:
-	printf("amc[backend.asf]: asf_struct_get_elem: "
-			"Get instruction failed!\n");
-err_free_node:
-	free(node);
-	return 1;
-}
-
 int asf_struct_set_elem(struct symbol *sym, int index, yz_val *val,
 		enum OP_ID mode)
 {
 	struct asf_stack_element *dest = sym->backend_status;
 	struct object_node *node = NULL;
-	// FIXME: Will remove 'lea' instruction
-	//        when value is a memory address from 'op_unary_get_addr'.
-	if (object_remove(&objs[cur_obj][ASF_OBJ_TEXT]))
-		return 1;
 	for (int i = 0; i < index; i++) {
 		if ((dest = dest->next) == NULL)
 			return 1;
@@ -114,6 +86,30 @@ err_inst_failed:
 	printf("amc[backend.asf]: asf_var_set: Get instruction failed!\n");
 err_free_node:
 	str_free(node->s);
+	free(node);
+	return 1;
+}
+
+int asf_op_extract_struct_elem(yz_extract_val *val)
+{
+	struct asf_stack_element *cur = val->sym->backend_status;
+	enum ASF_REGS dest = ASF_REG_RAX;
+	struct object_node *node = NULL;
+	for (int i = 0; i < val->index; i++) {
+		if ((cur = cur->next) == NULL)
+			return 1;
+	}
+	dest = asf_reg_get(cur->bytes);
+	node = malloc(sizeof(*node));
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+		goto err_free_node;
+	if ((node->s = asf_inst_mov(ASF_MOV_M2R, cur, &dest)) == NULL)
+		goto err_inst_failed;
+	return 0;
+err_inst_failed:
+	printf("amc[backend.asf]: asf_struct_get_elem: "
+			"Get instruction failed!\n");
+err_free_node:
 	free(node);
 	return 1;
 }

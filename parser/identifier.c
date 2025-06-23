@@ -199,7 +199,7 @@ int identifier_assign_val(struct file *f, struct symbol *sym, enum OP_ID mode,
 	if (identifier_assign_backend_call(sym, val, mode))
 		return err_print_pos(__func__, "Backend call failed!",
 				orig_line, orig_column);
-	expr_free_val(val);
+	free_yz_val(val);
 	if (f->src[f->pos] == ']')
 		file_pos_next(f);
 	return 0;

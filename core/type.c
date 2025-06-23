@@ -7,16 +7,16 @@
 #include <limits.h>
 #include <string.h>
 
-static struct symbol *yz_get_extracted_val(yz_extracted_val *val);
+static struct symbol *yz_get_extracted_val(yz_extract_val *val);
 static yz_val *yz_type_arr_max(yz_val *l, yz_val *r);
 static yz_val *yz_type_max_raw(enum YZ_TYPE ltype, enum YZ_TYPE rtype,
 		yz_val *l, yz_val *r);
 static yz_val *yz_type_ptr_max(yz_val *l, yz_val *r);
 
-struct symbol *yz_get_extracted_val(yz_extracted_val *val)
+struct symbol *yz_get_extracted_val(yz_extract_val *val)
 {
 	switch (val->type) {
-	case YZ_EXTRACTED_STRUCT:
+	case YZ_EXTRACT_STRUCT:
 		return ((yz_struct*)val->sym->result_type.v)
 			->elems[val->index];
 		break;
@@ -85,7 +85,7 @@ enum YZ_TYPE *yz_get_raw_type(yz_val *val)
 	if (val->type == AMC_SYM)
 		return yz_get_raw_type(
 				&((struct symbol*)val->v)->result_type);
-	if (val->type == AMC_EXTRACTED_VAL)
+	if (val->type == AMC_EXTRACT_VAL)
 		return yz_get_raw_type(&yz_get_extracted_val(val->v)
 				->result_type);
 	return &val->type;
@@ -107,7 +107,7 @@ const char *yz_get_type_name(yz_val *val)
 	case AMC_EXPR:
 		return "AMC_EXPR";
 		break;
-	case AMC_EXTRACTED_VAL:
+	case AMC_EXTRACT_VAL:
 		return "AMC_EXTRACTED_VAL";
 		break;
 	case YZ_STRUCT:
@@ -161,4 +161,29 @@ yz_val *yz_type_max(yz_val *l, yz_val *r)
 	if (r->type == AMC_SYM)
 		result_vall = &((struct symbol*)r->v)->result_type;
 	return yz_type_max_raw(lraw, rraw, result_vall, result_valr);
+}
+
+void free_yz_extract_val(struct yz_extract_val *src)
+{
+	if (src == NULL)
+		return;
+	switch (src->type) {
+	case YZ_EXTRACT_ARRAY:
+		free_yz_val(src->offset);
+		break;
+	default:
+		free(src);
+		break;
+	}
+}
+
+void free_yz_val(yz_val *src)
+{
+	if (src == NULL)
+		return;
+	if (src->type == AMC_EXPR)
+		free_expr(src->v);
+	if (src->type == AMC_EXTRACT_VAL)
+		free_yz_extract_val(src->v);
+	free(src);
 }

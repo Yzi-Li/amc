@@ -25,4 +25,7 @@ struct expr {
 	enum YZ_TYPE *sum_type;
 	yz_val *vall, *valr;
 };
+
+void free_expr(struct expr *e);
+
 #endif

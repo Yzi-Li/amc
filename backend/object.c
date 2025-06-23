@@ -43,7 +43,22 @@ int object_insert(struct object_node *src, struct object_node *n1,
 	return 0;
 }
 
-int object_remove(struct object_head *h)
+int object_remove(struct object_head *h, struct object_node *n)
+{
+	if (h == NULL || n == NULL)
+		return 1;
+	if (n == h->last)
+		return object_remove_last(h);
+	if (n->prev != NULL)
+		n->prev->next = n->next;
+	if (n->next != NULL)
+		n->next->prev = n->prev;
+	str_free(n->s);
+	free(n);
+	return 0;
+}
+
+int object_remove_last(struct object_head *h)
 {
 	struct object_node *last = h->last;
 	if (h == NULL)
