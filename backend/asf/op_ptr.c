@@ -7,11 +7,13 @@
 #include "include/suffix.h"
 #include "../../include/ptr.h"
 #include "../../include/symbol.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 static int op_ptr_extract_get_addr(enum ASF_REGS *dest, struct symbol *sym);
-static str *op_ptr_identifier_get(yz_ptr *ptr);
+static str *op_ptr_get_addr_get_src(yz_ptr *ptr);
+static str *op_ptr_get_addr_get_src_from_sym(yz_ptr *ptr);
 
 int op_ptr_extract_get_addr(enum ASF_REGS *dest, struct symbol *sym)
 {
@@ -41,7 +43,25 @@ err_inst_failed:
 	goto err_free_node;
 }
 
-str *op_ptr_identifier_get(yz_ptr *ptr)
+str *op_ptr_get_addr_get_src(yz_ptr *ptr)
+{
+	str *s = NULL;
+	const char *temp = "(%%%s)";
+	if (ptr->ref.type == AMC_SYM)
+		return op_ptr_get_addr_get_src_from_sym(ptr);
+	if (ptr->ref.type != AMC_EXTRACT_VAL)
+		goto err_not_expr;
+	s = str_new();
+	str_expand(s, strlen(temp));
+	snprintf(s->s, s->len + 1, temp, asf_regs[ASF_REG_RAX].name);
+	return s;
+err_not_expr:
+	printf("amc[backend.asf:%s]: op_ptr_get_addr_get_src: "
+			"Value is not a expression!\n", __FILE__);
+	return NULL;
+}
+
+str *op_ptr_get_addr_get_src_from_sym(yz_ptr *ptr)
 {
 	struct symbol *sym = ptr->ref.v;
 	struct asf_stack_element *stack = sym->backend_status;
@@ -54,11 +74,11 @@ str *op_ptr_identifier_get(yz_ptr *ptr)
 int asf_op_get_addr(struct expr *e)
 {
 	enum ASF_REGS dest = ASF_REG_RAX;
-	str *identifier = NULL;
 	struct object_node *node = NULL;
+	str *src = NULL;
 	const char *temp = "lea%c %s, %%%s\n";
 	if (e->valr->type != YZ_PTR)
-		return 1;
+		goto err_not_ptr;
 	node = malloc(sizeof(*node));
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
@@ -66,15 +86,21 @@ int asf_op_get_addr(struct expr *e)
 	if (*asf_regs[dest].purpose != ASF_REG_PURPOSE_NULL)
 		if (asf_op_save_reg(node, dest))
 			goto err_free_node;
-	if ((identifier = op_ptr_identifier_get(e->valr->v)) == NULL)
+	if ((src = op_ptr_get_addr_get_src(e->valr->v)) == NULL)
 		goto err_free_node;
+	if (src->s[src->len - 1] != '\0')
+		str_append(src, 1, "\0");
 	node->s = str_new();
-	str_expand(node->s, strlen(temp) - 3 + identifier->len);
+	str_expand(node->s, strlen(temp) - 3 + src->len);
 	snprintf(node->s->s, node->s->len, temp,
 			asf_suffix_get(asf_regs[dest].bytes),
-			identifier->s,
+			src->s,
 			asf_regs[dest].name);
 	return 0;
+err_not_ptr:
+	printf("amc[backend.asf:%s]: asf_op_get_addr: "
+			"Value is not a pointer!\n", __FILE__);
+	return 1;
 err_free_node:
 	free(node);
 	return 1;

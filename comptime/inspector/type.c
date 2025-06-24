@@ -8,7 +8,7 @@ int comptime_type_check_equal(yz_val *src, yz_val *dest)
 		goto err_wrong_type;
 	return 0;
 err_wrong_type:
-	printf("amc: comptime_type_check_val_type: ERROR: Wrong type!\n"
+	printf("amc: comptime_type_check_equal: ERROR: Wrong type!\n"
 			"| HINT: Symbol type: \"%s\"\n"
 			"|       Value type:  \"%s\"\n",
 			yz_get_type_name(dest),

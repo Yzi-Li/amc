@@ -1,4 +1,5 @@
 #include "include/array.h"
+#include "include/expr.h"
 #include "include/identifier.h"
 #include "include/op.h"
 #include "include/struct.h"
@@ -16,10 +17,12 @@ static int (*op_special_f[])(struct expr *e, struct scope *scope) = {
 	op_unary_get_addr
 };
 
-static int op_check_is_identifier(yz_val *v);
-static int op_extract_val_check_ptr(yz_val *v);
+static int op_extract_val_check(yz_val *v, struct scope *scope);
 static int op_extract_val_handle_expr(struct expr *e);
-static int op_get_addr_handle_val(struct expr *e);
+static int op_get_addr_check(yz_val *v);
+static int op_get_addr_handle_val(struct expr *e, int from_extracted_val);
+static struct symbol *op_get_ptr(yz_val *v, struct scope *scope);
+static struct symbol *op_get_ptr_from_expr(struct expr *e, struct scope *scope);
 
 static int op_assign_extracted_val(struct file *f, struct expr *e,
 		struct scope *scope);
@@ -36,7 +39,7 @@ int op_unary_extract_val(struct expr *e, struct scope *scope)
 		if (e->valr->type != AMC_EXTRACT_VAL)
 			return 1;
 	} else {
-		if (op_extract_val_check_ptr(e->valr))
+		if (op_extract_val_check(e->valr, scope))
 			goto err_check_failed;
 	}
 	if (backend_call(ops[e->op->id])(e))
@@ -56,11 +59,15 @@ err_backend_failed:
 
 int op_unary_get_addr(struct expr *e, struct scope *scope)
 {
+	int ret = 0;
 	if (!EXPR_IS_UNARY(e))
 		return 1;
-	if (!op_check_is_identifier(e->valr))
+	if ((ret = op_get_addr_check(e->valr)) > 0)
 		goto err_check_failed;
-	if (op_get_addr_handle_val(e))
+	if (ret == -1)
+		if (expr_apply(e->valr->v, scope))
+			return 1;
+	if (op_get_addr_handle_val(e, ret == -1))
 		goto err_check_failed;
 	if (backend_call(ops[e->op->id])(e))
 		goto err_backend_failed;
@@ -74,33 +81,18 @@ err_backend_failed:
 	return 1;
 }
 
-int op_check_is_identifier(yz_val *v)
-{
-	struct symbol *sym = NULL;
-	if (v->type != AMC_SYM)
-		goto err_val_not_identifier;
-	sym = v->v;
-	if (sym->type != SYM_IDENTIFIER)
-		goto err_val_not_identifier;
-	return 1;
-err_val_not_identifier:
-	printf("amc: op_check_is_identifier: Value is not identifier!\n");
-	return 0;
-}
-
-int op_extract_val_check_ptr(yz_val *v)
+int op_extract_val_check(yz_val *v, struct scope *scope)
 {
 	struct symbol *ptr = NULL;
-	if (!op_check_is_identifier(v))
+	if ((ptr = op_get_ptr(v, scope)) == NULL)
 		return 1;
-	ptr = v->v;
 	if (ptr->result_type.type != YZ_PTR)
 		goto err_not_ptr;
 	if (!comptime_ptr_check_can_use(ptr))
 		return 1;
 	return 0;
 err_not_ptr:
-	printf("amc: op_extract_val_check_ptr: Value is not pointer!\n");
+	printf("amc: op_extract_val_check: Value is not pointer!\n");
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
@@ -113,18 +105,82 @@ int op_extract_val_handle_expr(struct expr *e)
 	return 0;
 }
 
-int op_get_addr_handle_val(struct expr *e)
+int op_get_addr_check(yz_val *v)
 {
-	struct symbol *sym = e->valr->v;
+	struct expr *expr = NULL;
+	struct symbol *sym = NULL;
+	if (v->type == AMC_SYM) {
+		sym = v->v;
+		if (sym->type != SYM_IDENTIFIER)
+			goto err_val_not_identifier;
+		return 0;
+	}
+	if (v->type != AMC_EXPR)
+		return 1;
+	expr = v->v;
+	if (expr->op->id != OP_EXTRACT_VAL
+			|| expr->valr->type != AMC_EXTRACT_VAL)
+		goto err_not_extracted_val;
+	return -1;
+err_val_not_identifier:
+	printf("amc: op_get_addr_check: Value is not an identifier!\n");
+	return 1;
+err_not_extracted_val:
+	printf("amc: op_get_addr_check: Value is not an extracted value!\n");
+	return 1;
+}
+
+int op_get_addr_handle_val(struct expr *e, int from_extracted_val)
+{
 	yz_ptr *ptr = malloc(sizeof(yz_ptr));
-	free_yz_val(e->valr);
-	e->valr = malloc(sizeof(*e->valr));
-	e->valr->v = ptr;
+	if (!from_extracted_val) {
+		ptr->ref.type = AMC_SYM;
+		ptr->ref.v = e->valr->v;
+	} else {
+		ptr->ref.type = AMC_EXTRACT_VAL;
+		ptr->ref.v = ((struct expr*)e->valr->v)->valr->v;
+	}
 	e->valr->type = YZ_PTR;
+	e->valr->v = ptr;
 	e->sum_type = &e->valr->type;
-	ptr->ref.type = AMC_SYM;
-	ptr->ref.v = sym;
 	return 0;
+}
+
+struct symbol *op_get_ptr(yz_val *v, struct scope *scope)
+{
+	struct symbol *ptr = NULL;
+	if (v->type == AMC_EXPR)
+		return op_get_ptr_from_expr(v->v, scope);
+	if (v->type != AMC_SYM)
+		goto err_val_not_ptr;
+	ptr = v->v;
+	if (ptr->type != SYM_IDENTIFIER)
+		goto err_val_not_ptr;
+	return ptr;
+err_val_not_ptr:
+	printf("amc: op_get_ptr: Value is not pointer!\n");
+	return NULL;
+}
+
+struct symbol *op_get_ptr_from_expr(struct expr *e, struct scope *scope)
+{
+	struct symbol *ptr = NULL;
+	yz_extract_val *src = NULL;
+	if (e->op->id != OP_EXTRACT_VAL)
+		goto err_not_extracted_val;
+	if (e->valr->type != AMC_EXTRACT_VAL)
+		goto err_not_extracted_val;
+	src = e->valr->v;
+	ptr = src->elem;
+	if (expr_apply(e, scope) > 0)
+		goto err_cannot_apply_expr;
+	return ptr;
+err_not_extracted_val:
+	printf("amc: op_get_ptr_from_expr: Value is not extracted value!\n");
+	return NULL;
+err_cannot_apply_expr:
+	printf("amc: op_get_ptr_from_expr: Cannot apply expression!\n");
+	return NULL;
 }
 
 int op_assign_extracted_val(struct file *f, struct expr *e,

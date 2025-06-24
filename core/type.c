@@ -7,25 +7,10 @@
 #include <limits.h>
 #include <string.h>
 
-static struct symbol *yz_get_extracted_val(yz_extract_val *val);
 static yz_val *yz_type_arr_max(yz_val *l, yz_val *r);
 static yz_val *yz_type_max_raw(enum YZ_TYPE ltype, enum YZ_TYPE rtype,
 		yz_val *l, yz_val *r);
 static yz_val *yz_type_ptr_max(yz_val *l, yz_val *r);
-
-struct symbol *yz_get_extracted_val(yz_extract_val *val)
-{
-	switch (val->type) {
-	case YZ_EXTRACT_STRUCT:
-		return ((yz_struct*)val->sym->result_type.v)
-			->elems[val->index];
-		break;
-	default:
-		return NULL;
-		break;
-	}
-	return NULL;
-}
 
 yz_val *yz_type_arr_max(yz_val *l, yz_val *r)
 {
@@ -63,6 +48,20 @@ yz_val *yz_type_ptr_max(yz_val *l, yz_val *r)
 	if ((rptr = yz_ptr_get_from_val(r)) == NULL)
 		return NULL;
 	return yz_ptr_is_equal(lptr, rptr) ? l : NULL;
+}
+
+struct symbol *yz_get_extracted_val(yz_extract_val *val)
+{
+	switch (val->type) {
+	case YZ_EXTRACT_STRUCT:
+		return ((yz_struct*)val->sym->result_type.v)
+			->elems[val->index];
+		break;
+	default:
+		return NULL;
+		break;
+	}
+	return NULL;
 }
 
 enum YZ_TYPE yz_get_int_size(long long l)

@@ -1,6 +1,7 @@
 #include "include/block.h"
 #include "include/expr.h"
 #include "include/func.h"
+#include "include/identifier.h"
 #include "include/keywords.h"
 #include "include/token.h"
 #include "include/type.h"
@@ -317,27 +318,16 @@ err_cannot_get_type:
 
 int func_ret_get_val(yz_val *val, struct symbol *fn, struct expr *expr)
 {
-	int is_single = EXPR_IS_SINGLE_TERM(expr);
-	val->type = *expr->sum_type;
-	if (is_single) {
-		val->l = expr->vall->l;
-		val->type = expr->vall->type;
-	} else {
-		val->v = expr;
-		val->type = AMC_EXPR;
-	}
-	if (yz_type_max(val, &fn->result_type) == NULL)
+	yz_val *tmp = identifier_expr_val_handle(&expr, &fn->result_type);
+	if (tmp == NULL)
 		goto err_type;
-	if (!is_single) {
-		*expr->sum_type = fn->result_type.type;
-		return 0;
-	}
-	if (val->type == AMC_SYM) {
+	if (tmp->type == AMC_SYM) {
 		if (fn->result_type.type == YZ_PTR)
 			return !comptime_ptr_check_can_ret(val->v, fn);
 		return 0;
 	}
-	val->type = fn->result_type.type;
+	val->type = tmp->type;
+	val->v = tmp->v;
 	return 0;
 err_type:
 	printf("amc: func_ret_get_val:\n"

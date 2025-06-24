@@ -67,6 +67,7 @@ static const struct yz_type_group yz_type_table[] = {
 	{"u64",   YZ_U64,   8},
 };
 
+struct symbol *yz_get_extracted_val(yz_extract_val *val);
 enum YZ_TYPE yz_get_int_size(long long l);
 enum YZ_TYPE *yz_get_raw_type(yz_val *val);
 const char *yz_get_type_name(yz_val *val);

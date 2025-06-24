@@ -9,5 +9,6 @@ fn main: i32 =>
 	let test: mut Str = { 0, 1, null }
 	let a: i32 = test.siz
 	test.siz += 1
-	test.s = &a
-	ret 0
+	test.s = &test.siz
+	let b: *i32 = &a
+	ret *test.siz
