@@ -19,6 +19,8 @@ static int (*op_special_f[])(struct expr *e, struct scope *scope) = {
 
 static int op_extract_val_check(yz_val *v, struct scope *scope);
 static int op_extract_val_handle_expr(struct expr *e);
+static int op_extract_val_handle_expr_from_sym(struct expr *e,
+		struct symbol *sym);
 static int op_get_addr_check(yz_val *v);
 static int op_get_addr_handle_val(struct expr *e, int from_extracted_val);
 static struct symbol *op_get_ptr(yz_val *v, struct scope *scope);
@@ -41,12 +43,11 @@ int op_unary_extract_val(struct expr *e, struct scope *scope)
 	} else {
 		if (op_extract_val_check(e->valr, scope))
 			goto err_check_failed;
+		if (op_extract_val_handle_expr(e))
+			return 1;
 	}
 	if (backend_call(ops[e->op->id])(e))
 		goto err_backend_failed;
-	if (e->op->sym != NULL)
-		if (op_extract_val_handle_expr(e))
-			return 1;
 	return 0;
 err_check_failed:
 	backend_stop(BE_STOP_SIGNAL_ERR);
@@ -99,10 +100,35 @@ err_not_ptr:
 
 int op_extract_val_handle_expr(struct expr *e)
 {
-	e->sum_type = &((yz_ptr*)
-			((struct symbol*)e->valr->v)->result_type.v)
-		->ref.type;
+	if (e->valr->type == AMC_SYM) {
+		return op_extract_val_handle_expr_from_sym(e, e->valr->v);
+	} else if (e->valr->type == AMC_EXPR) {
+		if (op_extract_val_handle_expr(e->valr->v))
+			return 1;
+		e->sum_type = ((struct expr*)e->valr->v)->sum_type;
+		return 0;
+	} else if (e->valr->type == AMC_EXTRACT_VAL) {
+		return op_extract_val_handle_expr_from_sym(e,
+				yz_get_extracted_val(e->valr->v));
+	}
+	printf("amc: op_extract_val_handle_expr: Unsupport type!\n");
+	return 1;
+}
+
+int op_extract_val_handle_expr_from_sym(struct expr *e, struct symbol *sym)
+{
+	if (sym == NULL)
+		goto err_sym_null;
+	if (sym->result_type.type != YZ_PTR)
+		goto err_unsupport_type;
+	e->sum_type = &((yz_ptr*)sym->result_type.v)->ref.type;
 	return 0;
+err_sym_null:
+	printf("amc: op_extract_val_handle_expr_from_sym: Symbol null!\n");
+	return 1;
+err_unsupport_type:
+	printf("amc: op_extract_val_handle_expr_from_sym: Unsupport type!\n");
+	return 1;
 }
 
 int op_get_addr_check(yz_val *v)

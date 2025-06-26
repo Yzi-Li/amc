@@ -11,4 +11,4 @@ fn main: i32 =>
 	test.siz += 1
 	test.s = &test.siz
 	let b: *i32 = &a
-	ret *test.siz
+	ret *test.s

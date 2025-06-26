@@ -6,6 +6,8 @@ int asf_op_extract_val(struct expr *e)
 	yz_extract_val *val = e->valr->v;
 	if (e->valr->type == AMC_SYM) {
 		return asf_op_extract_ptr_val(e->valr->v);
+	} else if (e->valr->type == AMC_EXPR) {
+		return asf_op_extract_ptr_val_from_expr(e->valr->v);
 	} else if (e->valr->type != AMC_EXTRACT_VAL) {
 		return 1;
 	}

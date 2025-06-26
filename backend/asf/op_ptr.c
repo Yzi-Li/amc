@@ -1,9 +1,11 @@
 #include "include/asf.h"
+#include "include/bytes.h"
 #include "include/call.h"
 #include "include/mov.h"
 #include "include/op.h"
 #include "include/op_val.h"
 #include "include/stack.h"
+#include "include/struct.h"
 #include "include/suffix.h"
 #include "../../include/ptr.h"
 #include "../../include/symbol.h"
@@ -11,9 +13,31 @@
 #include <stdlib.h>
 #include <string.h>
 
+static int op_ptr_extract_from_reg(enum ASF_REGS src, enum ASF_REGS dest);
 static int op_ptr_extract_get_addr(enum ASF_REGS *dest, struct symbol *sym);
 static str *op_ptr_get_addr_get_src(yz_ptr *ptr);
 static str *op_ptr_get_addr_get_src_from_sym(yz_ptr *ptr);
+
+int op_ptr_extract_from_reg(enum ASF_REGS src, enum ASF_REGS dest)
+{
+	struct object_node *node = NULL;
+	const char *temp = "mov%c (%%%s), %%%s\n";
+	if (src > ASF_REG_RSP)
+		return 1;
+	node = malloc(sizeof(*node));
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+		goto err_free_node;
+	node->s = str_new();
+	str_expand(node->s, strlen(temp));
+	snprintf(node->s->s, node->s->len , temp,
+			asf_suffix_get(asf_regs[dest].bytes),
+			asf_regs[src].name,
+			asf_regs[dest].name);
+	return 0;
+err_free_node:
+	free(node);
+	return 1;
+}
 
 int op_ptr_extract_get_addr(enum ASF_REGS *dest, struct symbol *sym)
 {
@@ -45,16 +69,19 @@ err_inst_failed:
 
 str *op_ptr_get_addr_get_src(yz_ptr *ptr)
 {
-	str *s = NULL;
-	const char *temp = "(%%%s)";
+	str *result = NULL;
+	struct asf_stack_element *src = NULL;
 	if (ptr->ref.type == AMC_SYM)
 		return op_ptr_get_addr_get_src_from_sym(ptr);
 	if (ptr->ref.type != AMC_EXTRACT_VAL)
 		goto err_not_expr;
-	s = str_new();
-	str_expand(s, strlen(temp));
-	snprintf(s->s, s->len + 1, temp, asf_regs[ASF_REG_RAX].name);
-	return s;
+	if ((src = asf_op_extract_get_mem(ptr->ref.v)) == NULL)
+		return NULL;
+	if ((result = asf_stack_get_element(src, 0)) == NULL)
+		return NULL;
+	if (result->s[result->len - 1] != '\0')
+		str_append(result, 1, "\0");
+	return result;
 err_not_expr:
 	printf("amc[backend.asf:%s]: op_ptr_get_addr_get_src: "
 			"Value is not a expression!\n", __FILE__);
@@ -106,27 +133,33 @@ err_free_node:
 	return 1;
 }
 
+struct asf_stack_element *asf_op_extract_get_mem(yz_extract_val *val)
+{
+	if (val->type == YZ_EXTRACT_ARRAY) {
+		printf("amc[backend.asf]: asf_op_extract_get_mem: "
+				"Unsupport action: 'YZ_EXTRACT_ARRAY'!\n");
+		return NULL;
+	} else if (val->type == YZ_EXTRACT_STRUCT) {
+		return asf_struct_get_elem(val->sym->backend_status,
+				val->index);
+	}
+	return NULL;
+}
+
 int asf_op_extract_ptr_val(struct symbol *sym)
 {
 	enum ASF_REGS dest = ASF_REG_RAX, src = ASF_REG_RAX;
-	struct object_node *node = NULL;
 	yz_ptr *ptr = NULL;
-	const char *temp = "mov%c (%%%s), %%%s\n";
 	if (op_ptr_extract_get_addr(&src, sym))
 		return 1;
-	node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
-		goto err_free_node;
-	node->s = str_new();
 	ptr = sym->result_type.v;
 	dest = asf_reg_get(asf_yz_type_raw2bytes(ptr->ref.type));
-	str_expand(node->s, strlen(temp));
-	snprintf(node->s->s, node->s->len, temp,
-			asf_suffix_get(asf_regs[dest].bytes),
-			asf_regs[src].name,
-			asf_regs[dest].name);
-	return 0;
-err_free_node:
-	free(node);
-	return 1;
+	return op_ptr_extract_from_reg(src, dest);
+}
+
+int asf_op_extract_ptr_val_from_expr(struct expr *expr)
+{
+	enum ASF_REGS dest = ASF_REG_RAX;
+	dest = asf_reg_get(asf_yz_type_raw2bytes(*expr->sum_type));
+	return op_ptr_extract_from_reg(ASF_REG_RAX, dest);
 }

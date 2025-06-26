@@ -174,13 +174,19 @@ int identifier_assign_get_val(struct file *f, struct scope *scope,
 		return err_print_pos(__func__, "Cannot parse expr!",
 				orig_line, orig_column);
 	if (expr_apply(expr, scope) > 0)
-		return err_print_pos(__func__, "Cannot apply expr!",
-				orig_line, orig_column);
+		goto err_cannot_apply_expr;
 	if ((*result = identifier_expr_val_handle(&expr, dest_type))
 			== NULL)
-		return err_print_pos(__func__, "Cannot handle expr value!",
-				orig_line, orig_column);
+		goto err_cannot_handle_expr;
 	return 0;
+err_cannot_apply_expr:
+	free_expr(expr);
+	return err_print_pos(__func__, "Cannot apply expr!",
+			orig_line, orig_column);
+err_cannot_handle_expr:
+	free_expr(expr);
+	return err_print_pos(__func__, "Cannot handle expr value!",
+			orig_line, orig_column);
 }
 
 int identifier_assign_val(struct file *f, struct symbol *sym, enum OP_ID mode,

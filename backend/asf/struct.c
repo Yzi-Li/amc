@@ -3,6 +3,7 @@
 #include "include/mov.h"
 #include "include/op_val.h"
 #include "include/stack.h"
+#include "include/struct.h"
 #include "../../include/backend/object.h"
 #include <stdlib.h>
 
@@ -67,15 +68,24 @@ err_identifier_reg_failed:
 	return 1;
 }
 
+struct asf_stack_element *asf_struct_get_elem(struct asf_stack_element *base, int index)
+{
+	struct asf_stack_element *result = base;
+	for (int i = 0; i < index; i++) {
+		if ((result = result->next) == NULL)
+			return NULL;
+	}
+	return result;
+}
+
 int asf_struct_set_elem(struct symbol *sym, int index, yz_val *val,
 		enum OP_ID mode)
 {
-	struct asf_stack_element *dest = sym->backend_status;
+	struct asf_stack_element *dest =
+		asf_struct_get_elem(sym->backend_status, index);
 	struct object_node *node = NULL;
-	for (int i = 0; i < index; i++) {
-		if ((dest = dest->next) == NULL)
-			return 1;
-	}
+	if (dest == NULL)
+		return 1;
 	node = malloc(sizeof(*node));
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
@@ -92,13 +102,12 @@ err_free_node:
 
 int asf_op_extract_struct_elem(yz_extract_val *val)
 {
-	struct asf_stack_element *cur = val->sym->backend_status;
+	struct asf_stack_element *cur =
+		asf_struct_get_elem(val->sym->backend_status, val->index);
 	enum ASF_REGS dest = ASF_REG_RAX;
 	struct object_node *node = NULL;
-	for (int i = 0; i < val->index; i++) {
-		if ((cur = cur->next) == NULL)
-			return 1;
-	}
+	if (cur == NULL)
+		return 1;
 	dest = asf_reg_get(cur->bytes);
 	node = malloc(sizeof(*node));
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))

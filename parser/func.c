@@ -12,6 +12,7 @@
 #include "../include/token.h"
 #include "../include/comptime/ptr.h"
 #include "../utils/utils.h"
+#include "include/utils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -408,11 +409,14 @@ err_free_result:
 int parse_func_ret(struct file *f, struct symbol *sym, struct scope *scope)
 {
 	struct expr *expr = NULL;
+	i64 orig_column = f->cur_column,
+	    orig_line = f->cur_line;
 	yz_val val = {};
 	if ((expr = parse_expr(f, 1, scope)) == NULL)
-		return 1;
+		return err_print_pos(__func__, "Cannot parse expr!",
+				orig_line, orig_column);
 	if (expr_apply(expr, scope) > 0)
-		goto err_free_expr;
+		goto err_cannot_apply_expr;
 	keyword_end(f);
 	if (func_ret_get_val(&val, scope->fn, expr))
 		goto err_get_val_failed;
@@ -421,6 +425,10 @@ int parse_func_ret(struct file *f, struct symbol *sym, struct scope *scope)
 		goto err_backend_failed;
 	free_expr(expr);
 	return 0;
+err_cannot_apply_expr:
+	free_expr(expr);
+	return err_print_pos(__func__, "Cannot apply expr!",
+			orig_line, orig_column);
 err_free_expr:
 	free_expr(expr);
 	return 1;
@@ -430,7 +438,7 @@ err_get_val_failed:
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	goto err_free_expr;
 err_backend_failed:
-	printf("amc: parse_func_ret: Backend call failed!\n");
+	printf("| amc: parse_func_ret: Backend call failed!\n");
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	goto err_free_expr;
 }
