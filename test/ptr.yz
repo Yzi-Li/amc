@@ -1,5 +1,11 @@
+struct A =>
+	a: mut *i32?
+
 fn main: i32 =>
 	let a: i32 = 1
 	let b: *i32 = &a
 	let c: i32 = *b
+	let d: *i32? = null
+	let e: mut A = { null }
+	e.a = null
 	ret *b

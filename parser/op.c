@@ -180,7 +180,7 @@ struct symbol *op_get_ptr(yz_val *v, struct scope *scope)
 	if (v->type != AMC_SYM)
 		goto err_val_not_ptr;
 	ptr = v->v;
-	if (ptr->type != SYM_IDENTIFIER)
+	if (ptr->type != SYM_IDENTIFIER && ptr->type != SYM_FUNC_ARG)
 		goto err_val_not_ptr;
 	return ptr;
 err_val_not_ptr:

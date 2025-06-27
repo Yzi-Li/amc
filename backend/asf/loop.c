@@ -42,9 +42,9 @@ int asf_while_begin(backend_scope_status *raw_status)
 {
 	label_id label = -1;
 	struct asf_scope_status *status = raw_status;
-	// FIXME
-	if (asf_scope_end(raw_status))
-		return 1;
+	if (status->type != ASF_SCOPE_STATUS_NO)
+		if (asf_scope_end(raw_status))
+			return 1;
 	label = asf_label_alloc();
 	if (loop_append_label(label))
 		return 1;

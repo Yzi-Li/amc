@@ -12,9 +12,10 @@
 
 static int func_call_set_stack_top(int reverse);
 static str *func_ret_imm(struct asf_imm *src);
+static int func_ret_main(yz_val *v);
 static str *func_ret_mem(struct asf_stack_element *src);
 static str *func_ret_reg(enum ASF_REGS src);
-static str *func_ret_val(yz_val *v);
+static int func_ret_val(yz_val *v);
 
 int func_call_set_stack_top(int reverse)
 {
@@ -37,6 +38,24 @@ str *func_ret_imm(struct asf_imm *src)
 	return asf_inst_mov(ASF_MOV_I2R, src, &dest);
 }
 
+int func_ret_main(yz_val *v)
+{
+	struct object_node *node = malloc(sizeof(*node));
+	if ((node->s = asf_inst_syscall(60, 1, &v)) == NULL)
+		goto err_inst_failed;
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+		goto err_free_node_and_str;
+	return 0;
+err_inst_failed:
+	printf("amc[backend.asf:%s]: func_ret_main: Get instruction failed!\n",
+			__FILE__);
+	free(node);
+err_free_node_and_str:
+	str_free(node->s);
+	free(node);
+	return 1;
+}
+
 str *func_ret_mem(struct asf_stack_element *src)
 {
 	enum ASF_REGS dest = asf_reg_get(src->bytes);
@@ -53,19 +72,37 @@ str *func_ret_reg(enum ASF_REGS src)
 	return asf_inst_mov(ASF_MOV_R2R, &src, &dest);
 }
 
-str *func_ret_val(yz_val *v)
+int func_ret_val(yz_val *v)
 {
+	struct object_node *node = NULL;
 	struct asf_val val = {};
 	if (asf_val_get(v, &val))
-		return NULL;
+		return 1;
+	node = malloc(sizeof(*node));
 	if (val.type == ASF_VAL_IMM) {
-		return func_ret_imm(&val.imm);
+		if ((node->s = func_ret_imm(&val.imm)) == NULL)
+			goto err_inst_failed;
 	} else if (val.type == ASF_VAL_MEM) {
-		return func_ret_mem(val.mem);
+		if ((node->s = func_ret_mem(val.mem)) == NULL)
+			goto err_inst_failed;
 	} else if (val.type == ASF_VAL_REG) {
-		return func_ret_reg(val.reg);
+		if ((node->s = func_ret_reg(val.reg)) == NULL)
+			goto err_inst_failed;
+	} else {
+		return 1;
 	}
-	return NULL;
+	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+		goto err_free_node_and_str;
+	return 0;
+err_inst_failed:
+	printf("amc[backend.asf:%s]: func_ret_val: Get instruction failed!\n",
+			__FILE__);
+	free(node);
+	return 1;
+err_free_node_and_str:
+	str_free(node->s);
+	free(node);
+	return 1;
 }
 
 int asf_func_call(const char *name, yz_val *type, yz_val **vs, int vlen)
@@ -128,19 +165,19 @@ int asf_func_ret(yz_val *v, int is_main)
 	const char *temp =
 		"popq %rbp\n"
 		"ret\n";
-	struct object_node *node = malloc(sizeof(*node));
+	struct object_node *node = NULL;
 	if (is_main) {
-		if ((node->s = asf_inst_syscall(60, 1, &v)) == NULL)
-			goto err_inst_failed;
-	} else if ((node->s = func_ret_val(v)) == NULL) {
-		goto err_inst_failed;
+		if (func_ret_main(v))
+			return 1;
+	} else if (func_ret_val(v)) {
+		return 1;
 	}
+	node = malloc(sizeof(*node));
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
 		goto err_free_node;
+	node->s = str_new();
 	str_append(node->s, strlen(temp), temp);
 	return 0;
-err_inst_failed:
-	printf("amc[backend.asf]: asf_func_ret: Get instruction failed!\n");
 err_free_node:
 	free(node);
 	return 1;

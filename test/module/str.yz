@@ -1,0 +1,6 @@
+module str
+
+pub struct Str =>
+	len: mut i32
+	siz: mut i32
+	s: [mut char]

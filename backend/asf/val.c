@@ -68,9 +68,9 @@ int val_get_sym(struct symbol *src, struct asf_val *result)
 	result->type = ASF_VAL_REG;
 	result->reg = asf_reg_get(asf_yz_type2bytes(&src->result_type));
 	if (src->type == SYM_FUNC_ARG) {
-		if (src->argc - 2 > asf_call_arg_regs_len)
+		if (src->argc > asf_call_arg_regs_len)
 			goto err_too_many_arg;
-		result->reg += asf_call_arg_regs[src->argc - 2];
+		result->reg += asf_call_arg_regs[src->argc];
 	}
 	return 0;
 err_too_many_arg:

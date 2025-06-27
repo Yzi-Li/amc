@@ -1,6 +1,7 @@
 *.o
 *.a
 *.debug.o
+*.yz.s
 .cache
 compile_commands.json
 

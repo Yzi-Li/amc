@@ -238,7 +238,7 @@ int func_def_read_arg(const char *se, struct file *f, void *data)
 	sym = calloc(1, sizeof(*sym));
 	if (parse_type_name_pair(f, sym, scope))
 		goto err_free_sym;
-	sym->argc = 2 + scope->fn->argc;
+	sym->argc = scope->fn->argc;
 	sym->args = NULL;
 	sym->parse_function = NULL;
 	sym->type = SYM_FUNC_ARG;
@@ -322,13 +322,13 @@ int func_ret_get_val(yz_val *val, struct symbol *fn, struct expr *expr)
 	yz_val *tmp = identifier_expr_val_handle(&expr, &fn->result_type);
 	if (tmp == NULL)
 		goto err_type;
+	val->type = tmp->type;
+	val->v = tmp->v;
 	if (tmp->type == AMC_SYM) {
 		if (fn->result_type.type == YZ_PTR)
 			return !comptime_ptr_check_can_ret(val->v, fn);
 		return 0;
 	}
-	val->type = tmp->type;
-	val->v = tmp->v;
 	return 0;
 err_type:
 	printf("amc: func_ret_get_val:\n"
@@ -422,7 +422,8 @@ int parse_func_ret(struct file *f, struct symbol *sym, struct scope *scope)
 		goto err_get_val_failed;
 	if (backend_call(func_ret)(&val,
 				strncmp(scope->fn->name, "main", 4) == 0))
-		goto err_backend_failed;
+		return err_print_pos(__func__, "Backend call failed!",
+				orig_line, orig_column);
 	free_expr(expr);
 	return 0;
 err_cannot_apply_expr:
@@ -435,10 +436,6 @@ err_free_expr:
 err_get_val_failed:
 	printf("| parse_func_ret: %lld,%lld: Get value failed!\n",
 			f->cur_line, f->cur_column);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	goto err_free_expr;
-err_backend_failed:
-	printf("| amc: parse_func_ret: Backend call failed!\n");
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	goto err_free_expr;
 }

@@ -13,6 +13,7 @@ int scope_end_normal(struct asf_scope_status *status)
 	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], status->end_node))
 		goto err_free_node;
 	status->end_node = NULL;
+	status->type = ASF_SCOPE_STATUS_NO;
 	return 0;
 err_free_node:
 	str_free(status->end_node->s);
@@ -24,6 +25,7 @@ backend_scope_status *asf_scope_begin()
 {
 	struct asf_scope_status *status = calloc(1, sizeof(*status));
 	status->stack_start = asf_stack_top;
+	status->type = ASF_SCOPE_STATUS_NO;
 	return status;
 }
 
@@ -31,6 +33,9 @@ int asf_scope_end(backend_scope_status *raw_status)
 {
 	struct asf_scope_status *status = raw_status;
 	switch (status->type) {
+	case ASF_SCOPE_STATUS_NO:
+		return 0;
+		break;
 	case ASF_SCOPE_STATUS_NORMAL:
 		if (scope_end_normal(status))
 			return 1;

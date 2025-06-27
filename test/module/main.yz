@@ -1,0 +1,9 @@
+import from str
+import from syscall
+
+module main
+
+fn main: i32 =>
+	let a: Str = { 6, 6, "Hello\n" }
+	[syscall.write 1, a.s, a.len]
+	ret 0

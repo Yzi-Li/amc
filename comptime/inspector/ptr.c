@@ -1,6 +1,5 @@
 #include "../../include/comptime/ptr.h"
 #include <stdio.h>
-#include <stdlib.h>
 
 static int check_val_type(yz_val *val);
 
@@ -30,7 +29,7 @@ int comptime_ptr_check_can_null(yz_val *val, struct symbol *sym)
 {
 	if (!check_val_type(val))
 		goto err;
-	if (!sym->flags.can_null && !((struct symbol *)val->v)
+	if (!sym->flags.can_null && !((struct symbol*)val->v)
 			->flags.comptime_flag.checked_null)
 		goto err_cannot_null;
 	return 1;
@@ -42,7 +41,7 @@ err:
 err_cannot_null:
 	printf("amc: comptime_ptr_check_can_null:\n"
 			"| ERROR: Cannot use null for symbol: '%s'!\n"
-			"| NOTE:  Use 'if' to check symbol before use it.\n",
+			"| HINT:  Use 'if' to check symbol before use it.\n",
 			sym->name);
 	return 0;
 }

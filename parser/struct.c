@@ -10,6 +10,7 @@
 #include "include/utils.h"
 #include "../include/backend.h"
 #include "../include/comptime/mut.h"
+#include "../include/comptime/val.h"
 #include "../include/token.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -303,10 +304,13 @@ int struct_set_elem(struct file *f, struct symbol *sym, int index,
 	    orig_line = f->cur_line;
 	yz_val *val = NULL;
 	struct symbol *elem = ((yz_struct*)sym->result_type.v)->elems[index];
+	elem->flags.comptime_flag.checked_null = 0;
 	if (!comptime_check_struct_elem_can_assign(sym, elem))
 		return err_print_pos(__func__, NULL, orig_line, orig_column);
 	if (identifier_assign_get_val(f, scope, &elem->result_type, &val))
 		return 1;
+	if (!comptime_check_sym_can_assign_val(elem, val))
+		return err_print_pos(__func__, NULL, orig_line, orig_column);
 	if (struct_set_elem_backend_call(sym, index, val, mode))
 		return err_print_pos(__func__, "Backend call failed!",
 				orig_line, orig_column);

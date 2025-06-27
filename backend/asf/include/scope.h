@@ -5,6 +5,7 @@
 
 struct asf_scope_status {
 	enum {
+		ASF_SCOPE_STATUS_NO,
 		ASF_SCOPE_STATUS_NORMAL,
 		ASF_SCOPE_STATUS_COND
 	} type;

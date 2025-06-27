@@ -2,7 +2,6 @@
 #include "include/expr.h"
 #include "include/identifier.h"
 #include "include/keywords.h"
-#include "include/null.h"
 #include "include/struct.h"
 #include "include/token.h"
 #include "include/type.h"
@@ -10,6 +9,7 @@
 #include "../include/backend.h"
 #include "../include/comptime/mut.h"
 #include "../include/comptime/type.h"
+#include "../include/comptime/val.h"
 #include "../include/expr.h"
 #include "../include/symbol.h"
 #include "../include/token.h"
@@ -22,8 +22,6 @@ static int identifier_assign_backend_call(struct symbol *sym, yz_val *val,
 		enum OP_ID mode);
 static int identifier_handle_val_type(yz_val *src, yz_val *dest);
 static int let_init_constructor(struct file *f, struct symbol *sym,
-		struct scope *scope);
-static int let_init_null(struct file *f, struct symbol *sym,
 		struct scope *scope);
 static int let_init_val(struct file *f, struct symbol *sym,
 		struct scope *scope);
@@ -78,42 +76,6 @@ int let_init_constructor(struct file *f, struct symbol *sym,
 		return 1;
 	}
 	return 0;
-}
-
-int let_init_null(struct file *f, struct symbol *sym, struct scope *scope)
-{
-	char *name = NULL;
-	yz_val val = {.type = YZ_NULL, .v = NULL};
-	file_pos_nnext(strlen(CHR_NULL), f);
-	file_skip_space(f);
-	if (f->src[f->pos] != '\n' && f->src[f->pos] != ';')
-		goto err_null_must_exist_separately;
-	if (!sym->flags.can_null)
-		goto err_identifier_cannot_be_null;
-	name = str2chr(sym->name, sym->name_len);
-	if (sym->flags.mut) {
-		if (backend_call(var_set)(sym->backend_status, OP_ASSIGN,
-					&val))
-			goto err_free_name;
-	} else {
-		if (backend_call(var_immut_init)(sym->backend_status, &val))
-			goto err_free_name;
-	}
-	free(name);
-	return keyword_end(f);
-err_null_must_exist_separately:
-	printf("amc: let_init_null: %lld,%lld: null must exist separately!\n",
-			f->cur_line, f->cur_column);
-	return 1;
-err_identifier_cannot_be_null:
-	printf("amc: let_init_null: %lld,%lld: "
-			"Identifier cannot be null!\n",
-			f->cur_line, f->cur_column);
-	return 1;
-err_free_name:
-	free(name);
-	printf("amc: let_init_null: Backend call failed!\n");
-	return 1;
 }
 
 int let_init_val(struct file *f, struct symbol *sym, struct scope *scope)
@@ -198,10 +160,10 @@ int identifier_assign_val(struct file *f, struct symbol *sym, enum OP_ID mode,
 	sym->flags.comptime_flag.checked_null = 0;
 	if (!comptime_check_sym_can_assign(sym))
 		return err_print_pos(__func__, NULL, orig_line, orig_column);
-	if (strncmp(CHR_NULL, &f->src[f->pos], strlen(CHR_NULL)) == 0)
-		return let_init_null(f, sym, scope);
 	if (identifier_assign_get_val(f, scope, &sym->result_type, &val))
 		return 1;
+	if (!comptime_check_sym_can_assign_val(sym, val))
+		return err_print_pos(__func__, NULL, orig_line, orig_column);
 	if (identifier_assign_backend_call(sym, val, mode))
 		return err_print_pos(__func__, "Backend call failed!",
 				orig_line, orig_column);
