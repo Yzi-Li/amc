@@ -62,7 +62,18 @@ compile() {
 	if [ $err -ne 0 ]; then
 		echo -e "\x1b[31m--> ERROR\x1b[0m: Compiler stopped: $err!"
 		echo -e "  > $COMPILER $input -o $output"
-		exit 1
+		echo -en "  > \x1b[34mHINT\x1b[0m: debug compiler? [y/n] "
+		read ans
+		if [ "$ans" = "y" ]; then
+			if [ ! -f $COMPILER_BIN_DEBUG ]; then
+				echo -e "\x1b[31m  > ERROR\x1b[0m: Compiler(debug) not found!"
+				test_failed
+			fi
+			gdb -args "$COMPILER_BIN_DEBUG" "$input" -o "$output"
+			exit 0
+		else
+			test_failed
+		fi
 	fi
 }
 

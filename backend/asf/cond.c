@@ -112,15 +112,24 @@ int asf_cond_else(backend_scope_status *raw_status)
 int asf_cond_if(backend_scope_status *raw_status)
 {
 	struct asf_scope_status *status = raw_status;
-	if (cond_append_exit_label(asf_label_get_last()))
+	if (status->type != ASF_SCOPE_STATUS_COND)
 		return 1;
+	if (cond_append_exit_label(status->cond.exit_label))
+		return 1;
+	status->cond.branch = malloc(sizeof(*status->cond.branch));
+	status->cond.branch[0] = objs[cur_obj][ASF_OBJ_TEXT].last;
+	status->cond.branch_num = 1;
+	return 0;
+}
+
+int asf_cond_if_begin(backend_scope_status *raw_status)
+{
+	struct asf_scope_status *status = raw_status;
+	status->cond.exit_label = asf_label_get_last();
 	if (status->type != ASF_SCOPE_STATUS_NO)
 		if (asf_scope_end(raw_status))
 			return 1;
 	status->type = ASF_SCOPE_STATUS_COND;
-	status->cond.branch = malloc(sizeof(*status->cond.branch));
-	status->cond.branch[0] = objs[cur_obj][ASF_OBJ_TEXT].last;
-	status->cond.branch_num = 1;
 	return 0;
 }
 

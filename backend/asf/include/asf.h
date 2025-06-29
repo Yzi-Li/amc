@@ -22,6 +22,7 @@ int asf_array_set_elem(struct symbol *sym, yz_val *offset, yz_val *val,
 int asf_cond_elif(backend_scope_status *raw_status);
 int asf_cond_else(backend_scope_status *raw_status);
 int asf_cond_if(backend_scope_status *raw_status);
+int asf_cond_if_begin(backend_scope_status *raw_status);
 
 int asf_const_def_str(char *str, int len);
 

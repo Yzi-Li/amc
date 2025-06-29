@@ -45,6 +45,7 @@ struct backend {
 	backend_cond_elif_f      cond_elif;
 	backend_cond_else_f      cond_else;
 	backend_cond_if_f        cond_if;
+	backend_cond_if_begin_f  cond_if_begin;
 	backend_const_def_str_f  const_def_str;
 	backend_func_call_f      func_call;
 	backend_func_def_f       func_def;

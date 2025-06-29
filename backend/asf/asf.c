@@ -14,9 +14,10 @@ struct backend backend_asf = {
 	.array_def      = asf_array_def,
 	.array_set_elem = asf_array_set_elem,
 
-	.cond_elif = asf_cond_elif,
-	.cond_else = asf_cond_else,
-	.cond_if   = asf_cond_if,
+	.cond_elif     = asf_cond_elif,
+	.cond_else     = asf_cond_else,
+	.cond_if       = asf_cond_if,
+	.cond_if_begin = asf_cond_if_begin,
 
 	.const_def_str = asf_const_def_str,
 

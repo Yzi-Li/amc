@@ -1,15 +1,14 @@
-fn func(a: i32, b: mut *i32): i32 =>
-	ret 1 + (2 + 3)
-
 fn main: i32 =>
-	if 1 < 2 =>
+	let a: i32 = 0
+	let b: mut i32 = 0
+	if a == 0 =>
 		if 5 == 1 =>
-			let a: i32 = 1
-		let b: i32 = 2
-	elif 2 > 1 =>
-		let a: i32 = 3
+			let c: i32 = 1
+		b = 2
+	elif a > 1 =>
+		b = 3
 	else =>
-		let a: i32 = 4
-	if 2 > 1 =>
-		let a: i32 = 5
-	ret 0
+		b = 4
+	if a < 1 =>
+		b = 5
+	ret b

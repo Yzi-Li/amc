@@ -113,7 +113,9 @@ void asf_stack_end_frame(struct asf_stack_element *start)
 		if (start->prev != NULL)
 			start->prev->next = NULL;
 	}
-	asf_stack_top = start;
+	if ((asf_stack_top = start) == NULL)
+		return;
+	asf_stack_top->next = NULL;
 	while (cur != NULL) {
 		next = cur->next;
 		free(cur);

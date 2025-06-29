@@ -214,8 +214,8 @@ int identifier_read(struct file *f, yz_val *val, struct scope *scope)
 	return 0;
 err_identifier_not_found:
 	err_msg = str2chr(token.s, token.len);
-	printf("amc: identifier_read: %lld,%lld: Identifier not found!\n"
-			"| Token: \"%s\"\n",
+	printf("amc: identifier_read: %lld,%lld: "
+			"Identifier: '%s' not found!\n",
 			f->cur_line, f->cur_column,
 			err_msg);
 	free(err_msg);

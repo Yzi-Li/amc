@@ -50,6 +50,8 @@ int parse_if(struct file *f, struct symbol *sym, struct scope *scope)
 {
 	if (if_condition_parse(f, sym, scope))
 		return 1;
+	if (backend_call(cond_if_begin)(scope->status))
+		goto err_backend_failed;
 	if (if_block_parse(f, sym, scope))
 		return 1;
 	if (backend_call(cond_if)(scope->status))

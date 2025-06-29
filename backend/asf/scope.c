@@ -41,7 +41,6 @@ int asf_scope_end(backend_scope_status *raw_status)
 			return 1;
 		break;
 	case ASF_SCOPE_STATUS_COND:
-		status->type = ASF_SCOPE_STATUS_NORMAL;
 		if (asf_cond_handle_end(&status->cond))
 			return 1;
 		if (scope_end_normal(status))
