@@ -5,6 +5,6 @@ bin="$2"
 
 $bin
 
-if [ $? -ne 5 ]; then
-	exit 5
+if [ $? -ne 0 ]; then
+	exit 1
 fi

@@ -39,7 +39,11 @@ TARGET = amc
 DEBUG_OBJ = $(SRC:.c=.debug.o)
 DEBUG_TARGET = $(TARGET).debug
 
-CLIBS = -L$(STRDIR) -lstr -lgetarg
+# libs
+include lib/libgetarg.mk
+
+CLIBS = -L$(STRDIR) -lstr\
+	$(LIBGETARG)
 
 .PHONY: all clean debug debug_target
 .PHONY: $(COREDIR) $(COMPTIME) $(DECORATOR) $(PARSER) $(BACKEND) $(STRLIB)\

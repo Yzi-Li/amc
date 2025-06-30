@@ -465,9 +465,7 @@ int func_call_read(struct file *f, struct symbol **fn, struct scope *scope)
 	return 0;
 err_func_not_found:
 	err_msg = str2chr(token.s, token.len);
-	printf("amc: func_call_read: %lld,%lld: Function not found!\n"
-			"| Token: \"%s\"\n"
-			"|         ^\n",
+	printf("amc: func_call_read: %lld,%lld: Function: '%s' not found!\n",
 			orig_line, orig_column, err_msg);
 	free(err_msg);
 	backend_stop(BE_STOP_SIGNAL_ERR);

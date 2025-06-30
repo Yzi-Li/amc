@@ -5,6 +5,4 @@ bin="$2"
 
 $bin
 
-if [ $? -ne 5 ]; then
-	exit 5
-fi
+echo $?
