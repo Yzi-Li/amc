@@ -3,12 +3,18 @@
 #include "../include/file.h"
 
 struct parser {
-	unsigned int has_err:1, has_main:1;
-	char *target_name;
+	const char *path;
 };
 
-extern struct parser parser_global_conf;
+struct global_parser {
+	unsigned int has_err:1, has_main:1;
+	int parsed_file_count;
+	const char *target_path;
+};
 
-int parser_init(const char* path, struct file* f);
+extern struct global_parser global_parser;
+
+int parse_file(const char *path, struct file *f);
+int parser_init(const char *path, struct file *f);
 
 #endif

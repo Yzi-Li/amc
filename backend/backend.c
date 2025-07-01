@@ -20,6 +20,13 @@ int backend_init(int argc, char *argv[])
 	return backends[cur_backend]->init(argc, argv);
 }
 
+int backend_file_end(const char *target_path)
+{
+	if (backend_flag & BE_FLAG_STOPED)
+		return 0;
+	return backends[cur_backend]->file_end(target_path);
+}
+
 int backend_file_new(struct file *f)
 {
 	return backends[cur_backend]->file_new(f);

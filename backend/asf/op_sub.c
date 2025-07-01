@@ -13,7 +13,7 @@ int asf_op_sub(struct expr *e)
 	    *subtrahend = NULL;
 	node = malloc(sizeof(*node));
 	node->s = str_new();
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	if ((subtrahend = asf_op_get_val_right(node, e, -1)) == NULL)
 		goto err_free_node;

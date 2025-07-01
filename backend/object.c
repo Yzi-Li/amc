@@ -4,8 +4,7 @@
 
 extern int backend_flag;
 
-struct object_head **objs = NULL;
-int cur_obj = -1;
+struct object_head *cur_obj = NULL;
 
 int object_append(struct object_head *h, struct object_node *n)
 {

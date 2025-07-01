@@ -121,7 +121,7 @@ err_syntax_err:
 	printf("amc: parse_let: %lld,%lld: Syntax error!\n",
 			f->cur_line, f->cur_column);
 err_free_result:
-	symbol_free(result);
+	free_symbol(result);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }

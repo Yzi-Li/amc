@@ -2,10 +2,16 @@
 #include "../include/symbol.h"
 #include "../utils/utils.h"
 
-//TODO
-void struct_free(yz_struct *src)
+void free_struct(yz_struct *src)
 {
-	symbol_group_free(src->elems, src->elem_count);
+	free_symbol_group(src->elems, src->elem_count);
 	free_safe(src->name);
 	free_safe(src);
+}
+
+void free_structs(yz_struct **elems, int count)
+{
+	for (int i = 0; i < count; i++) {
+		free_struct(elems[i]);
+	}
 }

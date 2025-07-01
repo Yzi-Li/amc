@@ -16,7 +16,7 @@ int asf_op_mul(struct expr *e)
 	str *multiplicand_str = NULL;
 	node = malloc(sizeof(*node));
 	node->s = str_new();
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	if ((multiplicand_str = asf_op_get_val_right(node, e, ASF_REG_RCX))
 			== NULL)

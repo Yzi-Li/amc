@@ -99,7 +99,7 @@ int identifier_change_val_from_reg(struct asf_stack_element *dest,
 	tmp = asf_reg_get(asf_regs[src].bytes);
 	if (identifier_get_val(ASF_MOV_M2R, dest, tmp))
 		return 1;
-	return identifier_change_get_op_inst(objs[cur_obj][ASF_OBJ_TEXT].last,
+	return identifier_change_get_op_inst(cur_obj[ASF_OBJ_TEXT].last,
 			src, is_unsigned, mode);
 }
 
@@ -107,8 +107,8 @@ int identifier_get_val(enum ASF_MOV_TYPE mode, void *src, enum ASF_REGS dest)
 {
 	struct object_node *node = NULL;
 	node = malloc(sizeof(*node));
-	if (object_insert(node, objs[cur_obj][ASF_OBJ_TEXT].last->prev,
-				objs[cur_obj][ASF_OBJ_TEXT].last))
+	if (object_insert(node, cur_obj[ASF_OBJ_TEXT].last->prev,
+				cur_obj[ASF_OBJ_TEXT].last))
 		goto err_free_node;
 	if ((node->s = asf_inst_mov(mode, src, &dest)) == NULL)
 		goto err_inst_failed;
@@ -165,7 +165,7 @@ str *identifier_set_reg(struct asf_stack_element *dest, enum OP_ID mode,
 int asf_var_set(struct symbol *sym, enum OP_ID mode, yz_val *val)
 {
 	struct object_node *node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	if (mode == OP_ASSIGN && sym->backend_status == NULL) {
 		if ((node->s = asf_inst_push(val)) == NULL)

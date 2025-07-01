@@ -32,7 +32,7 @@ int array_elem_push(yz_val *val)
 	if (val == NULL)
 		return array_elem_push_empty(val);
 	node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	if ((node->s = asf_inst_push(val)) == NULL)
 		goto err_inst_failed;
@@ -53,7 +53,7 @@ int array_elem_push_empty(yz_val *val)
 		.iq = 0
 	};
 	struct object_node *node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	if ((node->s = asf_inst_push_imm(&imm)) == NULL)
 		goto err_inst_failed;
@@ -89,7 +89,7 @@ str *array_get_elem_from_mem(struct asf_stack_element *base,
 	enum ASF_REGS dest = ASF_REG_RAX;
 	struct object_node *node = NULL;
 	node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	if ((node->s = asf_inst_mov(ASF_MOV_M2R, src, &dest)) == NULL)
 		goto err_free_node;
@@ -134,7 +134,7 @@ str *array_set_elem_from_mem(struct asf_stack_element *base,
 {
 	enum ASF_REGS dest = ASF_REG_RAX;
 	struct object_node *node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	if ((node->s = asf_inst_mov(ASF_MOV_M2R, mem, &dest)) == NULL)
 		goto err_free_node;
@@ -183,7 +183,7 @@ str *array_set_elem_get_val_reg(enum ASF_REGS reg)
 	if (reg - asf_reg_get(asf_regs[reg].bytes) != tmp)
 		return asf_reg_get_str(&asf_regs[reg]);
 	node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	dest += asf_reg_get(asf_regs[reg].bytes);
 	if ((node->s = asf_inst_mov(ASF_MOV_R2R, &reg, &dest)) == NULL)
@@ -238,7 +238,7 @@ int asf_array_set_elem(struct symbol *sym, yz_val *offset, yz_val *val,
 						dest.reg, src)) == NULL)
 			goto err_inst_failed;
 	}
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node_and_str;
 	str_free(src);
 	return 0;
@@ -273,7 +273,7 @@ int asf_op_extract_array_elem(yz_extract_val *val)
 		if ((node->s = array_get_elem_from_reg(base, dest.reg)) == NULL)
 			goto err_inst_failed;
 	}
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node_and_str;
 	return 0;
 err_identifier_not_found:

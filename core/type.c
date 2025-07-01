@@ -178,11 +178,16 @@ void free_yz_extract_val(struct yz_extract_val *src)
 
 void free_yz_val(yz_val *src)
 {
+	free_yz_val_noself(src);
+	free(src);
+}
+
+void free_yz_val_noself(yz_val *src)
+{
 	if (src == NULL)
 		return;
 	if (src->type == AMC_EXPR)
 		free_expr(src->v);
 	if (src->type == AMC_EXTRACT_VAL)
 		free_yz_extract_val(src->v);
-	free(src);
 }

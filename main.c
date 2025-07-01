@@ -21,7 +21,7 @@ int opt_read_output(int argc, char *argv[], struct option *opt)
 {
 	if (argc != 1 || argv == NULL)
 		return 1;
-	parser_global_conf.target_name = argv[0];
+	global_parser.target_path = argv[0];
 	return 0;
 }
 

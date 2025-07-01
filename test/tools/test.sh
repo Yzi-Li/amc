@@ -21,6 +21,7 @@ elif [ -f "$COMPILER_BIN" ]; then
 	COMPILER="$COMPILER_BIN"
 else
 	echo -e "\x1b[31mERROR\x1b[0m: Compiler not found!"
+	exit 1
 fi
 
 assemble() {

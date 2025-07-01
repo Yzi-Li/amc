@@ -12,6 +12,7 @@ PARSER_SRC =\
 	keywords.c\
 	loop.c\
 	match.c\
+	module.c\
 	op.c\
 	parser.c\
 	ptr.c\

@@ -25,7 +25,7 @@ int op_ptr_extract_from_reg(enum ASF_REGS src, enum ASF_REGS dest)
 	if (src > ASF_REG_RSP)
 		return 1;
 	node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	node->s = str_new();
 	str_expand(node->s, strlen(temp));
@@ -52,7 +52,7 @@ int op_ptr_extract_get_addr(enum ASF_REGS *dest, struct symbol *sym)
 		return 0;
 	}
 	node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	src = sym->backend_status;
 	if ((node->s = asf_inst_mov(ASF_MOV_M2R, src, dest)) == NULL)
@@ -107,7 +107,7 @@ int asf_op_get_addr(struct expr *e)
 	if (e->valr->type != YZ_PTR)
 		goto err_not_ptr;
 	node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	dest = asf_reg_get(asf_yz_type_raw2bytes(*e->sum_type));
 	if (*asf_regs[dest].purpose != ASF_REG_PURPOSE_NULL)

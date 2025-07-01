@@ -2,8 +2,7 @@
 #define AMC_BE_OBJECT_H
 #include "../../utils/str/str.h"
 
-extern struct object_head **objs;
-extern int cur_obj;
+extern struct object_head *cur_obj;
 
 struct object_node;
 struct object_node {

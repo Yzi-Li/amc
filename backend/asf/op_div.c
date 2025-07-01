@@ -18,7 +18,7 @@ int asf_op_div(struct expr *e)
 	const char *temp = temp_signed;
 	node = malloc(sizeof(*node));
 	node->s = str_new();
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	if (asf_op_clean_reg(node, remainder))
 		goto err_free_node;

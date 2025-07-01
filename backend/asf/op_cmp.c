@@ -35,7 +35,7 @@ int cmp_jmp_inst_append(label_id label, str *label_str,
 		enum ASF_JMP_TYPE jmp_type)
 {
 	struct object_node *node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	if ((node->s = asf_inst_jmp(jmp_type, label_str->s, label_str->len))
 			== NULL)

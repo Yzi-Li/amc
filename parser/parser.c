@@ -8,7 +8,7 @@
 #include "include/keywords.h"
 #include <stdlib.h>
 
-struct parser parser_global_conf = {0, 0, "/tmp/amc.target.s"};
+struct global_parser global_parser = { 0, 0, 0, "/tmp/amc.target.s" };
 
 static int parse_line(struct file *f, struct scope *scope,
 		struct hooks **hooks);
@@ -55,9 +55,12 @@ err_not_toplevel:
 	return 2;
 }
 
-int parser_init(const char *path, struct file *f)
+int parse_file(const char *path, struct file *f)
 {
 	struct hooks *hooks = calloc(1, sizeof(*hooks));
+	struct parser parser = {
+		.path = path
+	};
 	int ret = 0;
 	struct scope toplevel = {
 		.fn = NULL,
@@ -70,7 +73,7 @@ int parser_init(const char *path, struct file *f)
 	if (file_init(path, f))
 		die("amc: file_init: no such file: %s\n", path);
 	if (backend_file_new(f))
-		die("amc: backend_file_new: cannot create new file");
+		die("amc: backend_file_new: cannot create new file: %s", path);
 
 	while (f->src[f->pos] != '\0') {
 		if ((ret = parse_line(f, &toplevel, &hooks)) > 0)
@@ -80,5 +83,12 @@ int parser_init(const char *path, struct file *f)
 		if (ret != -1)
 			file_line_next(f);
 	}
+	return backend_file_end(global_parser.target_path);
+}
+
+int parser_init(const char *path, struct file *f)
+{
+	if (parse_file(path, f))
+		return 1;
 	return backend_end();
 }

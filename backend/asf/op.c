@@ -211,7 +211,7 @@ str *op_get_valr_imm(struct object_node *parent, yz_val *src,
 			return NULL;
 		node = malloc(sizeof(*node));
 		if (parent == NULL) {
-			if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+			if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 				goto err_free_node;
 		} else {
 			if (object_insert(node, parent, parent->next))
@@ -264,7 +264,7 @@ int op_init_obj_node(struct object_node *parent, struct object_node *node)
 	if (node == NULL)
 		return 0;
 	if (parent == NULL) {
-		if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+		if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 			return 1;
 		return 0;
 	}

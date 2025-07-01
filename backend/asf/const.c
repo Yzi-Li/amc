@@ -11,7 +11,7 @@ static int const_label_new();
 int const_label_new()
 {
 	struct object_node *node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_RODATA], node))
+	if (object_append(&cur_obj[ASF_OBJ_RODATA], node))
 		return 1;
 	node->s = str_new();
 	const_count += 1;
@@ -30,7 +30,7 @@ int asf_const_def_str(char *str, int len)
 	if (const_label_new())
 		return 1;
 	node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_RODATA], node))
+	if (object_append(&cur_obj[ASF_OBJ_RODATA], node))
 		return 1;
 	node->s = str_new();
 	str_expand(node->s, strlen(temp) - 1 + len);

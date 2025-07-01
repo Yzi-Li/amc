@@ -77,5 +77,6 @@ yz_val *yz_type_max(yz_val *l, yz_val *r);
 
 void free_yz_extract_val(struct yz_extract_val *src);
 void free_yz_val(yz_val *src);
+void free_yz_val_noself(yz_val *src);
 
 #endif

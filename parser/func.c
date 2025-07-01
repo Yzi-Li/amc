@@ -213,7 +213,7 @@ int func_def_main(struct file *f, struct scope *fn_scope)
 {
 	fn_scope->fn->result_type.type = YZ_I8;
 	fn_scope->fn->result_type.v = NULL;
-	parser_global_conf.has_main = 1;
+	global_parser.has_main = 1;
 	while (f->src[f->pos] != '=')
 		file_pos_next(f);
 	file_pos_nnext(2, f);

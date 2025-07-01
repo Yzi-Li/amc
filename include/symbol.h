@@ -90,8 +90,9 @@ int symbol_find_in_group(str *token, struct symbol_group *group,
 		struct symbol **result);
 int symbol_find_in_group_in_scope(str *token, struct symbol **result,
 		struct scope *scope, enum SYMG group_type);
-void symbol_free(struct symbol *sym);
-void symbol_group_free(struct symbol **syms, int count);
 int symbol_register(struct symbol *symbol, struct symbol_group *group);
+
+void free_symbol(struct symbol *sym);
+void free_symbol_group(struct symbol **syms, int count);
 
 #endif

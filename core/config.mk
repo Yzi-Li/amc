@@ -1,6 +1,7 @@
 CORE_SRC =\
 	array.c\
 	file.c\
+	module.c\
 	ptr.c\
 	scope.c\
 	struct.c\

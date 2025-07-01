@@ -7,6 +7,7 @@
 
 struct backend backend_asf = {
 	.end      = asf_end,
+	.file_end = asf_file_end,
 	.file_new = asf_file_new,
 	.init     = asf_init,
 	.stop     = asf_stop,
@@ -70,18 +71,21 @@ struct backend backend_asf = {
 
 int asf_init(int argc, char *argv[])
 {
-	objs = malloc(sizeof(void*));
 	return asf_regs_init();
+}
+
+int asf_file_end(const char *target_path)
+{
+	return target_write(target_path, cur_obj, ASF_OBJ_COUNT);
 }
 
 int asf_file_new(struct file *f)
 {
 	const char *temp_rodata = ".section .rodata\n";
 	struct object_node *rodata = NULL;
-	cur_obj++;
-	objs[cur_obj] = calloc(3, sizeof(struct object_head));
+	cur_obj = calloc(3, sizeof(struct object_head));
 	rodata = malloc(sizeof(*rodata));
-	if (object_append(&objs[cur_obj][ASF_OBJ_RODATA], rodata))
+	if (object_append(&cur_obj[ASF_OBJ_RODATA], rodata))
 		goto err_free_rodata;
 	rodata->s = str_new();
 	str_append(rodata->s, strlen(temp_rodata), temp_rodata);
@@ -98,7 +102,7 @@ int asf_stop(enum BE_STOP_SIGNAL bess)
 		//break;
 	case BE_STOP_SIGNAL_ERR:
 	default:
-		objects_free(objs[cur_obj]);
+		objects_free(cur_obj);
 		break;
 	}
 
@@ -107,5 +111,5 @@ int asf_stop(enum BE_STOP_SIGNAL bess)
 
 int asf_end()
 {
-	return target_write(objs, ASF_OBJ_COUNT);
+	return 0;
 }

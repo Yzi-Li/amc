@@ -13,6 +13,7 @@ typedef struct yz_struct {
 	char *name;
 } yz_struct;
 
-void struct_free(yz_struct *src);
+void free_struct(yz_struct *src);
+void free_structs(yz_struct **elems, int count);
 
 #endif

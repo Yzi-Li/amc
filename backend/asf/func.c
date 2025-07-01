@@ -23,7 +23,7 @@ int func_call_set_stack_top(int reverse)
 	const char *temp_normal = "subq $%lld, %%rsp\n",
 	           *temp_reverse = "addq $%lld, %%rsp\n",
 	           *temp = reverse ? temp_reverse : temp_normal;
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		return 1;
 	node->s = str_new();
 	str_expand(node->s, strlen(temp) - 4
@@ -43,7 +43,7 @@ int func_ret_main(yz_val *v)
 	struct object_node *node = malloc(sizeof(*node));
 	if ((node->s = asf_inst_syscall(60, 1, &v)) == NULL)
 		goto err_inst_failed;
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node_and_str;
 	return 0;
 err_inst_failed:
@@ -91,7 +91,7 @@ int func_ret_val(yz_val *v)
 	} else {
 		return 1;
 	}
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node_and_str;
 	return 0;
 err_inst_failed:
@@ -119,7 +119,7 @@ int asf_func_call(const char *name, yz_val *type, yz_val **vs, int vlen)
 	if (asf_stack_top != NULL && func_call_set_stack_top(0))
 			return 1;
 	node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	if (asf_stack_top != NULL && func_call_set_stack_top(1))
 		goto err_free_node;
@@ -146,7 +146,7 @@ int asf_func_def(const char *name, int len, yz_val *type)
 	char *tmp_name = malloc(len + 1);
 	struct object_node *node = malloc(sizeof(*node));
 	node->s = str_new();
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	memcpy(tmp_name, name, len);
 	tmp_name[len] = '\0';
@@ -173,7 +173,7 @@ int asf_func_ret(yz_val *v, int is_main)
 		return 1;
 	}
 	node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	node->s = str_new();
 	str_append(node->s, strlen(temp), temp);
@@ -188,7 +188,7 @@ int asf_syscall(int code)
 	const char *temp = "movq $%d, %%rax\nsyscall\n";
 	struct object_node *tmp = NULL, *prev = NULL,
 	                   *node = malloc(sizeof(*node));
-	if (object_append(&objs[cur_obj][ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	node->s = str_new();
 	str_expand(node->s, strlen(temp) - 2 + ullen(code));
