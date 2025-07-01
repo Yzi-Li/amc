@@ -1,5 +1,23 @@
-# Yuanzi Programming Language Complier
+# Atom(Yuanzi) Programming Language Complier
 Implementation on C.
+
+# Install | Build
+## Install 'libgetarg'
+Follow [libgetarg.mk](lib/libgetarg.mk) to install libgetarg
+and configuration makefile.
+
+## Build 'amc'
+### Normal version
+```sh
+make
+```
+### Debug version
+```sh
+make debug
+```
+
+## Misc
+Try read [Makefile](Makefile) to learn more build options.
 
 # BUGS
 ## Unsupport 32-bit!

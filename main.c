@@ -28,9 +28,12 @@ int opt_read_output(int argc, char *argv[], struct option *opt)
 int opt_read_src(int argc, char *argv[], struct option *opt)
 {
 	if (argc > 1 || argv == NULL)
-		return 1;
+		goto err_too_many_files;
 	src = argv[0];
 	return 0;
+err_too_many_files:
+	printf("amc: opt_read_src: Unsupport multiple entry files!\n");
+	return 1;
 }
 
 int print_version()
@@ -61,14 +64,14 @@ int main(int argc, char *argv[])
 			"src", 's',
 			GETARG_LIST_ARG, 0,
 			opt_read_src,
-			"source files",
+			"source file",
 			NULL
 		},
 		{
 			NULL, '\0',
 			GETARG_LIST_ARG, 0,
 			opt_read_src,
-			"source files",
+			"source file",
 			NULL
 		}
 	};
@@ -80,5 +83,5 @@ int main(int argc, char *argv[])
 		die("amc: backend_init: cannot init backend.");
 	if (argc < 2)
 		return print_version();
-	return parser_init(argv[1], &f);
+	return parser_init(src, &f);
 }
