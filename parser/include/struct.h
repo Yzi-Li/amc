@@ -5,11 +5,11 @@
 #include "../../include/symbol.h"
 #include "../../utils/str/str.h"
 
-int constructor_struct(struct file *f, struct symbol *sym, struct scope *scope);
+int constructor_struct(struct parser *parser, struct symbol *sym);
 int parse_type_struct(str *token, yz_val *type, struct scope *scope);
-int struct_get_elem(struct file *f, yz_val *val, struct scope *scope);
-int struct_set_elem(struct file *f, struct symbol *sym, int index,
-		enum OP_ID mode, struct scope *scope);
+int struct_get_elem(struct parser *parser, yz_val *val);
+int struct_set_elem(struct parser *parser, struct symbol *sym, int index,
+		enum OP_ID mode);
 yz_struct *struct_type_find(str *s, struct scope *scope);
 yz_struct *struct_type_get(str *s, yz_struct **structures, int count);
 

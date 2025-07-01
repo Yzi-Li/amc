@@ -1,9 +1,14 @@
 #ifndef AMC_PARSER_H
 #define AMC_PARSER_H
 #include "../include/file.h"
+#include "../include/module.h"
+#include "../include/scope.h"
 
 struct parser {
-	const char *path;
+	struct file *f;
+	struct symbol *sym;
+	struct hooks *hooks;
+	struct scope *scope;
 };
 
 struct global_parser {

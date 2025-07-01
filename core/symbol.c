@@ -1,4 +1,5 @@
 #include "../include/backend.h"
+#include "../include/scope.h"
 #include "../include/symbol.h"
 #include <stdio.h>
 #include <stdlib.h>

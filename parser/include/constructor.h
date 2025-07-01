@@ -6,7 +6,7 @@
 struct constructor_handle {
 	int index;
 	int len;
-	struct scope *scope;
+	struct parser *parser;
 	struct symbol *sym;
 	yz_val **vs;
 };

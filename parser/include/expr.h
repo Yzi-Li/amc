@@ -5,7 +5,7 @@
 #include "../../include/symbol.h"
 #include "../../include/type.h"
 
-int expr_apply(struct expr *e, struct scope *scope);
-struct expr *parse_expr(struct file *f, int top, struct scope *scope);
+int expr_apply(struct parser *parser, struct expr *e);
+struct expr *parse_expr(struct parser *parser, int top);
 
 #endif

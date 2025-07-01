@@ -112,7 +112,8 @@ int asf_func_call(const char *name, yz_val *type, yz_val **vs, int vlen)
 	const char *temp = "call %s\n";
 	if (vlen > asf_call_arg_regs_len)
 		goto err_too_many_arg;
-	reg = asf_reg_get(asf_yz_type2bytes(type));
+	if ((reg = asf_reg_get(asf_yz_type2bytes(type))) == -1)
+		return 1;
 	*asf_regs[reg].purpose = ASF_REG_PURPOSE_FUNC_RESULT;
 	if (asf_call_push_args(vlen, vs))
 		goto err_free_node;

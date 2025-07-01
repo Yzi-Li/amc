@@ -11,16 +11,15 @@
 #include "../include/backend.h"
 #include "../include/comptime/mut.h"
 #include "../include/comptime/val.h"
+#include "../include/parser.h"
 #include "../include/token.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 static int constructor_struct_elem(const char *se, struct file *f, void *data);
-static int struct_def_read_elem(struct file *f, yz_struct *src,
-		struct scope *scope);
-static int struct_def_read_elems(struct file *f, yz_struct *src,
-		struct scope *scope);
+static int struct_def_read_elem(struct parser *parser, yz_struct *src);
+static int struct_def_read_elems(struct parser *parser, yz_struct *src);
 static int struct_def_read_name(struct file *f, str *name);
 static int struct_def_read_start(struct file *f, const char *name);
 static int struct_def_reg(yz_struct *src, struct scope *scope);
@@ -43,9 +42,9 @@ int constructor_struct_elem(const char *se, struct file *f, void *data)
 	yz_val *val = NULL;
 	if (handle->index > src->elem_count - 1)
 		goto err_too_many_elem;
-	if ((expr = parse_expr(f, 1, handle->scope)) == NULL)
+	if ((expr = parse_expr(handle->parser, 1)) == NULL)
 		goto err_cannot_parse_expr;
-	if (expr_apply(expr, handle->scope) > 0)
+	if (expr_apply(handle->parser, expr) > 0)
 		goto err_cannot_apply_expr;
 	if ((val = identifier_expr_val_handle(&expr,
 					&src->elems[handle->index]
@@ -74,43 +73,43 @@ err_cannot_apply_expr:
 	return 1;
 }
 
-int struct_def_read_elem(struct file *f, yz_struct *src, struct scope *scope)
+int struct_def_read_elem(struct parser *parser, yz_struct *src)
 {
 	int indent = 0;
-	i64 orig_column = f->cur_column,
-	    orig_line = f->cur_line,
-	    orig_pos = f->pos;
+	i64 orig_column = parser->f->cur_column,
+	    orig_line = parser->f->cur_line,
+	    orig_pos = parser->f->pos;
 	struct symbol *elem = NULL;
-	if ((indent = indent_read(f)) != scope->indent) {
-		f->cur_column = orig_column;
-		f->cur_line = orig_line;
-		f->pos = orig_pos;
+	if ((indent = indent_read(parser->f)) != parser->scope->indent) {
+		parser->f->cur_column = orig_column;
+		parser->f->cur_line = orig_line;
+		parser->f->pos = orig_pos;
 		return -1;
 	}
-	if (parse_comment(f))
+	if (parse_comment(parser->f))
 		return 0;
 	elem = calloc(1, sizeof(*elem));
 	elem->type = SYM_STRUCT_ELEM;
-	if (parse_type_name_pair(f, elem, scope))
+	if (parse_type_name_pair(parser, elem))
 		goto err_free_elem;
 	if (struct_def_reg_elem(src, elem))
 		goto err_free_elem;
-	return keyword_end(f);
+	return keyword_end(parser->f);
 err_free_elem:
 	free(elem);
 	return 1;
 }
 
-int struct_def_read_elems(struct file *f, yz_struct *src, struct scope *scope)
+int struct_def_read_elems(struct parser *parser, yz_struct *src)
 {
-	int orig_indent = scope->indent,
+	int orig_indent = parser->scope->indent,
 	    ret = 0;
-	scope->indent += 1;
-	while ((ret = struct_def_read_elem(f, src, scope)) != -1) {
+	parser->scope->indent += 1;
+	while ((ret = struct_def_read_elem(parser, src)) != -1) {
 		if (ret > 0)
 			return 1;
 	}
-	scope->indent = orig_indent;
+	parser->scope->indent = orig_indent;
 	return 0;
 }
 
@@ -210,56 +209,56 @@ int struct_set_elem_backend_call(struct symbol *sym, int index, yz_val *val,
 	return 0;
 }
 
-int constructor_struct(struct file *f, struct symbol *sym, struct scope *scope)
+int constructor_struct(struct parser *parser, struct symbol *sym)
 {
 	struct constructor_handle *handle = malloc(sizeof(*handle));
 	handle->index = 0;
 	handle->len = ((yz_struct*)sym->result_type.v)->elem_count;
-	handle->scope = scope;
+	handle->parser = parser;
 	handle->sym = sym;
 	handle->vs = calloc(handle->len, sizeof(yz_val*));
-	if (token_parse_list(",}", handle, f, constructor_struct_elem))
+	if (token_parse_list(",}", handle, parser->f, constructor_struct_elem))
 		goto err_free_handle;
 	if (backend_call(struct_def)(&sym->backend_status, handle->vs,
 				handle->len))
 		goto err_backend_failed;
 	constructor_handle_free(handle);
-	if (f->src[f->pos] != '}')
+	if (parser->f->src[parser->f->pos] != '}')
 		goto err_not_end;
-	file_pos_next(f);
-	file_skip_space(f);
-	return keyword_end(f);
+	file_pos_next(parser->f);
+	file_skip_space(parser->f);
+	return keyword_end(parser->f);
 err_backend_failed:
 	constructor_handle_free(handle);
 	printf("amc: constructor_struct: %lld,%lld: Backend call failed!\n",
-			f->cur_line, f->cur_column);
+			parser->f->cur_line, parser->f->cur_column);
 err_free_handle:
 	constructor_handle_free(handle);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_not_end:
 	printf("amc: constructor_struct: %lld,%lld: Not end!\n",
-			f->cur_line, f->cur_column);
+			parser->f->cur_line, parser->f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
 
-int parse_struct(struct file *f, struct symbol *sym, struct scope *scope)
+int parse_struct(struct parser *parser)
 {
 	str name = TOKEN_NEW;
 	yz_struct *result = NULL;
 	int ret = 0;
-	if ((ret = struct_def_read_name(f, &name)) > 0)
+	if ((ret = struct_def_read_name(parser->f, &name)) > 0)
 		return 1;
 	result = calloc(1, sizeof(*result));
 	result->name = str2chr(name.s, name.len);
 	if (ret == -1)
 		result->flags.rec = 1;
-	if (struct_def_read_start(f, result->name))
+	if (struct_def_read_start(parser->f, result->name))
 		goto err_free_result;
-	if (struct_def_read_elems(f, result, scope))
+	if (struct_def_read_elems(parser, result))
 		goto err_free_result;
-	if (struct_def_reg(result, scope))
+	if (struct_def_reg(result, parser->scope))
 		goto err_free_result;
 	return 0;
 err_free_result:
@@ -282,32 +281,33 @@ err_not_found:
 	return 1;
 }
 
-int struct_get_elem(struct file *f, yz_val *val, struct scope *scope)
+int struct_get_elem(struct parser *parser, yz_val *val)
 {
 	int ret = 0;
 	struct symbol *sym = val->v;
 	yz_struct *src = sym->result_type.v;
 	str token = TOKEN_NEW;
-	if (struct_get_elem_read_name(f, &token))
+	if (struct_get_elem_read_name(parser->f, &token))
 		goto err_print_pos;
 	if ((ret = struct_get_elem_read_elem(&token, src)) == -1)
 		goto err_print_pos;
 	return struct_get_elem_handle_val(val, ret, src->elems[ret]);
 err_print_pos:
-	return err_print_pos(__func__, NULL, f->cur_line, f->cur_column);
+	return err_print_pos(__func__, NULL, parser->f->cur_line,
+			parser->f->cur_column);
 }
 
-int struct_set_elem(struct file *f, struct symbol *sym, int index,
-		enum OP_ID mode, struct scope *scope)
+int struct_set_elem(struct parser *parser, struct symbol *sym, int index,
+		enum OP_ID mode)
 {
-	i64 orig_column = f->cur_column,
-	    orig_line = f->cur_line;
+	i64 orig_column = parser->f->cur_column,
+	    orig_line = parser->f->cur_line;
 	yz_val *val = NULL;
 	struct symbol *elem = ((yz_struct*)sym->result_type.v)->elems[index];
 	elem->flags.comptime_flag.checked_null = 0;
 	if (!comptime_check_struct_elem_can_assign(sym, elem))
 		return err_print_pos(__func__, NULL, orig_line, orig_column);
-	if (identifier_assign_get_val(f, scope, &elem->result_type, &val))
+	if (identifier_assign_get_val(parser, &elem->result_type, &val))
 		return 1;
 	if (!comptime_check_sym_can_assign_val(elem, val))
 		return err_print_pos(__func__, NULL, orig_line, orig_column);

@@ -9,6 +9,7 @@
 #include "include/utils.h"
 #include "../include/array.h"
 #include "../include/backend.h"
+#include "../include/parser.h"
 #include "../include/token.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,7 +21,7 @@ static int array_get_len(struct file *f, yz_array *arr);
 static int array_get_len_check_mut(struct file *f);
 static int array_get_len_end(struct file *f, int len);
 static int array_get_len_from_num(struct file *f, int *len);
-static yz_val *array_read_offset(struct file *f, struct scope *scope);
+static yz_val *array_read_offset(struct parser *f);
 static int array_set_elem_backend_call(struct symbol *sym, yz_val *offset,
 		yz_val *val, enum OP_ID mode);
 static int constructor_array_elem(const char *se, struct file *f, void *data);
@@ -101,15 +102,15 @@ err_not_num:
 	return 1;
 }
 
-yz_val *array_read_offset(struct file *f, struct scope *scope)
+yz_val *array_read_offset(struct parser *parser)
 {
 	yz_val type = {.type = YZ_U64, .l = 0};
 	struct expr *expr = NULL;
-	i64 orig_column = f->cur_column,
-	    orig_line = f->cur_line;
-	if ((expr = parse_expr(f, 1, scope)) == NULL)
+	i64 orig_column = parser->f->cur_column,
+	    orig_line = parser->f->cur_line;
+	if ((expr = parse_expr(parser, 1)) == NULL)
 		goto err_read_offset_failed;
-	if (expr_apply(expr, scope) > 0)
+	if (expr_apply(parser, expr) > 0)
 		goto err_read_offset_failed;
 	return identifier_expr_val_handle(&expr, &type);
 err_read_offset_failed:
@@ -134,9 +135,9 @@ int constructor_array_elem(const char *se, struct file *f, void *data)
 	yz_val *val = NULL;
 	if (handle->index > handle->len - 1)
 		goto err_too_many_elem;
-	if ((expr = parse_expr(f, 1, handle->scope)) == NULL)
+	if ((expr = parse_expr(handle->parser, 1)) == NULL)
 		goto err_cannot_parse_expr;
-	if (expr_apply(expr, handle->scope) > 0)
+	if (expr_apply(handle->parser, expr) > 0)
 		goto err_cannot_apply_expr;
 	if ((val = identifier_expr_val_handle(&expr, &arr->type)) == NULL)
 		goto err_cannot_apply_expr;
@@ -162,44 +163,44 @@ err_cannot_apply_expr:
 	return 1;
 }
 
-int array_get_elem(struct file *f, yz_val *val, struct scope *scope)
+int array_get_elem(struct parser *parser, yz_val *val)
 {
 	struct symbol *sym = val->v;
 	yz_val *offset = NULL;
 	if (sym->result_type.type != YZ_ARRAY)
 		goto err_not_arr;
-	file_pos_next(f);
-	file_skip_space(f);
-	if ((offset = array_read_offset(f, scope)) == NULL)
+	file_pos_next(parser->f);
+	file_skip_space(parser->f);
+	if ((offset = array_read_offset(parser)) == NULL)
 		return 1;
-	if (f->src[f->pos] != ']')
+	if (parser->f->src[parser->f->pos] != ']')
 		goto err_not_end;
-	file_pos_next(f);
-	file_skip_space(f);
+	file_pos_next(parser->f);
+	file_skip_space(parser->f);
 	return array_get_elem_handle_val(val, offset, sym);
 err_not_arr:
 	printf("amc: array_get_elem: %lld,%lld: Symbol: '%s' isn't array!\n",
-			f->cur_line, f->cur_column, sym->name);
+			parser->f->cur_line, parser->f->cur_column, sym->name);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_not_end:
 	printf("amc: array_get_elem: %lld,%lld: Not end!\n",
-			f->cur_line, f->cur_column);
+			parser->f->cur_line, parser->f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
 
-int array_set_elem(struct file *f, struct symbol *sym, yz_val *offset,
-		enum OP_ID mode, struct scope *scope)
+int array_set_elem(struct parser *parser, struct symbol *sym, yz_val *offset,
+		enum OP_ID mode)
 {
 	yz_array *arr = sym->result_type.v;
-	i64 orig_column = f->cur_column,
-	    orig_line = f->cur_line;
+	i64 orig_column = parser->f->cur_column,
+	    orig_line = parser->f->cur_line;
 	yz_val *val = NULL;
 	if (sym->result_type.type != YZ_ARRAY)
 		return err_print_pos(__func__, NULL,
-				f->cur_line, f->cur_column);
-	if (identifier_assign_get_val(f, scope, &arr->type, &val))
+				parser->f->cur_line, parser->f->cur_column);
+	if (identifier_assign_get_val(parser, &arr->type, &val))
 		return 1;
 	if (array_set_elem_backend_call(sym, offset, val, mode))
 		return err_print_pos(__func__, "Backend call failed!",
@@ -208,62 +209,62 @@ int array_set_elem(struct file *f, struct symbol *sym, yz_val *offset,
 	return 0;
 }
 
-int constructor_array(struct file *f, struct symbol *sym, struct scope *scope)
+int constructor_array(struct parser *parser, struct symbol *sym)
 {
 	struct constructor_handle *handle = malloc(sizeof(*handle));
 	handle->index = 0;
 	handle->len = ((yz_array*)sym->result_type.v)->len;
-	handle->scope = scope;
+	handle->parser = parser;
 	handle->sym = sym;
 	handle->vs = calloc(handle->len, sizeof(yz_val*));
-	if (token_parse_list(",}", handle, f, constructor_array_elem))
+	if (token_parse_list(",}", handle, parser->f, constructor_array_elem))
 		goto err_free_handle;
 	if (backend_call(array_def)(&sym->backend_status, handle->vs,
 				handle->len))
 		goto err_backend_failed;
 	constructor_handle_free(handle);
-	if (f->src[f->pos] != '}')
+	if (parser->f->src[parser->f->pos] != '}')
 		goto err_not_end;
-	file_pos_next(f);
-	file_skip_space(f);
-	return keyword_end(f);
+	file_pos_next(parser->f);
+	file_skip_space(parser->f);
+	return keyword_end(parser->f);
 err_backend_failed:
 	constructor_handle_free(handle);
 	printf("amc: constructor_array: %lld,%lld: Backend call failed!\n",
-			f->cur_line, f->cur_column);
+			parser->f->cur_line, parser->f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 err_free_handle:
 	constructor_handle_free(handle);
 	return 1;
 err_not_end:
 	printf("amc: constructor_array: %lld,%lld: Not end!\n",
-			f->cur_line, f->cur_column);
+			parser->f->cur_line, parser->f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
 
-int parse_type_array(struct file *f, yz_val *type, struct scope *scope)
+int parse_type_array(struct parser *parser, yz_val *type)
 {
 	yz_array *arr = NULL;
 	int ret = 0;
-	file_pos_next(f);
-	file_skip_space(f);
+	file_pos_next(parser->f);
+	file_skip_space(parser->f);
 	arr = malloc(sizeof(*arr));
 	arr->len = -1;
 	type->type = YZ_ARRAY;
 	type->v = arr;
-	if ((ret = parse_type(f, &arr->type, scope)) > 0)
+	if ((ret = parse_type(parser, &arr->type)) > 0)
 		goto err_free_arr;
-	if (f->src[f->pos] != ',') {
-		if (f->src[f->pos] != ']')
+	if (parser->f->src[parser->f->pos] != ',') {
+		if (parser->f->src[parser->f->pos] != ']')
 			goto err_free_arr;
-		file_pos_next(f);
-		file_skip_space(f);
+		file_pos_next(parser->f);
+		file_skip_space(parser->f);
 		return 0;
 	}
-	file_pos_next(f);
-	file_skip_space(f);
-	return array_get_len(f, arr);
+	file_pos_next(parser->f);
+	file_skip_space(parser->f);
+	return array_get_len(parser->f, arr);
 err_free_arr:
 	free(arr);
 	type->v = NULL;

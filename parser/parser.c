@@ -10,39 +10,36 @@
 
 struct global_parser global_parser = { 0, 0, 0, "/tmp/amc.target.s" };
 
-static int parse_line(struct file *f, struct scope *scope,
-		struct hooks **hooks);
+static int parse_line(struct parser *parser);
 
-int parse_line(struct file *f, struct scope *scope, struct hooks **hooks)
+int parse_line(struct parser *parser)
 {
 	char *err_msg;
 	str token = TOKEN_NEW;
 	struct symbol *sym = NULL;
-	file_skip_space(f);
-	if (parse_comment(f))
+	file_skip_space(parser->f);
+	if (parse_comment(parser->f))
 		return -1;
-	if (f->src[f->pos] == '\n')
+	if (parser->f->src[parser->f->pos] == '\n')
 		return 0;
-	if (f->src[f->pos] == '@')
-		return parse_decorator(f, *hooks);
-	if (token_next(&token, f))
+	if (parser->f->src[parser->f->pos] == '@')
+		return parse_decorator(parser->f, parser->hooks);
+	if (token_next(&token, parser->f))
 		return 1;
 	if (!keyword_find(&token, &sym))
 		goto err_sym_not_found;
 	if (!sym->flags.toplevel)
 		goto err_not_toplevel;
-	sym->hooks = *hooks;
-	if (sym->parse_function(f, sym, scope))
+	parser->sym = sym;
+	if (sym->parse_function(parser))
 		return 1;
-	sym->hooks = NULL;
-	*hooks = calloc(1, sizeof(**hooks));
 	return 0;
 err_sym_not_found:
 	err_msg = str2chr(token.s, token.len);
 	printf("amc: parser.parse_line: %lld,%lld: "
 			"symbol not found from token\n"
 			"| Token: \"%s\"\n",
-			f->cur_line, f->cur_column, err_msg);
+			parser->f->cur_line, parser->f->cur_column, err_msg);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	free(err_msg);
 	return 2;
@@ -50,18 +47,13 @@ err_not_toplevel:
 	err_msg = str2chr(token.s, token.len);
 	printf("amc: parser.parse_line: %lld,%lld: token is not toplevel.\n"
 			"| Token: \"%s\"\n",
-			f->cur_line, f->cur_column, err_msg);
+			parser->f->cur_line, parser->f->cur_column, err_msg);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 2;
 }
 
 int parse_file(const char *path, struct file *f)
 {
-	struct hooks *hooks = calloc(1, sizeof(*hooks));
-	struct parser parser = {
-		.path = path
-	};
-	int ret = 0;
 	struct scope toplevel = {
 		.fn = NULL,
 		.indent = 0,
@@ -70,13 +62,19 @@ int parse_file(const char *path, struct file *f)
 		.status_type = SCOPE_TOP,
 		.sym_groups = {}
 	};
+	struct parser parser = {
+		.f = f,
+		.hooks = calloc(1, sizeof(*parser.hooks)),
+		.scope = &toplevel,
+	};
+	int ret = 0;
 	if (file_init(path, f))
 		die("amc: file_init: no such file: %s\n", path);
 	if (backend_file_new(f))
 		die("amc: backend_file_new: cannot create new file: %s", path);
 
 	while (f->src[f->pos] != '\0') {
-		if ((ret = parse_line(f, &toplevel, &hooks)) > 0)
+		if ((ret = parse_line(&parser)) > 0)
 			return 1;
 		if (f->src[f->pos] == '\0')
 			break;

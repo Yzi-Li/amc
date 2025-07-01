@@ -1,6 +1,7 @@
 #ifndef AMC_MODULE_H
 #define AMC_MODULE_H
 #include "symbol.h"
+#include "../utils/str/str.h"
 
 struct yz_module_group {
 	struct yz_module **modules;
@@ -18,6 +19,10 @@ typedef struct yz_module {
 			       imported_pub;
 } yz_module;
 
+
 int module_append_child(yz_module *src, yz_module *dest);
+
+int check_module_name(str *name);
+int check_module_parsed(str *name);
 
 #endif

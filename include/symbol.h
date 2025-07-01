@@ -2,16 +2,12 @@
 #define AMC_SYMBOL_H
 #include "../utils/cint.h"
 #include "../utils/str/str.h"
-#include "backend/scope.h"
 #include "backend/symbol.h"
 #include "comptime/hook.h"
 #include "comptime/symbol.h"
-#include "file.h"
 #include "type.h"
 #include "struct.h"
 #include <limits.h>
-
-struct scope;
 
 enum SYMG {
 	SYMG_SYM  = 0,
@@ -39,11 +35,12 @@ struct symbol_flag {
 	struct comptime_symbol_flag comptime_flag;
 };
 
+struct parser;
+struct scope;
 struct symbol {
 	char *name;
 	u32 name_len;
-	int (*parse_function)(struct file *f, struct symbol *sym,
-			struct scope *scope);
+	int (*parse_function)(struct parser *parser);
 	struct symbol_flag flags;
 	enum SYM_TYPE type;
 
@@ -59,28 +56,6 @@ struct symbol_group {
 	const char *name;
 	u8 size;
 	struct symbol **symbols;
-};
-
-enum SCOPE_STATUS_TYPE {
-	SCOPE_AFTER_IF,
-	SCOPE_IN_BLOCK,
-	SCOPE_IN_LOOP,
-	SCOPE_TOP
-};
-
-struct scope {
-	struct symbol *fn;
-	int indent;
-	struct scope *parent;
-
-	backend_scope_status *status;
-	enum SCOPE_STATUS_TYPE status_type;
-
-	struct {
-		yz_struct **elems;
-		int count;
-	} structures;
-	struct symbol_group sym_groups[SYM_GROUPS_SIZE];
 };
 
 int symbol_args_append(struct symbol *self, struct symbol *sym);

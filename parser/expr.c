@@ -7,6 +7,7 @@
 #include "include/token.h"
 #include "../include/array.h"
 #include "../include/backend.h"
+#include "../include/parser.h"
 #include "../include/token.h"
 #include "../utils/converter.h"
 #include "../utils/utils.h"
@@ -48,54 +49,48 @@ static const struct expr_operator unary_ops[] = {
 	{"&", 0, OP_GET_ADDR   }
 };
 
-static int expr_assign(struct file *f, struct expr *e, struct scope *scope);
-static int expr_binary(struct file *f, struct expr *e, int top,
-		struct scope *scope);
-static int expr_binary_read_op(struct file *f, struct expr *e, int top,
-		struct scope *scope);
+static int expr_assign(struct parser *parser, struct expr *e);
+static int expr_binary(struct parser *parser, int top, struct expr *e);
+static int expr_binary_read_op(struct parser *parser, int top, struct expr *e);
 static int expr_check_end(struct file *f);
 static int expr_check_end_special(struct file *f, int top);
 static int expr_check_end_top(struct file *f, str *tok);
 static enum YZ_TYPE *expr_get_sum_type(yz_val *l, yz_val *r);
-static int expr_operator(struct file *f, struct expr_operator **op, int top);
-static int expr_read_token(struct file *f, str *token, int top);
+static int expr_operator(struct file *f, int top, struct expr_operator **op);
+static int expr_read_token(struct file *f, int top, str *token);
 static int expr_single_term(struct expr *e);
-static int expr_sub(struct file *f, struct expr **e, int top,
-		struct scope *scope);
+static int expr_sub(struct parser *parser, int top, struct expr **e);
 static int expr_sub_cur_merge_prev(struct expr *prev, struct expr *cur);
 static int expr_sub_cur_append(struct expr **prev, struct expr *cur);
-static int expr_term(struct file *f, yz_val *v, int top, struct scope *scope);
-static int expr_term_chr(struct file *f, yz_val *v, int top);
-static int expr_term_expr(struct file *f, yz_val *v, int top,
-		struct scope *scope);
-static int expr_term_func(struct file *f, yz_val *v, int top,
-		struct scope *scope);
-static int expr_term_identifier(struct file *f, yz_val *v, int top,
-		struct scope *scope);
-static int expr_term_int(struct file *f, yz_val *v, int top);
-static int expr_term_null(struct file *f, yz_val *v, int top);
-static int expr_term_str(struct file *f, yz_val *v, int top);
-static int expr_unary(struct file *f, yz_val *v, struct expr_operator *op,
-		int top, struct scope *scope);
+static int expr_term(struct parser *parser, int top, yz_val *v);
+static int expr_term_chr(struct parser *parser, int top, yz_val *v);
+static int expr_term_expr(struct parser *parser, int top, yz_val *v);
+static int expr_term_func(struct parser *parser, int top, yz_val *v);
+static int expr_term_identifier(struct parser *parser, int top, yz_val *v);
+static int expr_term_int(struct parser *parser, int top, yz_val *v);
+static int expr_term_null(struct parser *parser, int top, yz_val *v);
+static int expr_term_str(struct parser *parser, int top, yz_val *v);
+static int expr_unary(struct parser *parser, int top, yz_val *v,
+		struct expr_operator *op);
 static struct expr_operator *expr_unary_get_op(char c);
 
-int expr_assign(struct file *f, struct expr *e, struct scope *scope)
+int expr_assign(struct parser *parser, struct expr *e)
 {
-	if (op_assign(f, e, scope))
+	if (op_assign(parser, e))
 		return 1;
 	return EXPR_END;
 }
 
-int expr_binary(struct file *f, struct expr *e, int top, struct scope *scope)
+int expr_binary(struct parser *parser, int top, struct expr *e)
 {
 	int ret = 0;
-	if ((ret = expr_term(f, e->vall, top, scope)) > 0)
+	if ((ret = expr_term(parser, top, e->vall)) > 0)
 		return 1;
 	if (ret == EXPR_TERM_END)
 		return expr_single_term(e);
-	if ((ret = expr_binary_read_op(f, e, top, scope)) != 0)
+	if ((ret = expr_binary_read_op(parser, top, e)) != 0)
 		return ret;
-	if ((ret = expr_term(f, e->valr, top, scope)) > 0)
+	if ((ret = expr_term(parser, top, e->valr)) > 0)
 		return 1;
 	if (OP_IS_CMP(e->op->id)) {
 		e->sum_type = yz_get_raw_type(e->vall);
@@ -109,11 +104,10 @@ int expr_binary(struct file *f, struct expr *e, int top, struct scope *scope)
 	return 0;
 }
 
-int expr_binary_read_op(struct file *f, struct expr *e, int top,
-		struct scope *scope)
+int expr_binary_read_op(struct parser *parser, int top, struct expr *e)
 {
 	int ret = 0;
-	if ((ret = expr_operator(f, &e->op, top)) > 0)
+	if ((ret = expr_operator(parser->f, top, &e->op)) > 0)
 		return 1;
 	if (ret == EXPR_TERM_END)
 		goto err_valr_not_found;
@@ -122,11 +116,11 @@ int expr_binary_read_op(struct file *f, struct expr *e, int top,
 	if (!top)
 		e->op->priority = -1;
 	if (REGION_INT(e->op->id, OP_ASSIGN, OP_ASSIGN_SUB))
-		return expr_assign(f, e, scope);
+		return expr_assign(parser, e);
 	return 0;
 err_valr_not_found:
 	printf("amc: expr_binary_read_op: %lld,%lld: Value right not found!\n",
-			f->cur_line, f->cur_column);
+			parser->f->cur_line, parser->f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
@@ -170,12 +164,12 @@ err_get_failed:
 	return NULL;
 }
 
-int expr_operator(struct file *f, struct expr_operator **op, int top)
+int expr_operator(struct file *f, int top, struct expr_operator **op)
 {
 	int end = 0;
 	str *tmp = str_new(),
 	    token = TOKEN_NEW;
-	if ((end = expr_read_token(f, &token, top)) == 2)
+	if ((end = expr_read_token(f, top, &token)) == 2)
 		goto err_eoe;
 	if (end == EXPR_TOK_END_DIRECT)
 		return EXPR_OP_EMPTY;
@@ -197,7 +191,7 @@ err_eoe:
 	return 1;
 }
 
-int expr_read_token(struct file *f, str *token, int top)
+int expr_read_token(struct file *f, int top, str *token)
 {
 	int ret = 0;
 	token_read_before(SPECIAL_TOKEN_END, token, f);
@@ -230,19 +224,19 @@ int expr_single_term(struct expr *e)
 	return EXPR_END;
 }
 
-int expr_sub(struct file *f, struct expr **e, int top, struct scope *scope)
+int expr_sub(struct parser *parser, int top, struct expr **e)
 {
 	struct expr *expr = calloc(1, sizeof(*expr));
 	int end = 0;
 	expr->vall = calloc(1, sizeof(*expr->vall));
 	expr->valr = calloc(1, sizeof(*expr->valr));
-	if ((end = expr_operator(f, &expr->op, top)) > 0)
+	if ((end = expr_operator(parser->f, top, &expr->op)) > 0)
 		return 1;
 	if (end == EXPR_TERM_END)
 		goto err_valr_not_found;
 	if (end == EXPR_OP_EMPTY)
 		return EXPR_END;
-	if ((end = expr_term(f, expr->valr, top, scope)) > 0)
+	if ((end = expr_term(parser, top, expr->valr)) > 0)
 		return 1;
 	if (expr->op->priority < (*e)->op->priority) {
 		// 1 + 2 * 3
@@ -254,7 +248,9 @@ int expr_sub(struct file *f, struct expr **e, int top, struct scope *scope)
 			return 1;
 	}
 	if (end == 0) {
-		if (top && (f->src[f->pos] == '\n' || f->src[f->pos] == ';'))
+		if (top && (parser->f->src[parser->f->pos] == '\n'
+					|| parser->f->src[parser->f->pos]
+					== ';'))
 			return EXPR_END;
 	}
 	return end;
@@ -288,33 +284,33 @@ int expr_sub_cur_append(struct expr **prev, struct expr *cur)
 	return 0;
 }
 
-int expr_term(struct file *f, yz_val *v, int top, struct scope *scope)
+int expr_term(struct parser *parser, int top, yz_val *v)
 {
 	struct expr_operator *unary = NULL;
-	if (CHR_IS_NUM(f->src[f->pos])) {
-		return expr_term_int(f, v, top);
-	} else if (f->src[f->pos] == '\'') {
-		return expr_term_chr(f, v, top);
-	} else if (f->src[f->pos] == '(') {
-		return expr_term_expr(f, v, top, scope);
-	} else if (f->src[f->pos] == '[') {
-		return expr_term_func(f, v, top, scope);
-	} else if (f->src[f->pos] == '"') {
-		return expr_term_str(f, v, top);
-	} else if ((unary = expr_unary_get_op(f->src[f->pos])) != NULL) {
-		return expr_unary(f, v, unary, top, scope);
-	} else if (f->src[f->pos] == CHR_NULL[0]
-			&& CHR_IS_NULL(&f->src[f->pos])) {
-		return expr_term_null(f, v, top);
+	if (CHR_IS_NUM(parser->f->src[parser->f->pos])) {
+		return expr_term_int(parser, top, v);
+	} else if (parser->f->src[parser->f->pos] == '\'') {
+		return expr_term_chr(parser, top, v);
+	} else if (parser->f->src[parser->f->pos] == '(') {
+		return expr_term_expr(parser, top, v);
+	} else if (parser->f->src[parser->f->pos] == '[') {
+		return expr_term_func(parser, top, v);
+	} else if (parser->f->src[parser->f->pos] == '"') {
+		return expr_term_str(parser, top, v);
+	} else if ((unary = expr_unary_get_op(parser->f->src[parser->f->pos])) != NULL) {
+		return expr_unary(parser, top, v, unary);
+	} else if (parser->f->src[parser->f->pos] == CHR_NULL[0]
+			&& CHR_IS_NULL(&parser->f->src[parser->f->pos])) {
+		return expr_term_null(parser, top, v);
 	}
-	return expr_term_identifier(f, v, top, scope);
+	return expr_term_identifier(parser, top, v);
 }
 
-int expr_term_chr(struct file *f, yz_val *v, int top)
+int expr_term_chr(struct parser *parser, int top, yz_val *v)
 {
 	int end = 0;
 	str token = TOKEN_NEW;
-	if ((end = expr_read_token(f, &token, top)) == 2)
+	if ((end = expr_read_token(parser->f, top, &token)) == 2)
 		goto err_eoe;
 	if (end == EXPR_TOK_END_DIRECT)
 		return EXPR_TERM_END;
@@ -332,55 +328,54 @@ err_char_not_end:
 	return 1;
 }
 
-int expr_term_expr(struct file *f, yz_val *v, int top, struct scope *scope)
+int expr_term_expr(struct parser *parser, int top, yz_val *v)
 {
-	file_pos_next(f);
-	file_skip_space(f);
+	file_pos_next(parser->f);
+	file_skip_space(parser->f);
 	v->type = AMC_EXPR;
-	if ((v->v = parse_expr(f, 0, scope)) == NULL)
+	if ((v->v = parse_expr(parser, 0)) == NULL)
 		goto err_cannot_parse_expr;
-	if (f->src[f->pos] != ')')
+	if (parser->f->src[parser->f->pos] != ')')
 		return 1;
-	file_pos_next(f);
-	file_skip_space(f);
-	if (expr_check_end_special(f, top))
+	file_pos_next(parser->f);
+	file_skip_space(parser->f);
+	if (expr_check_end_special(parser->f, top))
 		return EXPR_TERM_END;
 	return 0;
 err_cannot_parse_expr:
 	printf("amc: expr_term_expr: %lld,%lld: Cannot parse expression!\n",
-			f->cur_line, f->cur_column);
+			parser->f->cur_line, parser->f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
 
-int expr_term_func(struct file *f, yz_val *v, int top, struct scope *scope)
+int expr_term_func(struct parser *parser, int top, yz_val *v)
 {
 	struct symbol *callee = NULL;
-	if (func_call_read(f, &callee, scope))
+	if (func_call_read(parser, &callee))
 		return 1;
 	v->type = AMC_SYM;
 	v->v = callee;
-	if (expr_check_end_special(f, top))
+	if (expr_check_end_special(parser->f, top))
 		return EXPR_TERM_END;
 	return 0;
 }
 
-int expr_term_identifier(struct file *f, yz_val *v, int top,
-		struct scope *scope)
+int expr_term_identifier(struct parser *parser, int top, yz_val *v)
 {
-	if (identifier_read(f, v, scope) > 1)
+	if (identifier_read(parser, v) > 1)
 		return 1;
-	if (expr_check_end_special(f, top))
+	if (expr_check_end_special(parser->f, top))
 		return EXPR_TERM_END;
 	return 0;
 }
 
-int expr_term_int(struct file *f, yz_val *v, int top)
+int expr_term_int(struct parser *parser, int top, yz_val *v)
 {
 	int end = 0;
 	char *err_msg;
 	str token = TOKEN_NEW;
-	if ((end = expr_read_token(f, &token, top)) == 2)
+	if ((end = expr_read_token(parser->f, top, &token)) == 2)
 		goto err_eoe;
 	if (end == EXPR_TOK_END_DIRECT)
 		return EXPR_TERM_END;
@@ -400,27 +395,27 @@ err_not_num:
 	return 1;
 }
 
-int expr_term_null(struct file *f, yz_val *v, int top)
+int expr_term_null(struct parser *parser, int top, yz_val *v)
 {
-	file_pos_nnext(strlen(CHR_NULL), f);
-	file_skip_space(f);
+	file_pos_nnext(strlen(CHR_NULL), parser->f);
+	file_skip_space(parser->f);
 	v->type = YZ_NULL;
 	v->v = NULL;
-	if (expr_check_end_special(f, top))
+	if (expr_check_end_special(parser->f, top))
 		return EXPR_TERM_END;
 	return 0;
 }
 
-int expr_term_str(struct file *f, yz_val *v, int top)
+int expr_term_str(struct parser *parser, int top, yz_val *v)
 {
 	yz_array *arr = NULL;
 	int const_id = 0;
 	str token = TOKEN_NEW;
-	file_pos_next(f);
-	if (token_read_before("\"", &token, f) == NULL)
+	file_pos_next(parser->f);
+	if (token_read_before("\"", &token, parser->f) == NULL)
 		return 1;
-	file_pos_next(f);
-	file_skip_space(f);
+	file_pos_next(parser->f);
+	file_skip_space(parser->f);
 	if ((const_id = backend_call(const_def_str)
 				(str2chr(token.s, token.len), token.len)) == -1)
 		goto err_backend_failed;
@@ -430,7 +425,7 @@ int expr_term_str(struct file *f, yz_val *v, int top)
 	arr->type.i = const_id;
 	v->type = YZ_ARRAY;
 	v->v = arr;
-	if (expr_check_end_special(f, top))
+	if (expr_check_end_special(parser->f, top))
 		return EXPR_TERM_END;
 	return 0;
 err_backend_failed:
@@ -438,13 +433,12 @@ err_backend_failed:
 	return 1;
 }
 
-int expr_unary(struct file *f, yz_val *v, struct expr_operator *op, int top,
-		struct scope *scope)
+int expr_unary(struct parser *parser, int top, yz_val *v, struct expr_operator *op)
 {
 	int ret = 0;
 	struct expr *unary = NULL;
-	file_pos_next(f);
-	if (!file_try_skip_space(f))
+	file_pos_next(parser->f);
+	if (!file_try_skip_space(parser->f))
 		goto err_eou;
 	v->type = AMC_EXPR;
 	unary = malloc(sizeof(*unary));
@@ -452,13 +446,13 @@ int expr_unary(struct file *f, yz_val *v, struct expr_operator *op, int top,
 	unary->valr = malloc(sizeof(*unary->valr));
 	unary->op = op;
 	v->v = unary;
-	if ((ret = expr_term(f, unary->valr, top, scope)) > 0)
+	if ((ret = expr_term(parser, top, unary->valr)) > 0)
 		return 1;
 	unary->sum_type = yz_get_raw_type(unary->valr);
 	return ret;
 err_eou:
 	printf("amc: expr_unary: %lld,%lld: Unary expression is empty!\n",
-			f->cur_line, f->cur_column);
+			parser->f->cur_line, parser->f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
@@ -476,25 +470,25 @@ struct expr_operator *expr_unary_get_op(char c)
 	return NULL;
 }
 
-int expr_apply(struct expr *e, struct scope *scope)
+int expr_apply(struct parser *parser, struct expr *e)
 {
 	if (EXPR_IS_SINGLE_TERM(e)) {
 		if (e->vall->type == AMC_EXPR)
-			return expr_apply(e->vall->v, scope);
+			return expr_apply(parser, e->vall->v);
 		return -1;
 	}
 	if (EXPR_IS_UNARY(e))
-		return op_apply_special(e, scope);
+		return op_apply_special(parser, e);
 	if (e->vall->type == AMC_EXPR) {
-		if (expr_apply(e->vall->v, scope) > 0)
+		if (expr_apply(parser, e->vall->v) > 0)
 			return 1;
 	}
 	if (e->valr->type == AMC_EXPR) {
-		if (expr_apply(e->valr->v, scope) > 0)
+		if (expr_apply(parser, e->valr->v) > 0)
 			return 1;
 	}
 	if (e->op->id >= OP_SPECIAL_START)
-		return op_apply_special(e, scope);
+		return op_apply_special(parser, e);
 	if (REGION_INT(e->op->id, OP_EQ, OP_GT))
 		return op_apply_cmp(e);
 	if (backend_call(ops[e->op->id])(e))
@@ -506,17 +500,17 @@ err_backend_call:
 	return 1;
 }
 
-struct expr *parse_expr(struct file *f, int top, struct scope *scope)
+struct expr *parse_expr(struct parser *parser, int top)
 {
 	struct expr *expr = calloc(1, sizeof(*expr));
 	int ret = 0;
 	expr->vall = calloc(1, sizeof(*expr->vall));
 	expr->valr = calloc(1, sizeof(*expr->valr));
-	if ((ret = expr_binary(f, expr, top, scope)) > 0)
+	if ((ret = expr_binary(parser, top, expr)) > 0)
 		goto err_free_expr;
 	if (ret == EXPR_END)
 		return expr;
-	while ((ret = expr_sub(f, &expr, top, scope)) != EXPR_END) {
+	while ((ret = expr_sub(parser, top, &expr)) != EXPR_END) {
 		if (ret > 0)
 			goto err_free_expr;
 	}

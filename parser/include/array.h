@@ -3,10 +3,10 @@
 #include "../../include/op.h"
 #include "../../include/symbol.h"
 
-int array_get_elem(struct file *f, yz_val *val, struct scope *scope);
-int array_set_elem(struct file *f, struct symbol *sym, yz_val *offset,
-		enum OP_ID mode, struct scope *scope);
-int constructor_array(struct file *f, struct symbol *sym, struct scope *scope);
-int parse_type_array(struct file *f, yz_val *type, struct scope *scope);
+int array_get_elem(struct parser *parser, yz_val *val);
+int array_set_elem(struct parser *parser, struct symbol *sym, yz_val *offset,
+		enum OP_ID mode);
+int constructor_array(struct parser *parser, struct symbol *sym);
+int parse_type_array(struct parser *parser, yz_val *type);
 
 #endif

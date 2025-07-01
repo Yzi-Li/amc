@@ -5,35 +5,35 @@
 #include "include/struct.h"
 #include "../include/backend.h"
 #include "../include/comptime/ptr.h"
+#include "../include/parser.h"
 #include "../include/ptr.h"
 #include "../utils/utils.h"
 #include <stdlib.h>
 
-static int op_unary_extract_val(struct expr *e, struct scope *scope);
-static int op_unary_get_addr(struct expr *e, struct scope *scope);
+static int op_unary_extract_val(struct parser *parser, struct expr *e);
+static int op_unary_get_addr(struct parser *parser, struct expr *e);
 
-static int (*op_special_f[])(struct expr *e, struct scope *scope) = {
+static int (*op_special_f[])(struct parser *parser, struct expr *e) = {
 	op_unary_extract_val,
 	op_unary_get_addr
 };
 
-static int op_extract_val_check(yz_val *v, struct scope *scope);
+static int op_extract_val_check(struct parser *parser, yz_val *v);
 static int op_extract_val_handle_expr(struct expr *e);
 static int op_extract_val_handle_expr_from_sym(struct expr *e,
 		struct symbol *sym);
 static int op_get_addr_check(yz_val *v);
 static int op_get_addr_handle_val(struct expr *e, int from_extracted_val);
-static struct symbol *op_get_ptr(yz_val *v, struct scope *scope);
-static struct symbol *op_get_ptr_from_expr(struct expr *e, struct scope *scope);
+static struct symbol *op_get_ptr(struct parser *parser, yz_val *v);
+static struct symbol *op_get_ptr_from_expr(struct parser *parser, struct expr *e);
 
-static int op_assign_extracted_val(struct file *f, struct expr *e,
-		struct scope *scope);
+static int op_assign_extracted_val(struct parser *parser, struct expr *e);
 static int op_assign_get_vall(struct expr *e, struct symbol **result);
 static int op_assign_get_vall_expr(struct expr *e, struct symbol **result);
 static int op_assign_get_vall_sym(struct symbol *sym, struct symbol **result);
 static int op_cmp_ptr_and_null(struct expr *e);
 
-int op_unary_extract_val(struct expr *e, struct scope *scope)
+int op_unary_extract_val(struct parser *parser, struct expr *e)
 {
 	if (!EXPR_IS_UNARY(e))
 		return 1;
@@ -41,7 +41,7 @@ int op_unary_extract_val(struct expr *e, struct scope *scope)
 		if (e->valr->type != AMC_EXTRACT_VAL)
 			return 1;
 	} else {
-		if (op_extract_val_check(e->valr, scope))
+		if (op_extract_val_check(parser, e->valr))
 			goto err_check_failed;
 		if (op_extract_val_handle_expr(e))
 			return 1;
@@ -58,7 +58,7 @@ err_backend_failed:
 	return 1;
 }
 
-int op_unary_get_addr(struct expr *e, struct scope *scope)
+int op_unary_get_addr(struct parser *parser, struct expr *e)
 {
 	int ret = 0;
 	if (!EXPR_IS_UNARY(e))
@@ -66,7 +66,7 @@ int op_unary_get_addr(struct expr *e, struct scope *scope)
 	if ((ret = op_get_addr_check(e->valr)) > 0)
 		goto err_check_failed;
 	if (ret == -1)
-		if (expr_apply(e->valr->v, scope))
+		if (expr_apply(parser, e->valr->v))
 			return 1;
 	if (op_get_addr_handle_val(e, ret == -1))
 		goto err_check_failed;
@@ -82,10 +82,10 @@ err_backend_failed:
 	return 1;
 }
 
-int op_extract_val_check(yz_val *v, struct scope *scope)
+int op_extract_val_check(struct parser *parser, yz_val *v)
 {
 	struct symbol *ptr = NULL;
-	if ((ptr = op_get_ptr(v, scope)) == NULL)
+	if ((ptr = op_get_ptr(parser, v)) == NULL)
 		return 1;
 	if (ptr->result_type.type != YZ_PTR)
 		goto err_not_ptr;
@@ -172,11 +172,11 @@ int op_get_addr_handle_val(struct expr *e, int from_extracted_val)
 	return 0;
 }
 
-struct symbol *op_get_ptr(yz_val *v, struct scope *scope)
+struct symbol *op_get_ptr(struct parser *parser, yz_val *v)
 {
 	struct symbol *ptr = NULL;
 	if (v->type == AMC_EXPR)
-		return op_get_ptr_from_expr(v->v, scope);
+		return op_get_ptr_from_expr(parser, v->v);
 	if (v->type != AMC_SYM)
 		goto err_val_not_ptr;
 	ptr = v->v;
@@ -188,7 +188,7 @@ err_val_not_ptr:
 	return NULL;
 }
 
-struct symbol *op_get_ptr_from_expr(struct expr *e, struct scope *scope)
+struct symbol *op_get_ptr_from_expr(struct parser *parser, struct expr *e)
 {
 	struct symbol *ptr = NULL;
 	yz_extract_val *src = NULL;
@@ -198,7 +198,7 @@ struct symbol *op_get_ptr_from_expr(struct expr *e, struct scope *scope)
 		goto err_not_extracted_val;
 	src = e->valr->v;
 	ptr = src->elem;
-	if (expr_apply(e, scope) > 0)
+	if (expr_apply(parser, e) > 0)
 		goto err_cannot_apply_expr;
 	return ptr;
 err_not_extracted_val:
@@ -209,8 +209,7 @@ err_cannot_apply_expr:
 	return NULL;
 }
 
-int op_assign_extracted_val(struct file *f, struct expr *e,
-		struct scope *scope)
+int op_assign_extracted_val(struct parser *parser, struct expr *e)
 {
 	yz_extract_val *src = NULL;
 	struct expr *src_expr = e->vall->v;
@@ -220,12 +219,10 @@ int op_assign_extracted_val(struct file *f, struct expr *e,
 		return 1;
 	src = src_expr->valr->v;
 	if (src->type == YZ_EXTRACT_STRUCT) {
-		if (struct_set_elem(f, src->sym, src->index, e->op->id,
-				scope))
+		if (struct_set_elem(parser, src->sym, src->index, e->op->id))
 			return 1;
 	} else if (src->type == YZ_EXTRACT_ARRAY) {
-		if (array_set_elem(f, src->sym, src->offset, e->op->id,
-				scope))
+		if (array_set_elem(parser, src->sym, src->offset, e->op->id))
 			return 1;
 	} else {
 		return 1;
@@ -289,16 +286,16 @@ err_backend_failed:
 	return 1;
 }
 
-int op_apply_special(struct expr *e, struct scope *scope)
+int op_apply_special(struct parser *parser, struct expr *e)
 {
 	int func_id = 0;
 	func_id = e->op->id - OP_SPECIAL_START - 5;
 	if (func_id < LENGTH(op_special_f))
-		return op_special_f[func_id](e, scope);
+		return op_special_f[func_id](parser, e);
 	return 0;
 }
 
-int op_assign(struct file *f, struct expr *e, struct scope *scope)
+int op_assign(struct parser *parser, struct expr *e)
 {
 	int ret = 0;
 	struct symbol *sym = NULL;
@@ -307,8 +304,8 @@ int op_assign(struct file *f, struct expr *e, struct scope *scope)
 	if ((ret = op_assign_get_vall(e, &sym)) > 0)
 		return 1;
 	if (ret == -1)
-		return op_assign_extracted_val(f, e, scope);
-	return identifier_assign_val(f, sym, e->op->id, scope);
+		return op_assign_extracted_val(parser, e);
+	return identifier_assign_val(parser, sym, e->op->id);
 }
 
 struct expr *op_extract_val_expr_create(enum YZ_TYPE *sum_type,

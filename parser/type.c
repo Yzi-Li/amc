@@ -3,13 +3,13 @@
 #include "include/struct.h"
 #include "include/token.h"
 #include "include/type.h"
+#include "../include/parser.h"
 #include "../include/token.h"
 #include <stdio.h>
 #include <string.h>
 
 static int type_pair_parse_name(struct file *f, str *name);
-static int type_pair_parse_type(struct file *f, struct symbol *sym,
-		struct scope *scope);
+static int type_pair_parse_type(struct parser *parser, struct symbol *sym);
 
 int type_pair_parse_name(struct file *f, str *name)
 {
@@ -20,22 +20,21 @@ int type_pair_parse_name(struct file *f, str *name)
 	return 0;
 }
 
-int type_pair_parse_type(struct file *f, struct symbol *sym,
-		struct scope *scope)
+int type_pair_parse_type(struct parser *parser, struct symbol *sym)
 {
 	int ret = 0;
-	if (f->src[f->pos] != ':')
+	if (parser->f->src[parser->f->pos] != ':')
 		goto err_type_indicator_not_found;
-	file_pos_next(f);
-	file_skip_space(f);
-	if (f->src[f->pos] == 'm'
-			&& f->src[f->pos + 1] == 'u'
-			&& f->src[f->pos + 2] == 't') {
-		file_pos_nnext(3, f);
-		file_skip_space(f);
+	file_pos_next(parser->f);
+	file_skip_space(parser->f);
+	if (parser->f->src[parser->f->pos] == 'm'
+			&& parser->f->src[parser->f->pos + 1] == 'u'
+			&& parser->f->src[parser->f->pos + 2] == 't') {
+		file_pos_nnext(3, parser->f);
+		file_skip_space(parser->f);
 		sym->flags.mut = 1;
 	}
-	if ((ret = parse_type(f, &sym->result_type, scope)) > 0)
+	if ((ret = parse_type(parser, &sym->result_type)) > 0)
 		return 1;
 	if (ret == -1)
 		sym->flags.can_null = 1;
@@ -43,40 +42,39 @@ int type_pair_parse_type(struct file *f, struct symbol *sym,
 err_type_indicator_not_found:
 	printf("amc: type_pair_parse_name: %lld,%lld: "
 			"Type indicator not found\n",
-			f->cur_line, f->cur_column);
+			parser->f->cur_line, parser->f->cur_column);
 	return 1;
 }
 
-int parse_type(struct file *f, yz_val *type, struct scope *scope)
+int parse_type(struct parser *parser, yz_val *type)
 {
 	str token = TOKEN_NEW;
 	if (type == NULL)
 		goto err_type_null;
-	if (f->src[f->pos] == '*') {
-		return parse_type_ptr(f, type, scope);
-	} else if (f->src[f->pos] == '[') {
-		return parse_type_array(f, type, scope);
+	if (parser->f->src[parser->f->pos] == '*') {
+		return parse_type_ptr(parser, type);
+	} else if (parser->f->src[parser->f->pos] == '[') {
+		return parse_type_array(parser, type);
 	}
-	if (token_read_before(SPECIAL_TOKEN_END, &token, f) == NULL)
+	if (token_read_before(SPECIAL_TOKEN_END, &token, parser->f) == NULL)
 		return 1;
-	file_skip_space(f);
+	file_skip_space(parser->f);
 	type->type = yz_type_get(&token);
 	type->v = NULL;
 	if (type->type == AMC_ERR_TYPE)
-		return parse_type_struct(&token, type, scope);
+		return parse_type_struct(&token, type, parser->scope);
 	return 0;
 err_type_null:
 	printf("amc: parse_type: ARG is empty!\n");
 	return 1;
 }
 
-int parse_type_name_pair(struct file *f, struct symbol *result,
-		struct scope *scope)
+int parse_type_name_pair(struct parser *parser, struct symbol *result)
 {
 	str name = TOKEN_NEW;
-	if (type_pair_parse_name(f, &name))
+	if (type_pair_parse_name(parser->f, &name))
 		return 1;
-	if (type_pair_parse_type(f, result, scope))
+	if (type_pair_parse_type(parser, result))
 		return 1;
 	result->name = str2chr(name.s, name.len);
 	result->name_len = name.len;
