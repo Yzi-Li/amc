@@ -60,7 +60,7 @@ void free_hooks(struct hooks *hooks)
 	if (hooks == NULL)
 		return;
 	for (int i = 0; i < HOOK_TIME_COUNT; i++) {
-		free_hook(&hooks->times[i]);
+		free_hook_noself(&hooks->times[i]);
 	}
 	free(hooks);
 }

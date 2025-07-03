@@ -28,4 +28,6 @@ struct scope {
 int scope_check_is_correct(struct scope *scope);
 int scope_end(struct scope *scope);
 
+void free_scope(struct scope *scope);
+
 #endif

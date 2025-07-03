@@ -15,15 +15,22 @@ err_status_is_null:
 
 int scope_end(struct scope *scope)
 {
-	free_symbol_group(scope->sym_groups[SYMG_FUNC].symbols,
-			scope->sym_groups[SYMG_FUNC].size);
-	free_symbol_group(scope->sym_groups[SYMG_SYM].symbols,
-			scope->sym_groups[SYMG_SYM].size);
-	free_structs(scope->structures.elems, scope->structures.count);
+	free_scope(scope);
 	if (backend_call(scope_end)(scope->status))
 		goto err_backend_failed;
 	return 0;
 err_backend_failed:
 	printf("amc: scope_end: Backend call failed!\n");
 	return 1;
+}
+
+void free_scope(struct scope *scope)
+{
+	if (scope == NULL)
+		return;
+	free_symbol_group(scope->sym_groups[SYMG_FUNC].symbols,
+			scope->sym_groups[SYMG_FUNC].size);
+	free_symbol_group(scope->sym_groups[SYMG_SYM].symbols,
+			scope->sym_groups[SYMG_SYM].size);
+	free_structs(scope->structures.elems, scope->structures.count);
 }
