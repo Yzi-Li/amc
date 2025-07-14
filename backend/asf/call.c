@@ -37,7 +37,7 @@ int call_push_arg(yz_val *v, int index)
 	} else {
 		goto err_unsupport_type;
 	}
-	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node_and_str;
 	return 0;
 err_unsupport_type:

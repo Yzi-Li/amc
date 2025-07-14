@@ -32,6 +32,7 @@ BE_ASF_SRC =\
 	stack.c\
 	struct.c\
 	suffix.c\
+	symbol.c\
 	val.c
 
 BACKEND_SRC += $(addprefix asf/, $(BE_ASF_SRC))

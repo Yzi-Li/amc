@@ -217,7 +217,7 @@ int func_def_main(struct parser *parser)
 	file_pos_nnext(2, parser->f);
 	file_skip_space(parser->f);
 	keyword_end(parser->f);
-	if (backend_call(func_def)("_start", 7, NULL))
+	if (backend_call(func_def)(parser->scope->fn))
 		goto err_free_fn;
 	parser->scope->fn->parse_function = func_call_main;
 	if (symbol_register(parser->scope->fn,
@@ -290,9 +290,17 @@ int func_def_read_name(struct parser *parser)
 	}
 	parser->scope->fn->name = str2chr(token.s, token.len);
 	parser->scope->fn->name_len = token.len;
+	if (backend_call(symbol_get_path)(&parser->scope->fn->path,
+				&parser->path, parser->scope->fn->name,
+				parser->scope->fn->name_len))
+		goto err_get_path_failed;
 	return 0;
 err_eof:
 	printf("amc: func_def_read_name: end of file\n");
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 1;
+err_get_path_failed:
+	printf("amc: func_def_read_name: Get symbol path failed!\n");
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
@@ -349,14 +357,17 @@ int parse_func_call(struct parser *parser)
 		if (args == NULL)
 			return 1;
 	}
-	if (hook_apply(&parser->sym->hooks->times[HOOK_FUNC_CALL_BEFORE]))
-		return 1;
-	if (backend_call(func_call)(parser->sym->name,
-				&parser->sym->result_type,
+	if (parser->sym->hooks != NULL)
+		if (hook_apply(&parser->sym
+					->hooks->times[HOOK_FUNC_CALL_BEFORE]))
+			return 1;
+	if (backend_call(func_call)(parser->sym,
 				args, parser->sym->argc))
 		return 1;
-	if (hook_apply(&parser->sym->hooks->times[HOOK_FUNC_CALL_AFTER]))
-		return 1;
+	if (parser->sym->hooks != NULL)
+		if (hook_apply(&parser->sym
+					->hooks->times[HOOK_FUNC_CALL_AFTER]))
+			return 1;
 	return 0;
 }
 
@@ -388,6 +399,7 @@ int parse_func_def(struct parser *parser)
 	result->hooks = parser->hooks;
 	result->parse_function = parse_func_call;
 	result->type = SYM_FUNC;
+	parser->hooks = NULL;
 	if ((ret = func_def_block_start(parser)) > 0)
 		goto err_free_result;
 	if (symbol_register(result, &parser->scope
@@ -395,9 +407,7 @@ int parse_func_def(struct parser *parser)
 		goto err_free_result;
 	if (ret == -1)
 		return func_def_end_scope(parser);
-	if (backend_call(func_def)(result->name,
-			result->name_len,
-			&result->result_type))
+	if (backend_call(func_def)(result))
 		goto err_free_result;
 	if (parse_block(parser))
 		goto err_free_result;

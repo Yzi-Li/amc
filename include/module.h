@@ -3,26 +3,18 @@
 #include "symbol.h"
 #include "../utils/str/str.h"
 
-struct yz_module_group {
-	struct yz_module **modules;
-	int count;
-};
-
 struct yz_module;
 typedef struct yz_module {
-	char *name;
-	int name_len;
+	str name, path;
 
 	struct scope *scope;
-	struct yz_module_group children,
-			       imported,
-			       imported_pub;
 } yz_module;
 
 
-int module_append_child(yz_module *src, yz_module *dest);
+str *module_path2real(str *path);
 
 int check_module_name(str *name);
-int check_module_parsed(str *name);
+
+void free_yz_module(yz_module *src);
 
 #endif

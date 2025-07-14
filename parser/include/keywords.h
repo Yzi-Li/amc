@@ -20,7 +20,6 @@ int parse_func_call(struct parser *parser);
 int parse_func_def(struct parser *parser);
 int parse_func_ret(struct parser *parser);
 int parse_if(struct parser *parser);
-int parse_import(struct parser *parser);
 int parse_let(struct parser *parser);
 int parse_match(struct parser *parser);
 int parse_mod(struct parser *parser);

@@ -20,7 +20,7 @@ int asf_inst_cmp(struct expr *e)
 		return 1;
 	node = malloc(sizeof(*node));
 	node->s = str_new();
-	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	str_expand(node->s, strlen(temp) - 4
 			+ vall->len

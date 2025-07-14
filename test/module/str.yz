@@ -1,6 +1,10 @@
-module str
-
-pub struct Str =>
+struct Str =>
 	len: mut i32
 	siz: mut i32
-	s: [mut char]
+	s: [char]
+
+fn private_append: i32 =>
+	ret 114
+
+; pub fn str_append(self: *Str) =>
+; 	ret 2

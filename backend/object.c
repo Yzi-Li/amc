@@ -6,23 +6,23 @@ extern int backend_flag;
 
 struct object_head *cur_obj = NULL;
 
-int object_append(struct object_head *h, struct object_node *n)
+int object_append(struct object_section *sec, struct object_node *n)
 {
 	if (backend_flag & BE_FLAG_STOPED)
 		return 0;
-	if (h == NULL || n == NULL)
+	if (sec == NULL || n == NULL)
 		return 1;
-	if (h->head == NULL) {
-		h->head = n;
-		h->last = n;
+	if (sec->head == NULL) {
+		sec->head = n;
+		sec->last = n;
 		n->next = NULL;
 		n->prev = NULL;
 		return 0;
 	}
-	n->prev = h->last;
+	n->prev = sec->last;
 	n->next = NULL;
-	h->last->next = n;
-	h->last = n;
+	sec->last->next = n;
+	sec->last = n;
 	return 0;
 }
 
@@ -42,12 +42,12 @@ int object_insert(struct object_node *src, struct object_node *n1,
 	return 0;
 }
 
-int object_remove(struct object_head *h, struct object_node *n)
+int object_remove(struct object_section *sec, struct object_node *n)
 {
-	if (h == NULL || n == NULL)
+	if (sec == NULL || n == NULL)
 		return 1;
-	if (n == h->last)
-		return object_remove_last(h);
+	if (n == sec->last)
+		return object_remove_last(sec);
 	if (n->prev != NULL)
 		n->prev->next = n->next;
 	if (n->next != NULL)
@@ -57,19 +57,19 @@ int object_remove(struct object_head *h, struct object_node *n)
 	return 0;
 }
 
-int object_remove_last(struct object_head *h)
+int object_remove_last(struct object_section *sec)
 {
-	struct object_node *last = h->last;
-	if (h == NULL)
+	struct object_node *last = sec->last;
+	if (sec == NULL)
 		return 1;
-	if (h->last == NULL)
+	if (sec->last == NULL)
 		return 1;
-	if (h->last == h->head) {
-		h->head = NULL;
-		h->last = NULL;
+	if (sec->last == sec->head) {
+		sec->head = NULL;
+		sec->last = NULL;
 	} else {
-		h->last->prev->next = NULL;
-		h->last = h->last->prev;
+		sec->last->prev->next = NULL;
+		sec->last = sec->last->prev;
 	}
 	str_free(last->s);
 	free(last);
@@ -100,7 +100,16 @@ int object_swap(struct object_node *n1, struct object_node *n2)
 	return 0;
 }
 
-void objects_free(struct object_head *o)
+void object_head_free(struct object_head *h)
+{
+	if (h == NULL)
+		return;
+	for (int i = 0; i < h->sec_count; i++)
+		object_section_free(&h->sections[i]);
+	free(h);
+}
+
+void object_section_free(struct object_section *o)
 {
 	struct object_node *cur, *nex;
 	if (o->head == NULL)

@@ -4,20 +4,39 @@
 
 char *str2chr(const char *s, int len)
 {
-	char *result = malloc(len + 1);
-	result[len] = '\0';
+	char *result = NULL;
+	if (s[len - 1] != '\0') {
+		result = malloc(len + 1);
+		result[len] = '\0';
+	} else {
+		result = malloc(len);
+	}
 	memcpy(result, s, len);
 	return result;
 }
 
-int str_append(str *src, int len, const char *s)
+int str_append(str *dest, int len, const char *s)
 {
 	int last;
-	if (src == NULL)
+	if (dest == NULL)
 		return 1;
-	last = src->len;
-	str_expand(src, len);
-	memcpy(&src->s[last], s, len);
+	last = dest->len;
+	if (dest->len > 0 && dest->s[last - 1] == '\0') {
+		last -= 1;
+		len -= 1;
+	}
+	str_expand(dest, len);
+	memcpy(&dest->s[last], s, len);
+	return 0;
+}
+
+int str_copy(str *src, str *dest)
+{
+	if (src == NULL || dest == NULL)
+		return 1;
+	if ((dest->s = str2chr(src->s, src->len)) == NULL)
+		return 1;
+	dest->len = src->len;
 	return 0;
 }
 
@@ -34,9 +53,18 @@ void str_free(str *src)
 {
 	if (src == NULL)
 		return;
-	free(src->s);
+	if (src->s != NULL)
+		free(src->s);
 	src->s = NULL;
 	src->len = 0;
+}
+
+void str_free_self(str *src)
+{
+	if (src == NULL)
+		return;
+	str_free(src);
+	free(src);
 }
 
 str *str_new()

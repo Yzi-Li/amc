@@ -26,7 +26,7 @@ int cond_append_branch(struct asf_cond_handle *handle,
 int cond_append_exit_label(label_id label)
 {
 	struct object_node *node = malloc(sizeof(*node));
-	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	node->s = asf_label_get_str(label);
 	node->s->len -= 1;
@@ -91,7 +91,7 @@ int asf_cond_elif(backend_scope_status *raw_status)
 	struct asf_scope_status *status = raw_status;
 	if (cond_append_exit_label(asf_label_get_last()))
 		return 1;
-	if (cond_append_branch(&status->cond, cur_obj[ASF_OBJ_TEXT].last))
+	if (cond_append_branch(&status->cond, cur_obj->sections[ASF_OBJ_TEXT].last))
 		return 1;
 	return 0;
 }
@@ -116,7 +116,7 @@ int asf_cond_if(backend_scope_status *raw_status)
 	if (cond_append_exit_label(status->cond.exit_label))
 		return 1;
 	status->cond.branch = malloc(sizeof(*status->cond.branch));
-	status->cond.branch[0] = cur_obj[ASF_OBJ_TEXT].last;
+	status->cond.branch[0] = cur_obj->sections[ASF_OBJ_TEXT].last;
 	status->cond.branch_num = 1;
 	return 0;
 }

@@ -11,20 +11,27 @@ struct object_node {
 	struct object_node *prev;
 };
 
-struct object_head {
+struct object_section {
 	struct object_node *head;
 	struct object_node *last;
 };
 
-int object_append(struct object_head *h, struct object_node *n);
+struct object_head {
+	struct object_head *prev;
+	struct object_section *sections;
+	int sec_count;
+};
+
+int object_append(struct object_section *sec, struct object_node *n);
 /**
  * Insert object_node between 'n1' and 'n2'.
  */
 int object_insert(struct object_node *src, struct object_node *n1,
 		struct object_node *n2);
-int object_remove(struct object_head *h, struct object_node *n);
-int object_remove_last(struct object_head *h);
+int object_remove(struct object_section *sec, struct object_node *n);
+int object_remove_last(struct object_section *sec);
 int object_swap(struct object_node *n1, struct object_node *n2);
-void objects_free(struct object_head *o);
+void object_head_free(struct object_head *h);
+void object_section_free(struct object_section *sec);
 
 #endif

@@ -27,7 +27,7 @@ err_free_node:
 int loop_append_label(label_id label)
 {
 	struct object_node *node = malloc(sizeof(*node));
-	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	node->s = asf_label_get_str(label);
 	node->s->len -= 1;

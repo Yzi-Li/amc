@@ -2,16 +2,16 @@
 #include "../utils/die.h"
 #include <stdio.h>
 
+static int object_section_write(struct object_section *sec, FILE *f);
 static int object_write(struct object_head *obj, FILE *f);
-static int objects_write(struct object_head *obj, int len, FILE *f);
 static FILE *target_file_create(const char *path);
 
-int object_write(struct object_head *obj, FILE *f)
+int object_section_write(struct object_section *sec, FILE *f)
 {
 	struct object_node *cur = NULL;
-	if (obj == NULL)
+	if (sec == NULL)
 		return 0;
-	cur = obj->head;
+	cur = sec->head;
 	while (cur != NULL) {
 		if (str_append(cur->s, 1, "\0"))
 			return 1;
@@ -22,10 +22,10 @@ int object_write(struct object_head *obj, FILE *f)
 	return 0;
 }
 
-int objects_write(struct object_head *obj, int len, FILE *f)
+int object_write(struct object_head *obj, FILE *f)
 {
-	for (int i = 0; i < len; i++) {
-		if (object_write(&obj[i], f))
+	for (int i = 0; i < obj->sec_count; i++) {
+		if (object_section_write(&obj->sections[i], f))
 			return 1;
 	}
 	return 0;
@@ -47,7 +47,7 @@ int target_write(const char *target_path, struct object_head *obj, int len)
 	if (target_path == NULL)
 		return 1;
 	f = target_file_create(target_path);
-	if (objects_write(cur_obj, len, f))
+	if (object_write(cur_obj, f))
 		return 1;
 	return fclose(f);
 }

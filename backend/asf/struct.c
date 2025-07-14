@@ -16,7 +16,7 @@ int struct_elem_push(yz_val *val)
 	if (val == NULL)
 		return struct_elem_push_empty(val);
 	node = malloc(sizeof(*node));
-	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	if ((node->s = asf_inst_push(val)) == NULL)
 		goto err_inst_failed;
@@ -37,7 +37,7 @@ int struct_elem_push_empty(yz_val *val)
 		.iq = 0
 	};
 	struct object_node *node = malloc(sizeof(*node));
-	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	if ((node->s = asf_inst_push_imm(&imm)) == NULL)
 		goto err_inst_failed;
@@ -87,7 +87,7 @@ int asf_struct_set_elem(struct symbol *sym, int index, yz_val *val,
 	if (dest == NULL)
 		return 1;
 	node = malloc(sizeof(*node));
-	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	if ((node->s = asf_identifier_set(dest, mode, val)) == NULL)
 		goto err_inst_failed;
@@ -110,7 +110,7 @@ int asf_op_extract_struct_elem(yz_extract_val *val)
 		return 1;
 	dest = asf_reg_get(cur->bytes);
 	node = malloc(sizeof(*node));
-	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	if ((node->s = asf_inst_mov(ASF_MOV_M2R, cur, &dest)) == NULL)
 		goto err_inst_failed;

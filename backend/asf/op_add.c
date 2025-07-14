@@ -14,7 +14,7 @@ int asf_op_add(struct expr *e)
 	struct object_node *node = NULL;
 	node = malloc(sizeof(*node));
 	node->s = str_new();
-	if (object_append(&cur_obj[ASF_OBJ_TEXT], node))
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	if ((addend = asf_op_get_val_right(node, e, -1)) == NULL)
 		goto err_free_node;

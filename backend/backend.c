@@ -20,11 +20,16 @@ int backend_init(int argc, char *argv[])
 	return backends[cur_backend]->init(argc, argv);
 }
 
-int backend_file_end(const char *target_path)
+int backend_file_end(const char *target_path, int len)
 {
 	if (backend_flag & BE_FLAG_STOPED)
 		return 0;
-	return backends[cur_backend]->file_end(target_path);
+	return backends[cur_backend]->file_end(target_path, len);
+}
+
+char *backend_file_get_suffix(int *result_len, int *need_free)
+{
+	return backends[cur_backend]->file_get_suffix(result_len, need_free);
 }
 
 int backend_file_new(struct file *f)

@@ -3,6 +3,7 @@
 #include "include/backend.h"
 #include "include/file.h"
 #include "include/parser.h"
+#include <string.h>
 
 /**
  * Please install 'libgetarg'(https://github.com/at2er/libgetarg)
@@ -21,7 +22,8 @@ int opt_read_output(int argc, char *argv[], struct option *opt)
 {
 	if (argc != 1 || argv == NULL)
 		return 1;
-	global_parser.target_path = argv[0];
+	global_parser.target_path.s = argv[0];
+	global_parser.target_path.len = strlen(global_parser.target_path.s);
 	return 0;
 }
 

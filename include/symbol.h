@@ -40,6 +40,7 @@ struct scope;
 struct symbol {
 	char *name;
 	u32 name_len;
+	str path;
 	int (*parse_function)(struct parser *parser);
 	struct symbol_flag flags;
 	enum SYM_TYPE type;

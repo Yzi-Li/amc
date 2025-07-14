@@ -1,3 +1,4 @@
+#include "include/cache.h"
 #include "include/decorator.h"
 #include "../include/parser.h"
 #include "../include/backend.h"
@@ -7,10 +8,25 @@
 #include "../utils/str/str.h"
 #include "include/keywords.h"
 #include <stdlib.h>
+#include <string.h>
 
-struct global_parser global_parser = { 0, 0, 0, "/tmp/amc.target.s" };
+#if defined(__unix__)
+#include <libgen.h>
+#elif defined(__WIN32)
+#include <direct.h>
+#endif
+
+struct global_parser global_parser = {
+	.has_err = 0,
+	.has_main = 0,
+	.parsed = {},
+	.root_dir = {},
+	.root_mod = {},
+	.target_path = {}
+};
 
 static int parse_line(struct parser *parser);
+static int parser_create_get_path(str *result, str *path);
 
 int parse_line(struct parser *parser)
 {
@@ -52,41 +68,157 @@ err_not_toplevel:
 	return 2;
 }
 
-int parse_file(const char *path, struct file *f)
+int parser_create_get_path(str *result, str *path)
 {
-	struct scope toplevel = {
-		.fn = NULL,
-		.indent = 0,
-		.parent = NULL,
-		.status = NULL,
-		.status_type = SCOPE_TOP,
-		.sym_groups = {}
-	};
-	struct parser parser = {
-		.f = f,
-		.hooks = calloc(1, sizeof(*parser.hooks)),
-		.scope = &toplevel,
-	};
+	if (path->len == global_parser.root_mod.len
+			&& strncmp(path->s, global_parser.root_mod.s,
+				global_parser.root_mod.len) == 0) {
+		str_append(result, global_parser.root_mod.len,
+				global_parser.root_mod.s);
+		return 0;
+	}
+	str_expand(result, global_parser.root_mod.len
+			+ path->len + 1);
+	snprintf(result->s, result->len, "%s/%s", global_parser.root_mod.s,
+			path->s);
+	return 0;
+}
+
+struct parser *parse_file(str *path, const char *real_path, struct file *f)
+{
+	struct parser *parser = parser_create(path, real_path, f);
 	int ret = 0;
-	if (file_init(path, f))
+	if (file_init(real_path, f))
 		die("amc: file_init: no such file: %s\n", path);
 	if (backend_file_new(f))
 		die("amc: backend_file_new: cannot create new file: %s", path);
 
 	while (f->src[f->pos] != '\0') {
-		if ((ret = parse_line(&parser)) > 0)
-			return 1;
+		if ((ret = parse_line(parser)) > 0)
+			goto err_free_parser;
 		if (f->src[f->pos] == '\0')
 			break;
 		if (ret != -1)
 			file_line_next(f);
 	}
-	return backend_file_end(global_parser.target_path);
+	if (backend_file_end(parser->target.s, parser->target.len))
+		goto err_free_parser;
+	return parser;
+err_free_parser:
+	return NULL;
+}
+
+struct parser *parser_create(str *path, const char *real_path, struct file *f)
+{
+	struct parser *result = calloc(1, sizeof(*result));
+	result->f = f;
+	result->hooks = calloc(1, sizeof(*result->hooks));
+	result->scope = calloc(1, sizeof(*result->scope));
+	result->scope->fn = NULL;
+	result->scope->indent = 0;
+	result->scope->parent = NULL;
+	result->scope->status = NULL;
+	result->scope->status_type = SCOPE_TOP;
+	if (parser_get_target_from_mod_path(&result->target, path))
+		goto err_free_parser;
+	if (parser_create_get_path(&result->path, path))
+		goto err_free_parser;
+	return result;
+err_free_parser:
+	free_parser(result);
+	return NULL;
+}
+
+int parser_get_target_from_mod_path(str *result, str *path)
+{
+	str suffix = {};
+	int suffix_need_free = 0;
+	if ((suffix.s = backend_file_get_suffix(&result->len, &suffix_need_free))
+			== NULL)
+		return 1;
+	str_expand(result, global_parser.target_path.len
+			+ path->len
+			+ suffix.len
+			+ 5);
+	snprintf(result->s, result->len, "%s/%s.yz%s",
+			global_parser.target_path.s,
+			path->s, suffix.s);
+	if (suffix_need_free)
+		free(suffix.s);
+	return 0;
 }
 
 int parser_init(const char *path, struct file *f)
 {
-	if (parse_file(path, f))
+	str path_cpy = {
+		.len = strlen(path),
+		.s = malloc(path_cpy.len + 1)
+	};
+	char *root_dir_cpy;
+	strncpy(path_cpy.s, path, path_cpy.len);
+	if (global_parser.root_dir.s == NULL) {
+		global_parser.root_dir.s = dirname(path_cpy.s);
+		global_parser.root_dir.len = strlen(global_parser.root_dir.s);
+	}
+	if (global_parser.root_mod.s == NULL) {
+		root_dir_cpy = malloc(global_parser.root_dir.len + 1);
+		strncpy(root_dir_cpy, global_parser.root_dir.s,
+				global_parser.root_dir.len);
+		global_parser.root_mod.s = basename(root_dir_cpy);
+		global_parser.root_mod.len = strlen(global_parser.root_mod.s);
+	}
+	if (cache_dir_create(&global_parser.root_dir))
+			return 0;
+	if (parse_file(&global_parser.root_mod, path, f) == NULL)
 		return 1;
 	return backend_end();
+}
+
+int parser_imported_append(struct parser_imported *imported, yz_module *mod)
+{
+	struct parser_imported_node *cur =
+		(struct parser_imported_node*)imported;
+	for (int i = 0; i < mod->name.len; i++) {
+		if (cur->nodes[(int)mod->name.s[i]] != NULL) {
+			cur = cur->nodes[(int)mod->name.s[i]];
+			continue;
+		}
+		cur->nodes[(int)mod->name.s[i]] = calloc(1, sizeof(*cur));
+		cur = cur->nodes[(int)mod->name.s[i]];
+	}
+	imported->count += 1;
+	imported->mods = realloc(imported->mods, sizeof(*imported->mods)
+			* imported->count);
+	imported->mods[imported->count - 1] = mod;
+	cur->mod = mod;
+	return 0;
+}
+
+yz_module *parser_imported_find(struct parser_imported *imported, str *name)
+{
+	struct parser_imported_node *cur = (struct parser_imported_node*)imported;
+	for (int i = 0; i < name->len; i++) {
+		if (cur->nodes[(int)name->s[i]] == NULL)
+			return NULL;
+		cur = cur->nodes[(int)name->s[i]];
+	}
+	return cur ? cur->mod : NULL;
+}
+
+struct scope *parser_parsed_file_find(str *path)
+{
+	struct parsed_node *cur = (struct parsed_node*)&global_parser.parsed;
+	for (int i = 0; i < path->len; i++) {
+		if (cur->nodes[(int)path->s[i]] == NULL)
+			return NULL;
+		cur = cur->nodes[(int)path->s[i]];
+	}
+	return cur ? cur->scope : NULL;
+}
+
+void free_parser(struct parser *parser)
+{
+	free_hooks(parser->hooks);
+	free(parser->path.s);
+	free_scope(parser->scope);
 }

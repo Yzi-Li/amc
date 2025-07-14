@@ -6,11 +6,12 @@
 #include <string.h>
 
 struct backend backend_asf = {
-	.end      = asf_end,
-	.file_end = asf_file_end,
-	.file_new = asf_file_new,
-	.init     = asf_init,
-	.stop     = asf_stop,
+	.end             = asf_end,
+	.file_end        = asf_file_end,
+	.file_get_suffix = asf_file_get_suffix,
+	.file_new        = asf_file_new,
+	.init            = asf_init,
+	.stop            = asf_stop,
 
 	.array_def      = asf_array_def,
 	.array_set_elem = asf_array_set_elem,
@@ -59,7 +60,9 @@ struct backend backend_asf = {
 	.struct_def      = asf_struct_def,
 	.struct_set_elem = asf_struct_set_elem,
 
+	.symbol_get_path    = asf_symbol_get_path,
 	.symbol_status_free = asf_symbol_status_free,
+
 	.syscall = asf_syscall,
 
 	.var_immut_init = asf_var_immut_init,
@@ -74,18 +77,35 @@ int asf_init(int argc, char *argv[])
 	return asf_regs_init();
 }
 
-int asf_file_end(const char *target_path)
+int asf_file_end(const char *target_path, int len)
 {
-	return target_write(target_path, cur_obj, ASF_OBJ_COUNT);
+	struct object_head *prev = cur_obj->prev;
+	if (target_write(target_path, cur_obj, ASF_OBJ_COUNT))
+		return 1;
+	object_head_free(cur_obj);
+	cur_obj = prev;
+	return 0;
+}
+
+char *asf_file_get_suffix(int *result_len, int *need_free)
+{
+	*result_len = 2;
+	*need_free = 0;
+	return ".s";
 }
 
 int asf_file_new(struct file *f)
 {
 	const char *temp_rodata = ".section .rodata\n";
 	struct object_node *rodata = NULL;
-	cur_obj = calloc(3, sizeof(struct object_head));
+	struct object_head *prev = cur_obj;
+	cur_obj = calloc(1, sizeof(*cur_obj));
+	cur_obj->prev = prev;
+	cur_obj->sec_count = 3;
+	cur_obj->sections = calloc(cur_obj->sec_count,
+			sizeof(*cur_obj->sections));
 	rodata = malloc(sizeof(*rodata));
-	if (object_append(&cur_obj[ASF_OBJ_RODATA], rodata))
+	if (object_append(&cur_obj->sections[ASF_OBJ_RODATA], rodata))
 		goto err_free_rodata;
 	rodata->s = str_new();
 	str_append(rodata->s, strlen(temp_rodata), temp_rodata);
@@ -102,7 +122,7 @@ int asf_stop(enum BE_STOP_SIGNAL bess)
 		//break;
 	case BE_STOP_SIGNAL_ERR:
 	default:
-		objects_free(cur_obj);
+		object_head_free(cur_obj);
 		break;
 	}
 

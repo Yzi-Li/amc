@@ -165,14 +165,13 @@ int token_read_region(char *se, str *region, struct file *f)
 	return 0;
 }
 
-int token_type_get(str *token, str *type)
+int token_try_read(str *expect, struct file *f)
 {
-	str name = TOKEN_NEW;
-	if (token_get_before(':', token, &name))
-		return 1;
-	type->s = &token->s[1];
-	type->len = token->len - 1;
-	token->s = name.s;
-	token->len = name.len;
-	return token_clean_head_space(type);
+	if (f->len - f->pos < expect->len)
+		return 0;
+	if (strncmp(&f->src[f->pos], expect->s, expect->len) != 0)
+		return 0;
+	file_pos_nnext(expect->len, f);
+	file_skip_space(f);
+	return 1;
 }

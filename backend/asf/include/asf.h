@@ -11,7 +11,8 @@ enum OBJ_SECTION_TYPE {
 };
 
 int asf_end();
-int asf_file_end(const char *target_path);
+int asf_file_end(const char *target_path, int len);
+char *asf_file_get_suffix(int *result_len, int *need_free);
 int asf_file_new(struct file *f);
 int asf_init(int argc, char *argv[]);
 int asf_stop(enum BE_STOP_SIGNAL bess);
@@ -27,8 +28,8 @@ int asf_cond_if_begin(backend_scope_status *raw_status);
 
 int asf_const_def_str(char *str, int len);
 
-int asf_func_call(const char *name, yz_val *type, yz_val **v, int vlen);
-int asf_func_def(const char *name, int len, yz_val *type);
+int asf_func_call(struct symbol *fn, yz_val **v, int vlen);
+int asf_func_def(struct symbol *fn);
 int asf_func_ret(yz_val *v, int is_main);
 
 backend_scope_status *asf_scope_begin();
@@ -38,6 +39,7 @@ int asf_struct_def(backend_symbol_status *raw_sym_stat, yz_val **vs, int len);
 int asf_struct_set_elem(struct symbol *sym, int index, yz_val *val,
 		enum OP_ID mode);
 
+int asf_symbol_get_path(str *result, str *mod, const char *name, int name_len);
 void asf_symbol_status_free(backend_symbol_status *raw_stat);
 int asf_syscall(int code);
 

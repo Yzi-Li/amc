@@ -10,7 +10,7 @@ int scope_end_normal(struct asf_scope_status *status)
 	asf_stack_end_frame(status->stack_start);
 	if (status->end_node == NULL)
 		return 0;
-	if (object_append(&cur_obj[ASF_OBJ_TEXT], status->end_node))
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], status->end_node))
 		goto err_free_node;
 	status->end_node = NULL;
 	status->type = ASF_SCOPE_STATUS_NO;
@@ -57,9 +57,4 @@ err_unsupport_type:
 			status->type);
 	free(raw_status);
 	return 1;
-}
-
-void asf_symbol_status_free(backend_symbol_status *raw_stat)
-{
-	return;
 }

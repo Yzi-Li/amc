@@ -1,4 +1,5 @@
 #include "../include/module.h"
+#include "../include/parser.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -7,13 +8,16 @@ static const char *MODULE_NAME_VAILD_CHARS =
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 		"_";
 
-int module_append_child(yz_module *src, yz_module *dest)
+str *module_path2real(str *path)
 {
-	dest->children.count += 1;
-	dest->children.modules = realloc(dest->children.modules,
-			sizeof(*dest->children.modules) * dest->children.count);
-	dest->children.modules[dest->children.count - 1] = src;
-	return 0;
+	str *result = str_new();
+	str_expand(result, global_parser.root_dir.len
+			+ path->len
+			+ 5);
+	snprintf(result->s, result->len, "%s/%s.yz",
+			global_parser.root_dir.s,
+			path->s);
+	return result;
 }
 
 int check_module_name(str *name)
@@ -28,7 +32,10 @@ err_invalid_name: // TODO: better error message.
 	return 0;
 }
 
-int check_module_parsed(str *name)
+void free_yz_module(yz_module *src)
 {
-	return 0;
+	free(src->name.s);
+	free(src->path.s);
+	free_scope(src->scope);
+	free(src);
 }

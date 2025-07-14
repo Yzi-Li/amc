@@ -70,6 +70,6 @@ char *token_read_before(const char *s, str *token, struct file *f);
  */
 int token_read_region(char *se, str *region, struct file *f);
 
-int token_type_get(str *token, str *type);
+int token_try_read(str *expect, struct file *f);
 
 #endif

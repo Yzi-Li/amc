@@ -1,6 +1,7 @@
 PARSER_SRC =\
 	array.c\
 	block.c\
+	cache.c\
 	comment.c\
 	constructor.c\
 	decorator.c\

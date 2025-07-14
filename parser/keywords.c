@@ -30,7 +30,6 @@ static struct symbol keywords[] = {
 	KW_DEF("else",   4, parse_else,      KW_REC, !KW_TOPLEVEL,  KW_IN_BLOCK),
 	KW_DEF("fn",     2, parse_func_def, !KW_REC,  KW_TOPLEVEL, !KW_IN_BLOCK),
 	KW_DEF("if",     2, parse_if,        KW_REC, !KW_TOPLEVEL,  KW_IN_BLOCK),
-	KW_DEF("import", 6, parse_import,   !KW_REC,  KW_TOPLEVEL, !KW_IN_BLOCK),
 	KW_DEF("let",    3, parse_let,      !KW_REC,  KW_TOPLEVEL,  KW_IN_BLOCK),
 	KW_DEF("mod",    3, parse_mod,      !KW_REC,  KW_TOPLEVEL, !KW_IN_BLOCK),
 	KW_DEF("ret",    3, parse_func_ret, !KW_REC, !KW_TOPLEVEL,  KW_IN_BLOCK),
@@ -50,6 +49,8 @@ int keyword_end(struct file *f)
 int keyword_find(str *token, struct symbol **result)
 {
 	for (int i = 0; i < LENGTH(keywords); i++) {
+		if (token->len != keywords[i].name_len)
+			continue;
 		if (strncmp(token->s, keywords[i].name, token->len) == 0) {
 			*result = &keywords[i];
 			return 1;

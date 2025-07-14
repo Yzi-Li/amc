@@ -37,7 +37,8 @@ enum BE_STOP_SIGNAL {
  */
 struct backend {
 	int (*end)();
-	int (*file_end)(const char *target_path);
+	int (*file_end)(const char *target_path, int len);
+	char *(*file_get_suffix)(int *result_len, int *need_free);
 	int (*file_new)(struct file *f);
 	int (*init)(int argc, char *argv[]);
 	int (*stop)(enum BE_STOP_SIGNAL bess);
@@ -56,6 +57,7 @@ struct backend {
 	backend_scope_end_f          scope_end;
 	backend_struct_def_f         struct_def;
 	backend_struct_set_elem_f    struct_set_elem;
+	backend_symbol_get_path_f    symbol_get_path;
 	backend_symbol_status_free_f symbol_status_free;
 	backend_syscall_f            syscall;
 	backend_var_set_f        var_set;
@@ -80,7 +82,8 @@ extern enum BACKENDS cur_backend;
  */
 int backend_init(int argc, char *argv[]);
 
-int backend_file_end(const char *target_path);
+int backend_file_end(const char *target_path, int len);
+char *backend_file_get_suffix(int *result_len, int *need_free);
 int backend_file_new(struct file *f);
 
 /**
