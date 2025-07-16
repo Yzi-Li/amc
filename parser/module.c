@@ -4,13 +4,7 @@
 #include "../include/parser.h"
 #include "../include/token.h"
 #include <stdio.h>
-
-#if defined(__unix__)
-#include <unistd.h>
-#elif defined(__WIN32)
-#include <io.h>
-#define access(path, mode) _access(path, mode)
-#endif
+#include <sys/stat.h>
 
 static int import_check_file_exists(str *real_path);
 static struct scope *import_parse_file(str *path, struct parser *parent);
@@ -24,9 +18,19 @@ static int module_read_name(str *result, struct file *f);
 
 int import_check_file_exists(str *real_path)
 {
-	if (access(real_path->s, F_OK) == 0)
-		return 1;
-	printf("amc: import_check_file_exists: No such file: '%s'\n", real_path->s);
+	struct stat st = {};
+	if (stat(real_path->s, &st))
+		goto err_no_such_path;
+	if (S_ISDIR(st.st_mode))
+		goto err_is_dir;
+	return 1;
+err_is_dir:
+	printf("amc: import_check_file_exists: Path: '%s' is directory\n",
+			real_path->s);
+	return 0;
+err_no_such_path:
+	printf("amc: import_check_file_exists: No such file: '%s'\n",
+			real_path->s);
 	return 0;
 }
 
@@ -61,6 +65,7 @@ int import_read_path(str *result, struct file *f)
 			return 1;
 	}
 	str_append(result, 1, "\0");
+	result->len -= 1;
 	return 0;
 }
 
@@ -69,6 +74,8 @@ int import_read_path_check_end(struct file *f)
 	i64 orig_column = f->cur_column,
 			orig_line = f->cur_line,
 			orig_pos = f->pos;
+	if (f->src[f->pos] == '.')
+		return 0;
 	if (!parse_comment(f) && f->src[f->pos] != '\n')
 		return 2;
 	if (f->src[f->pos] == '\n')

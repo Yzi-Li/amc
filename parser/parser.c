@@ -7,6 +7,7 @@
 #include "../utils/die.h"
 #include "../utils/str/str.h"
 #include "include/keywords.h"
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -77,10 +78,10 @@ int parser_create_get_path(str *result, str *path)
 				global_parser.root_mod.s);
 		return 0;
 	}
-	str_expand(result, global_parser.root_mod.len
-			+ path->len + 1);
+	str_expand(result, global_parser.root_mod.len + path->len + 2);
 	snprintf(result->s, result->len, "%s/%s", global_parser.root_mod.s,
 			path->s);
+	result->len -= 1;
 	return 0;
 }
 
@@ -219,6 +220,44 @@ struct scope *parser_parsed_file_find(str *path)
 void free_parser(struct parser *parser)
 {
 	free_hooks(parser->hooks);
+	free_parser_imported(&parser->imported);
 	free(parser->path.s);
 	free_scope(parser->scope);
+	free(parser->target.s);
+}
+
+void free_parser_imported(struct parser_imported *imported)
+{
+	if (imported == NULL)
+		return;
+	free_parser_imported_mods(imported->count, imported->mods);
+	for (int i = 0; i < UCHAR_MAX; i++) {
+		if (imported->nodes[i] == NULL)
+			continue;
+		free_parser_imported_nodes(imported->nodes[i], 0);
+	}
+}
+
+void free_parser_imported_mods(int count, yz_module **mods)
+{
+	if (mods == NULL)
+		return;
+	for (int i = 0; i < count; i++)
+		free_yz_module(mods[i]);
+	free(mods);
+}
+
+void free_parser_imported_nodes(struct parser_imported_node *root,
+		int free_mod)
+{
+	if (root == NULL)
+		return;
+	for (int i = 0; i < UCHAR_MAX; i++) {
+		if (root->nodes[i] == NULL)
+			continue;
+		free_parser_imported_nodes(root->nodes[i], free_mod);
+	}
+	if (free_mod)
+		free_yz_module(root->mod);
+	free(root);
 }

@@ -17,6 +17,7 @@
  *   0: when had not number character.
  */
 int checkint(const char *str, int len);
+int rmkdir(const char *path);
 int ublen(unsigned char src);
 int uslen(unsigned short src);
 int uilen(unsigned int src);

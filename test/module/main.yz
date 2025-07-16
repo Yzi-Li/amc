@@ -1,4 +1,5 @@
 mod str import str
+mod a import a.b
 
 fn main: i32 =>
 	let a: str.Str = { 6, 6, "Hello\n" }

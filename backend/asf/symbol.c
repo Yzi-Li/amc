@@ -11,8 +11,7 @@ int asf_symbol_get_path(str *result, str *mod, const char *name, int name_len)
 		}
 		str_append(result, count, base);
 		str_append(result, 2, "__");
-		i++;
-		base = &mod->s[i];
+		base = &mod->s[i + 1];
 		count = 0;
 	}
 	str_append(result, count, base);

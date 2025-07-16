@@ -52,5 +52,9 @@ int parser_init(const char *path, struct file *f);
 struct scope *parser_parsed_file_find(str *path);
 
 void free_parser(struct parser *parser);
+void free_parser_imported(struct parser_imported *imported);
+void free_parser_imported_mods(int count, yz_module **mods);
+void free_parser_imported_nodes(struct parser_imported_node *root,
+		int free_mod);
 
 #endif

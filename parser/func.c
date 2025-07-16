@@ -291,7 +291,8 @@ int func_def_read_name(struct parser *parser)
 	parser->scope->fn->name = str2chr(token.s, token.len);
 	parser->scope->fn->name_len = token.len;
 	if (backend_call(symbol_get_path)(&parser->scope->fn->path,
-				&parser->path, parser->scope->fn->name,
+				&parser->path,
+				parser->scope->fn->name,
 				parser->scope->fn->name_len))
 		goto err_get_path_failed;
 	return 0;

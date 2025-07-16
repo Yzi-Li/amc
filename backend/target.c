@@ -1,10 +1,18 @@
 #include "../include/backend/target.h"
 #include "../utils/die.h"
+#include "../utils/utils.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#if defined(__unix__)
+#include <libgen.h>
+#endif
 
 static int object_section_write(struct object_section *sec, FILE *f);
 static int object_write(struct object_head *obj, FILE *f);
 static FILE *target_file_create(const char *path);
+static int target_file_create_dir(const char *path);
 
 int object_section_write(struct object_section *sec, FILE *f)
 {
@@ -34,11 +42,30 @@ int object_write(struct object_head *obj, FILE *f)
 FILE *target_file_create(const char *path)
 {
 	FILE *f = NULL;
-	f = fopen(path, "w");
-	if (f != NULL)
+	if (target_file_create_dir(path))
+		return NULL;
+	if ((f = fopen(path, "w")) != NULL)
 		return f;
-	die("amc: target_write: cannot write file: %s", path);
+	die("amc: target_write: cannot write file: %s\n", path);
 	return NULL;
+}
+
+int target_file_create_dir(const char *path)
+{
+	str tmp = {
+		.len = strlen(path),
+		.s = malloc(tmp.len + 1)
+	};
+	char *dir = NULL;
+	strncpy(tmp.s, path, tmp.len);
+	dir = dirname(tmp.s);
+	if (rmkdir(dir))
+		goto err_free_tmp;
+	free(tmp.s);
+	return 0;
+err_free_tmp:
+	free(tmp.s);
+	return 1;
 }
 
 int target_write(const char *target_path, struct object_head *obj, int len)

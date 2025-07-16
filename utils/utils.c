@@ -1,4 +1,15 @@
+#include "cint.h"
 #include "utils.h"
+#include <errno.h>
+#include <string.h>
+
+#if defined(__unix__)
+#include <libgen.h>
+#include <sys/stat.h>
+#elif defined(__WIN32)
+#include <direct.h>
+#define mkdir(pathname, ...) _mkdir(pathname)
+#endif
 
 #define AMC_INT_LEN_FUNC(NAME, TYPE) \
 	int NAME(TYPE src) { \
@@ -18,6 +29,31 @@ int checkint(const char *str, int len)
 			return 0;
 	}
 	return 1;
+}
+
+int rmkdir(const char *path)
+{
+	const u32 default_filemode
+		= S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+	struct stat st = {};
+	char *parent = NULL, *path_cpy = NULL;
+	int path_cpy_len, ret = 0;
+	if (stat(path, &st) == 0) {
+		if (S_ISDIR(st.st_mode))
+			return 0;
+		return 1;
+	}
+	path_cpy_len = strlen(path);
+	path_cpy = malloc(path_cpy_len);
+	strncpy(path_cpy, path, path_cpy_len);
+	parent = dirname(path_cpy);
+	ret = rmkdir(parent);
+	free(path_cpy);
+	if (ret)
+		return 1;
+	if (mkdir(path, default_filemode) && errno != EEXIST)
+		return 1;
+	return 0;
 }
 
 AMC_INT_LEN_FUNC(ublen, unsigned char)

@@ -17,6 +17,7 @@ str *module_path2real(str *path)
 	snprintf(result->s, result->len, "%s/%s.yz",
 			global_parser.root_dir.s,
 			path->s);
+	result->len -= 1;
 	return result;
 }
 
