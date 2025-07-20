@@ -7,6 +7,7 @@
 #include "include/token.h"
 #include "../include/array.h"
 #include "../include/backend.h"
+#include "../include/const.h"
 #include "../include/parser.h"
 #include "../include/token.h"
 #include "../utils/converter.h"
@@ -55,13 +56,13 @@ static int expr_binary_read_op(struct parser *parser, int top, struct expr *e);
 static int expr_check_end(struct file *f);
 static int expr_check_end_special(struct file *f, int top);
 static int expr_check_end_top(struct file *f, str *tok);
-static enum YZ_TYPE *expr_get_sum_type(yz_val *l, yz_val *r);
+static yz_type *expr_get_sum_type(yz_type *l, yz_type *r);
 static int expr_operator(struct file *f, int top, struct expr_operator **op);
 static int expr_read_token(struct file *f, int top, str *token);
 static int expr_single_term(struct expr *e);
 static int expr_sub(struct parser *parser, int top, struct expr **e);
-static int expr_sub_cur_merge_prev(struct expr *prev, struct expr *cur);
-static int expr_sub_cur_append(struct expr **prev, struct expr *cur);
+static int expr_sub_merge_prev(struct expr *prev, struct expr *cur);
+static int expr_sub_append(struct expr **prev, struct expr *cur);
 static int expr_term(struct parser *parser, int top, yz_val *v);
 static int expr_term_chr(struct parser *parser, int top, yz_val *v);
 static int expr_term_expr(struct parser *parser, int top, yz_val *v);
@@ -93,9 +94,10 @@ int expr_binary(struct parser *parser, int top, struct expr *e)
 	if ((ret = expr_term(parser, top, e->valr)) > 0)
 		return 1;
 	if (OP_IS_CMP(e->op->id)) {
-		e->sum_type = yz_get_raw_type(e->vall);
+		e->sum_type = &e->vall->type;
 	} else {
-		if ((e->sum_type = expr_get_sum_type(e->vall, e->valr))
+		if ((e->sum_type = expr_get_sum_type(&e->vall->type,
+						&e->valr->type))
 				== NULL)
 			return 1;
 	}
@@ -153,12 +155,12 @@ int expr_check_end_top(struct file *f, str *token)
 	return 0;
 }
 
-enum YZ_TYPE *expr_get_sum_type(yz_val *l, yz_val *r)
+yz_type *expr_get_sum_type(yz_type *l, yz_type *r)
 {
-	yz_val *val = NULL;
-	if ((val = yz_type_max(l, r)) == NULL)
+	yz_type *type = NULL;
+	if ((type = yz_type_max(l, r)) == NULL)
 		goto err_get_failed;
-	return yz_get_raw_type(val);
+	return type;
 err_get_failed:
 	printf("amc: expr_get_sum_type: Get expression's sum type failed!\n");
 	return NULL;
@@ -212,10 +214,10 @@ err_empty_token:
 
 int expr_single_term(struct expr *e)
 {
-	if (e->vall->type == AMC_EXPR) {
+	if (e->vall->type.type == AMC_EXPR) {
 		e->sum_type = ((struct expr*)e->vall->v)->sum_type;
-	} else if (e->vall->type == AMC_SYM) {
-		e->sum_type = &((struct symbol*)e->vall->v)->result_type.type;
+	} else if (e->vall->type.type == AMC_SYM) {
+		e->sum_type = &((struct symbol*)e->vall->v)->result_type;
 	} else {
 		e->sum_type = &e->vall->type;
 	}
@@ -240,11 +242,11 @@ int expr_sub(struct parser *parser, int top, struct expr **e)
 		return 1;
 	if (expr->op->priority < (*e)->op->priority) {
 		// 1 + 2 * 3
-		if (expr_sub_cur_merge_prev(*e, expr))
+		if (expr_sub_merge_prev(*e, expr))
 			return 1;
 	} else {
 		// 1 * 2 + 3
-		if (expr_sub_cur_append(e, expr))
+		if (expr_sub_append(e, expr))
 			return 1;
 	}
 	if (end == 0) {
@@ -260,25 +262,32 @@ err_valr_not_found:
 	return 1;
 }
 
-int expr_sub_cur_merge_prev(struct expr *prev, struct expr *cur)
+int expr_sub_merge_prev(struct expr *prev, struct expr *cur)
 {
-	cur->vall->type = prev->valr->type;
 	cur->vall->v = prev->valr->v;
-	if ((cur->sum_type = expr_get_sum_type(cur->vall, cur->valr)) == NULL)
+	cur->vall->type = prev->valr->type;
+	if ((cur->sum_type = expr_get_sum_type(
+					&cur->vall->type,
+					&cur->valr->type)) == NULL)
 		return 1;
-	prev->valr->type = AMC_EXPR;
 	prev->valr->v = cur;
-	if ((prev->sum_type = expr_get_sum_type(prev->vall, prev->valr))
-			== NULL)
+	prev->valr->type.type = AMC_EXPR;
+	prev->valr->type.v = prev->valr->v;
+	if ((prev->sum_type = expr_get_sum_type(
+					&prev->vall->type,
+					&prev->valr->type)) == NULL)
 		return 1;
 	return 0;
 }
 
-int expr_sub_cur_append(struct expr **prev, struct expr *cur)
+int expr_sub_append(struct expr **prev, struct expr *cur)
 {
-	cur->vall->type = AMC_EXPR;
 	cur->vall->v = *prev;
-	if ((cur->sum_type = expr_get_sum_type(cur->vall, cur->valr)) == NULL)
+	cur->vall->type.type = AMC_EXPR;
+	cur->vall->type.v = cur->vall->v;
+	if ((cur->sum_type = expr_get_sum_type(
+					&cur->vall->type,
+					&cur->valr->type)) == NULL)
 		return 1;
 	*prev = cur;
 	return 0;
@@ -316,7 +325,7 @@ int expr_term_chr(struct parser *parser, int top, yz_val *v)
 		return EXPR_TERM_END;
 	if (token.s[token.len - 1] != '\'')
 		goto err_char_not_end;
-	v->type = YZ_CHAR;
+	v->type.type = YZ_CHAR;
 	v->i = token.s[1];
 	return end == 1 ? EXPR_TERM_END : 0;
 err_eoe:
@@ -332,11 +341,12 @@ int expr_term_expr(struct parser *parser, int top, yz_val *v)
 {
 	file_pos_next(parser->f);
 	file_skip_space(parser->f);
-	v->type = AMC_EXPR;
 	if ((v->v = parse_expr(parser, 0)) == NULL)
 		goto err_cannot_parse_expr;
 	if (parser->f->src[parser->f->pos] != ')')
 		return 1;
+	v->type.type = AMC_EXPR;
+	v->type.v = v->v;
 	file_pos_next(parser->f);
 	file_skip_space(parser->f);
 	if (expr_check_end_special(parser->f, top))
@@ -354,8 +364,9 @@ int expr_term_func(struct parser *parser, int top, yz_val *v)
 	struct symbol *callee = NULL;
 	if (func_call_read(parser, &callee))
 		return 1;
-	v->type = AMC_SYM;
 	v->v = callee;
+	v->type.type = AMC_SYM;
+	v->type.v = v->v;
 	if (expr_check_end_special(parser->f, top))
 		return EXPR_TERM_END;
 	return 0;
@@ -381,7 +392,7 @@ int expr_term_int(struct parser *parser, int top, yz_val *v)
 		return EXPR_TERM_END;
 	if (str2int(&token, &v->l))
 		goto err_not_num;
-	v->type = yz_get_int_size(v->l);
+	v->type.type = yz_get_int_size(v->l);
 	return end == 1 ? EXPR_TERM_END : 0;
 err_eoe:
 	printf("amc: expr_term_int: End of expression!\n");
@@ -399,8 +410,7 @@ int expr_term_null(struct parser *parser, int top, yz_val *v)
 {
 	file_pos_nnext(strlen(CHR_NULL), parser->f);
 	file_skip_space(parser->f);
-	v->type = YZ_NULL;
-	v->v = NULL;
+	v->type.type = YZ_NULL;
 	if (expr_check_end_special(parser->f, top))
 		return EXPR_TERM_END;
 	return 0;
@@ -408,23 +418,28 @@ int expr_term_null(struct parser *parser, int top, yz_val *v)
 
 int expr_term_str(struct parser *parser, int top, yz_val *v)
 {
+	yz_const *c = NULL;
 	yz_array *arr = NULL;
-	int const_id = 0;
-	str token = TOKEN_NEW;
+	str *s = NULL, token = TOKEN_NEW;
 	file_pos_next(parser->f);
 	if (token_read_before("\"", &token, parser->f) == NULL)
 		return 1;
+	s = str_new();
+	if (str_copy(&token, s))
+		return 1;
 	file_pos_next(parser->f);
 	file_skip_space(parser->f);
-	if ((const_id = backend_call(const_def_str)
-				(str2chr(token.s, token.len), token.len)) == -1)
+	c = calloc(1, sizeof(*c));
+	if (backend_call(const_def_str)(&c->be_data, s))
 		goto err_backend_failed;
-	arr = malloc(sizeof(*arr));
+	arr = calloc(1, sizeof(*arr));
 	arr->len = token.len;
 	arr->type.type = YZ_CHAR;
-	arr->type.i = const_id;
-	v->type = YZ_ARRAY;
-	v->v = arr;
+	c->val.type.type = YZ_ARRAY;
+	c->val.v = arr;
+	v->type.type = YZ_CONST;
+	v->type.v = &c->val.type;
+	v->v = c;
 	if (expr_check_end_special(parser->f, top))
 		return EXPR_TERM_END;
 	return 0;
@@ -440,15 +455,16 @@ int expr_unary(struct parser *parser, int top, yz_val *v, struct expr_operator *
 	file_pos_next(parser->f);
 	if (!file_try_skip_space(parser->f))
 		goto err_eou;
-	v->type = AMC_EXPR;
 	unary = malloc(sizeof(*unary));
 	unary->vall = NULL;
-	unary->valr = malloc(sizeof(*unary->valr));
+	unary->valr = calloc(1, sizeof(*unary->valr));
 	unary->op = op;
 	v->v = unary;
+	v->type.type = AMC_EXPR;
+	v->type.v = v->v;
 	if ((ret = expr_term(parser, top, unary->valr)) > 0)
 		return 1;
-	unary->sum_type = yz_get_raw_type(unary->valr);
+	unary->sum_type = &unary->valr->type;
 	return ret;
 err_eou:
 	printf("amc: expr_unary: %lld,%lld: Unary expression is empty!\n",
@@ -473,17 +489,17 @@ struct expr_operator *expr_unary_get_op(char c)
 int expr_apply(struct parser *parser, struct expr *e)
 {
 	if (EXPR_IS_SINGLE_TERM(e)) {
-		if (e->vall->type == AMC_EXPR)
+		if (e->vall->type.type == AMC_EXPR)
 			return expr_apply(parser, e->vall->v);
 		return -1;
 	}
 	if (EXPR_IS_UNARY(e))
 		return op_apply_special(parser, e);
-	if (e->vall->type == AMC_EXPR) {
+	if (e->vall->type.type == AMC_EXPR) {
 		if (expr_apply(parser, e->vall->v) > 0)
 			return 1;
 	}
-	if (e->valr->type == AMC_EXPR) {
+	if (e->valr->type.type == AMC_EXPR) {
 		if (expr_apply(parser, e->valr->v) > 0)
 			return 1;
 	}
@@ -518,12 +534,4 @@ struct expr *parse_expr(struct parser *parser, int top)
 err_free_expr:
 	free_safe(expr);
 	return NULL;
-}
-
-void free_expr(struct expr *e)
-{
-	free_yz_val(e->vall);
-	free_yz_val(e->valr);
-	free_safe(e->op);
-	free(e);
 }

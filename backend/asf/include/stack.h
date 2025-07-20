@@ -2,6 +2,7 @@
 #define AMC_BE_ASF_STACK_H
 #include "imm.h"
 #include "register.h"
+#include "../../../include/val.h"
 
 struct asf_stack_element {
 	int addr;

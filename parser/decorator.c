@@ -13,7 +13,7 @@ static int parse_decorator_args(struct file *f, struct hook_callee *callee);
 int decorator_arg_get_val(str *token, yz_val *arg)
 {
 	if (CHR_IS_NUM(token->s[0])) {
-		arg->type = YZ_I32;
+		arg->type.type = YZ_I32;
 		arg->l = 0;
 		if (str2int(token, &arg->l))
 			return 1;

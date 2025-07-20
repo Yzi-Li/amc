@@ -20,6 +20,6 @@ static const int ASF_BYTES_U_OFFSET = 8;
 
 enum ASF_BYTES asf_bytes_get_size(enum ASF_BYTES bytes);
 enum ASF_BYTES asf_yz_type_raw2bytes(enum YZ_TYPE type);
-enum ASF_BYTES asf_yz_type2bytes(yz_val *type);
+enum ASF_BYTES asf_yz_type2bytes(yz_type *type);
 
 #endif

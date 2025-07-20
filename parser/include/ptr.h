@@ -3,6 +3,6 @@
 #include "../../include/symbol.h"
 #include "../../include/type.h"
 
-int parse_type_ptr(struct parser *parser, yz_val *ptr);
+int parse_type_ptr(struct parser *parser, yz_type *result);
 
 #endif

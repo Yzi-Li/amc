@@ -13,7 +13,7 @@ int dec_syscall(struct hook_callee *callee)
 {
 	if (callee->argc != 1)
 		goto err_arg_failed;
-	if (!YZ_IS_DIGIT(callee->args[0]->type))
+	if (!YZ_IS_DIGIT(callee->args[0]->type.type))
 		goto err_arg_failed;
 	if (backend_call(syscall)(callee->args[0]->i))
 		goto err_backend_failed;

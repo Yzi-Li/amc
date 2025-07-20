@@ -46,7 +46,7 @@ struct symbol {
 	enum SYM_TYPE type;
 
 	u8 argc;
-	yz_val result_type;
+	yz_type result_type;
 	struct symbol **args;
 
 	backend_symbol_status *backend_status;

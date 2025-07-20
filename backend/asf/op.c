@@ -83,7 +83,7 @@ str *op_get_val_imm(struct object_node *parent, yz_val *src,
 		enum ASF_REGS dest)
 {
 	struct asf_imm imm = {
-		.type = asf_yz_type2bytes(src),
+		.type = asf_yz_type2bytes(&src->type),
 		.iq = src->l
 	};
 	struct object_node *node = NULL;
@@ -108,9 +108,9 @@ str *op_get_vall_from_mem_or_reg(struct object_node *parent, struct expr *e,
 		enum ASF_REGS dest)
 {
 	enum ASF_REGS src = ASF_REG_RAX;
-	if (e->valr->type == AMC_EXPR)
+	if (e->valr->type.type == AMC_EXPR)
 		return op_get_val_from_mem(parent, dest);
-	src = asf_reg_get(asf_yz_type_raw2bytes(*e->sum_type));
+	src = asf_reg_get(asf_yz_type2bytes(e->sum_type));
 	return op_get_val_from_reg(parent, src, dest);
 }
 
@@ -147,8 +147,8 @@ str *op_get_vall_imm(struct object_node *parent, struct expr *e,
 		enum ASF_REGS dest)
 {
 	if (*asf_regs[dest].purpose != ASF_REG_PURPOSE_NULL
-			&& !(e->valr->type == AMC_EXPR
-				|| e->valr->type == AMC_SYM)) {
+			&& !(e->valr->type.type == AMC_EXPR
+				|| e->valr->type.type == AMC_SYM)) {
 		if (asf_op_save_reg(parent, dest))
 			return NULL;
 	}
@@ -163,8 +163,8 @@ str *op_get_vall_sym(struct object_node *parent, struct expr *e,
 	struct symbol *src = e->vall->v;
 	if (src->type != SYM_FUNC
 			&& *asf_regs[dest].purpose != ASF_REG_PURPOSE_NULL
-			&& e->valr->type != AMC_EXPR
-			&& e->valr->type != AMC_SYM) {
+			&& e->valr->type.type != AMC_EXPR
+			&& e->valr->type.type != AMC_SYM) {
 		if (asf_op_save_reg(parent, dest))
 			return NULL;
 	}
@@ -175,7 +175,7 @@ str *op_get_vall_sym(struct object_node *parent, struct expr *e,
 		if (src->argc > asf_call_arg_regs_len)
 			return NULL;
 		reg = asf_call_arg_regs[src->argc]
-			+ asf_reg_get(asf_yz_type_raw2bytes(*e->sum_type));
+			+ asf_reg_get(asf_yz_type2bytes(e->sum_type));
 		return op_get_val_from_reg(parent, reg, dest);
 	}
 	return op_get_vall_from_mem_or_reg(parent, e, dest);
@@ -184,7 +184,7 @@ str *op_get_vall_sym(struct object_node *parent, struct expr *e,
 str *op_get_valr_expr(struct object_node *parent, struct expr *src,
 		enum ASF_REGS dest)
 {
-	enum ASF_REGS reg = asf_reg_get(asf_yz_type_raw2bytes(*src->sum_type));
+	enum ASF_REGS reg = asf_reg_get(asf_yz_type2bytes(src->sum_type));
 	if (dest == -1)
 		dest = ASF_REG_RCX + reg;
 	return op_get_val_from_reg(parent, reg, dest);
@@ -233,7 +233,7 @@ err_inst_failed:
 str *op_get_valr_null(struct object_node *parent, enum ASF_REGS dest)
 {
 	yz_val src = {
-		.type = YZ_U64,
+		.type = {.type = YZ_U64, .v = NULL},
 		.l = 0
 	};
 	return op_get_valr_imm(parent, &src, dest);
@@ -252,7 +252,7 @@ str *op_get_valr_sym(struct object_node *parent, struct expr *e,
 		reg += asf_call_arg_regs[src->argc];
 		return op_get_val_from_reg(parent, reg, dest);
 	}
-	if (e->vall->type != AMC_SYM)
+	if (e->vall->type.type != AMC_SYM)
 		return op_get_val_from_mem(parent, dest);
 	if (dest == -1)
 		dest = ASF_REG_RCX + reg;
@@ -293,13 +293,14 @@ err_inst_failed:
 str *asf_op_get_val_left(struct object_node *parent, struct expr *e)
 {
 	enum ASF_REGS dest = ASF_REG_RAX;
-	dest += asf_reg_get(asf_yz_type_raw2bytes(*e->sum_type));
-	if (e->vall->type == AMC_EXPR) {
+	if ((dest += asf_reg_get(asf_yz_type2bytes(e->sum_type))) == -1)
+		return NULL;
+	if (e->vall->type.type == AMC_EXPR) {
 		*asf_regs[dest].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
 		return op_get_vall_from_mem_or_reg(parent, e, dest);
-	} else if (e->vall->type == AMC_SYM) {
+	} else if (e->vall->type.type == AMC_SYM) {
 		return op_get_vall_sym(parent, e, dest);
-	} else if (YZ_IS_DIGIT(e->vall->type)) {
+	} else if (YZ_IS_DIGIT(e->vall->type.type)) {
 		return op_get_vall_imm(parent, e, dest);
 	}
 	return NULL;
@@ -309,14 +310,14 @@ str *asf_op_get_val_right(struct object_node *parent, struct expr *e,
 		enum ASF_REGS dest)
 {
 	if (dest != -1 && dest <= ASF_REG_RSP)
-		dest += asf_reg_get(asf_yz_type_raw2bytes(*e->sum_type));
-	if (e->valr->type == AMC_EXPR) {
+		dest += asf_reg_get(asf_yz_type2bytes(e->sum_type));
+	if (e->valr->type.type == AMC_EXPR) {
 		return op_get_valr_expr(parent, e, dest);
-	} else if (e->valr->type == AMC_SYM) {
+	} else if (e->valr->type.type == AMC_SYM) {
 		return op_get_valr_sym(parent, e, dest);
-	} else if (e->valr->type == YZ_NULL) {
+	} else if (e->valr->type.type == YZ_NULL) {
 		return op_get_valr_null(parent, dest);
-	} else if (YZ_IS_DIGIT(e->valr->type)) {
+	} else if (YZ_IS_DIGIT(e->valr->type.type)) {
 		return op_get_valr_imm(parent, e->valr, dest);
 	}
 	return NULL;

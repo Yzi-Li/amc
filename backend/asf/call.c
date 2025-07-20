@@ -43,7 +43,7 @@ int call_push_arg(yz_val *v, int index)
 err_unsupport_type:
 	printf("amc[backend.asf]: call_push_arg: "
 			"Unsupport argument type: \"%s\"\n",
-			yz_get_type_name(v));
+			yz_get_type_name(&v->type));
 	return 1;
 err_inst_failed:
 	printf("amc[backend.asf]: call_push_arg: "

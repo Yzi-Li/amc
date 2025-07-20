@@ -12,7 +12,7 @@ LD="ld"
 COMPILER_BIN="../../amc"
 COMPILER_BIN_DEBUG="../../amc.debug"
 
-BUILD_DIR="../build"
+BUILD_DIR="../.cache/amc"
 UNITS_DIR="test-units"
 
 if [ -f "$COMPILER_BIN_DEBUG" ]; then
@@ -57,12 +57,15 @@ clean_outputs() {
 compile() {
 	local input="$1"
 	local output="$(get_output_asm $input)"
-	echo -e "==> \x1b[34mCompiling\x1b[0m: $(basename $input) -o $output"
-	$COMPILER "$input" -o "$output"
+
+	local arg="$input --root-mod $(basename $input .yz)"
+	local cmd="$COMPILER $arg"
+	echo -e "==> \x1b[34mCompiling\x1b[0m: $(basename $input) $arg"
+	$cmd
 	err=$?
 	if [ $err -ne 0 ]; then
 		echo -e "\x1b[31m--> ERROR\x1b[0m: Compiler stopped: $err!"
-		echo -e "  > $COMPILER $input -o $output"
+		echo -e "  > $cmd"
 		echo -en "  > \x1b[34mHINT\x1b[0m: debug compiler? [y/n] "
 		read ans
 		if [ "$ans" = "y" ]; then
@@ -70,7 +73,7 @@ compile() {
 				echo -e "\x1b[31m  > ERROR\x1b[0m: Compiler(debug) not found!"
 				test_failed
 			fi
-			gdb -args "$COMPILER_BIN_DEBUG" "$input" -o "$output"
+			gdb -args "$COMPILER_BIN_DEBUG" $arg
 			exit 0
 		else
 			test_failed
@@ -127,17 +130,17 @@ test_src() {
 	link_obj "$input"
 	if [ -f "$unit" ]; then
 		test_unit "$unit" "$input" "$(get_output_bin $input)"
-	else
-		echo -e "\x1b[32mDONE\x1b[0m: $(basename $input)"
 	fi
+	echo -e "\x1b[32mDONE\x1b[0m: $(basename $input)"
 }
 
 test_unit() {
 	local script="$1"
 	local src="$2"
 	local bin="$3"
-	echo -e " -> \x1b[33mUnit test begin\x1b[0m: $script"
-	$script "$src" "$bin"
+	local arg="$src $bin"
+	echo -e " -> \x1b[33mUnit test begin\x1b[0m: $script $arg"
+	$script $arg
 	local err=$?
 	if [ $err -ne 0 ]; then
 		echo -e "\x1b[31m -> ERROR\x1b[0m: Unit test stopped: $err!"

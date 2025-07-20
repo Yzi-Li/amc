@@ -6,7 +6,7 @@
 #include "../../utils/str/str.h"
 
 int constructor_struct(struct parser *parser, struct symbol *sym);
-int parse_type_struct(str *token, yz_val *type, struct scope *scope);
+int parse_type_struct(str *token, yz_type *result, struct scope *scope);
 int struct_get_elem(struct parser *parser, yz_val *val);
 int struct_set_elem(struct parser *parser, struct symbol *sym, int index,
 		enum OP_ID mode);

@@ -1,14 +1,20 @@
 #ifndef AMC_TYPE_H
 #define AMC_TYPE_H
-#include "../utils/cint.h"
 #include "../utils/str/str.h"
 #include "../utils/utils.h"
 
 enum YZ_TYPE {
 	AMC_ERR_TYPE,
 	AMC_SYM, AMC_EXPR, AMC_EXTRACT_VAL,
-	YZ_STRUCT, YZ_PTR, YZ_ARRAY, YZ_CONST, YZ_NULL,
-	YZ_VOID, YZ_CHAR,
+
+	YZ_ARRAY,
+	YZ_CONST,
+	YZ_NULL,
+	YZ_PTR,
+	YZ_STRUCT,
+	YZ_VOID,
+
+	YZ_CHAR,
 	YZ_I8, YZ_I16, YZ_I32, YZ_I64,
 	YZ_U8, YZ_U16, YZ_U32, YZ_U64,
 };
@@ -29,30 +35,10 @@ struct yz_type_group {
 	int len;
 };
 
-typedef struct yz_val {
-	union {
-		void *v;
-		char *s;
-		i8 b;
-		i16 w;
-		i32 i;
-		i64 l;
-	};
-
+typedef struct yz_type {
+	void *v;
 	enum YZ_TYPE type;
-} yz_val;
-
-typedef struct yz_extract_val {
-	struct symbol *elem, *sym;
-	union {
-		int index;
-		yz_val *offset;
-	};
-	enum {
-		YZ_EXTRACT_ARRAY,
-		YZ_EXTRACT_STRUCT
-	} type;
-} yz_extract_val;
+} yz_type;
 
 static const struct yz_type_group yz_type_table[] = {
 	{"void",  YZ_VOID,  0},
@@ -67,16 +53,13 @@ static const struct yz_type_group yz_type_table[] = {
 	{"u64",   YZ_U64,   8},
 };
 
-struct symbol *yz_get_extracted_val(yz_extract_val *val);
 enum YZ_TYPE yz_get_int_size(long long l);
-enum YZ_TYPE *yz_get_raw_type(yz_val *val);
-const char *yz_get_type_name(yz_val *val);
+yz_type *yz_get_raw_type(yz_type *type);
+const char *yz_get_type_name(yz_type *type);
 enum YZ_TYPE yz_type_get(str *s);
-yz_val *yz_type_max(yz_val *l, yz_val *r);
+yz_type *yz_type_max(yz_type *l, yz_type *r);
 
-
-void free_yz_extract_val(struct yz_extract_val *src);
-void free_yz_val(yz_val *src);
-void free_yz_val_noself(yz_val *src);
+void free_yz_type(yz_type *self);
+void free_yz_type_noself(yz_type *self);
 
 #endif

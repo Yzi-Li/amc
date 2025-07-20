@@ -167,10 +167,11 @@ int struct_get_elem_handle_val(yz_val *val, int index, struct symbol *elem)
 	v->sym = val->v;
 	v->elem = elem;
 	v->type = YZ_EXTRACT_STRUCT;
-	val->type = AMC_EXPR;
-	if ((val->v = op_extract_val_expr_create(&elem->result_type.type, v))
+	if ((val->v = op_extract_val_expr_create(&elem->result_type, v))
 			== NULL)
 		return 1;
+	val->type.type = AMC_EXPR;
+	val->type.v = val->v;
 	return 0;
 }
 
@@ -267,11 +268,11 @@ err_free_result:
 	return 1;
 }
 
-int parse_type_struct(str *token, yz_val *type, struct scope *scope)
+int parse_type_struct(str *token, yz_type *result, struct scope *scope)
 {
 	char *err_msg;
-	type->type = YZ_STRUCT;
-	if ((type->v = struct_type_find(token, scope)) == NULL)
+	result->type = YZ_STRUCT;
+	if ((result->v = struct_type_find(token, scope)) == NULL)
 		goto err_not_found;
 	return 0;
 err_not_found:

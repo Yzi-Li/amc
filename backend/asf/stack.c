@@ -70,7 +70,7 @@ str *asf_inst_push(yz_val *val)
 	}
 err_unsupport_type:
 	printf("amc[backend.asf]: asf_inst_push: Unsupport type: '%s'!\n",
-			yz_get_type_name(val));
+			yz_get_type_name(&val->type));
 	return NULL;
 }
 

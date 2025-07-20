@@ -134,8 +134,8 @@ int parser_get_target_from_mod_path(str *result, str *path)
 {
 	str suffix = {};
 	int suffix_need_free = 0;
-	if ((suffix.s = backend_file_get_suffix(&result->len, &suffix_need_free))
-			== NULL)
+	if ((suffix.s = backend_file_get_suffix(&result->len,
+					&suffix_need_free)) == NULL)
 		return 1;
 	str_expand(result, global_parser.target_path.len
 			+ path->len
@@ -168,7 +168,8 @@ int parser_init(const char *path, struct file *f)
 		global_parser.root_mod.s = basename(root_dir_cpy);
 		global_parser.root_mod.len = strlen(global_parser.root_mod.s);
 	}
-	if (cache_dir_create(&global_parser.root_dir))
+	if (global_parser.target_path.s == NULL)
+		if (cache_dir_create(&global_parser.root_dir))
 			return 0;
 	if (parse_file(&global_parser.root_mod, path, f) == NULL)
 		return 1;

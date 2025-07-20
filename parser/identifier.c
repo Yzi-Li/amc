@@ -20,7 +20,7 @@
 
 static int identifier_assign_backend_call(struct symbol *sym, yz_val *val,
 		enum OP_ID mode);
-static int identifier_handle_val_type(yz_val *src, yz_val *dest);
+static int identifier_handle_val_type(yz_type *src, yz_type *dest);
 static int let_init_constructor(struct parser *parser, struct symbol *sym);
 static int let_init_val(struct parser *parser, struct symbol *sym);
 static int let_reg_sym(struct parser *parser, struct symbol *sym);
@@ -45,13 +45,14 @@ err_unsupport_op:
 	return 1;
 }
 
-int identifier_handle_val_type(yz_val *src, yz_val *dest)
+int identifier_handle_val_type(yz_type *src, yz_type *dest)
 {
 	if (comptime_type_check_equal(src, dest))
 		return 1;
 	if (!YZ_IS_DIGIT(src->type) || !YZ_IS_DIGIT(dest->type))
 		return 0;
 	src->type = dest->type;
+	src->v = dest->v;
 	return 0;
 }
 
@@ -70,6 +71,7 @@ int let_init_constructor(struct parser *parser, struct symbol *sym)
 		break;
 	default:
 		return 1;
+		break;
 	}
 	return 0;
 }
@@ -123,7 +125,7 @@ err_free_result:
 }
 
 int identifier_assign_get_val(struct parser *parser,
-		yz_val *dest_type, yz_val **result)
+		yz_type *dest_type, yz_val **result)
 {
 	struct expr *expr = NULL;
 	i64 orig_column = parser->f->cur_column,
@@ -169,19 +171,18 @@ int identifier_assign_val(struct parser *parser, struct symbol *sym,
 	return 0;
 }
 
-yz_val *identifier_expr_val_handle(struct expr **e, yz_val *type)
+yz_val *identifier_expr_val_handle(struct expr **e, yz_type *type)
 {
 	yz_val *val = NULL;
 	if ((*e)->op == NULL && (*e)->valr == NULL) {
 		val = (*e)->vall;
-		if (identifier_handle_val_type(val, type))
-			goto err_get_type;
-		return val;
+	} else {
+		val = calloc(1, sizeof(*val));
+		val->v = *e;
+		val->type.type = AMC_EXPR;
+		val->type.v = val->v;
 	}
-	val = calloc(1, sizeof(*val));
-	val->type = AMC_EXPR;
-	val->v = *e;
-	if (identifier_handle_val_type(val, type))
+	if (identifier_handle_val_type(&val->type, type))
 		goto err_get_type;
 	return val;
 err_get_type:
@@ -198,8 +199,9 @@ int identifier_read(struct parser *parser, yz_val *val)
 	if (!symbol_find_in_group_in_scope(&token, &sym, parser->scope,
 				SYMG_SYM))
 		goto err_identifier_not_found;
-	val->type = AMC_SYM;
 	val->v = sym;
+	val->type.type = AMC_SYM;
+	val->type.v = val->v;
 	if (parser->f->src[parser->f->pos] == '[')
 		return array_get_elem(parser, val);
 	if (parser->f->src[parser->f->pos] == '.') {

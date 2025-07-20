@@ -217,6 +217,6 @@ str *asf_identifier_set(struct asf_stack_element *dest, enum OP_ID mode,
 	}
 err_unsupport_type:
 	printf("amc[backend.asf:%s]: identifier_set: Unsupport type: \"%s\"\n",
-			__FILE__, yz_get_type_name(src));
+			__FILE__, yz_get_type_name(&src->type));
 	return NULL;
 }

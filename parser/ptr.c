@@ -4,15 +4,33 @@
 #include "../include/ptr.h"
 #include <stdlib.h>
 
-int parse_type_ptr(struct parser *parser, yz_val *ptr)
+static int parse_type_ptr_sub(yz_type *result);
+
+int parse_type_ptr_sub(yz_type *result)
 {
-	yz_ptr *box = NULL;
+	yz_ptr_type *root = result->v,
+	            *box = root->ref.v;
+	root->level += box->level;
+	root->ref.type = box->ref.type;
+	root->ref.v = box->ref.v;
+	box->ref.type = AMC_ERR_TYPE;
+	box->ref.v = NULL;
+	free(box);
+	return 0;
+}
+
+int parse_type_ptr(struct parser *parser, yz_type *result)
+{
+	yz_ptr_type *box = NULL;
 	file_pos_next(parser->f);
 	file_skip_space(parser->f);
-	box = malloc(sizeof(yz_ptr));
-	ptr->type = YZ_PTR;
-	ptr->v = box;
+	box = malloc(sizeof(yz_ptr_type));
+	box->level = 1;
+	result->type = YZ_PTR;
+	result->v = box;
 	if (parse_type(parser, &box->ref))
+		return 1;
+	if (box->ref.type == YZ_PTR && parse_type_ptr_sub(result))
 		return 1;
 	if (parser->f->src[parser->f->pos] == '?') {
 		file_pos_next(parser->f);

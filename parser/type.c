@@ -8,12 +8,12 @@
 #include <stdio.h>
 #include <string.h>
 
-static int type_get_from_module(str *name, yz_val *type,
+static int type_get_from_module(str *name, yz_type *type,
 		struct parser *parser);
 static int type_pair_parse_name(struct file *f, str *name);
 static int type_pair_parse_type(struct parser *parser, struct symbol *sym);
 
-int type_get_from_module(str *name, yz_val *type, struct parser *parser)
+int type_get_from_module(str *name, yz_type *type, struct parser *parser)
 {
 	yz_module *mod = NULL;
 	struct scope *orig_scope = parser->scope;
@@ -70,30 +70,30 @@ err_type_indicator_not_found:
 	return 1;
 }
 
-int parse_type(struct parser *parser, yz_val *type)
+int parse_type(struct parser *parser, yz_type *result)
 {
 	char *err_msg = NULL;
 	str token = TOKEN_NEW;
-	if (type == NULL)
+	if (result == NULL)
 		goto err_type_null;
 	if (parser->f->src[parser->f->pos] == '*') {
-		return parse_type_ptr(parser, type);
+		return parse_type_ptr(parser, result);
 	} else if (parser->f->src[parser->f->pos] == '[') {
-		return parse_type_array(parser, type);
+		return parse_type_array(parser, result);
 	}
 	if (token_read_before(SPECIAL_TOKEN_END, &token, parser->f) == NULL)
 		return 1;
 	if (parser->f->src[parser->f->pos] == '.') {
-		if (type_get_from_module(&token, type, parser))
+		if (type_get_from_module(&token, result, parser))
 			goto err_unknown_type;
 		return 0;
 	}
 	file_skip_space(parser->f);
-	type->type = yz_type_get(&token);
-	type->v = NULL;
-	if (type->type != AMC_ERR_TYPE)
+	result->type = yz_type_get(&token);
+	result->v = NULL;
+	if (result->type != AMC_ERR_TYPE)
 		return 0;
-	if (parse_type_struct(&token, type, parser->scope))
+	if (parse_type_struct(&token, result, parser->scope))
 		goto err_get_type_failed;
 	return 0;
 err_type_null:

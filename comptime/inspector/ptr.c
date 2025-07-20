@@ -1,9 +1,9 @@
 #include "../../include/comptime/ptr.h"
 #include <stdio.h>
 
-static int check_val_type(yz_val *val);
+static int check_val_type(yz_type *val);
 
-int check_val_type(yz_val *val)
+int check_val_type(yz_type *val)
 {
 	struct symbol *sym = NULL;
 	if (val->type == YZ_NULL)
@@ -27,7 +27,7 @@ err_not_ptr:
 
 int comptime_ptr_check_can_null(yz_val *val, struct symbol *sym)
 {
-	if (!check_val_type(val))
+	if (!check_val_type(&val->type))
 		goto err;
 	if (!sym->flags.can_null && !((struct symbol*)val->v)
 			->flags.comptime_flag.checked_null)

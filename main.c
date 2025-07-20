@@ -14,17 +14,15 @@
 
 static const char *src = NULL;
 
-static int opt_read_output(int argc, char *argv[], struct option *opt);
+static int err_no_input();
 static int opt_read_src(int argc, char *argv[], struct option *opt);
+static int opt_root_mod(int argc, char *argv[], struct option *opt);
 static int print_version();
 
-int opt_read_output(int argc, char *argv[], struct option *opt)
+int err_no_input()
 {
-	if (argc != 1 || argv == NULL)
-		return 1;
-	global_parser.target_path.s = argv[0];
-	global_parser.target_path.len = strlen(global_parser.target_path.s);
-	return 0;
+	die("amc: \x1b[31merror\x1b[0m: no input file!\n");
+	return 1;
 }
 
 int opt_read_src(int argc, char *argv[], struct option *opt)
@@ -36,6 +34,15 @@ int opt_read_src(int argc, char *argv[], struct option *opt)
 err_too_many_files:
 	printf("amc: opt_read_src: Unsupport multiple entry files!\n");
 	return 1;
+}
+
+int opt_root_mod(int argc, char *argv[], struct option *opt)
+{
+	if (argc != 1 || argv == NULL)
+		return 1;
+	global_parser.root_mod.s = argv[0];
+	global_parser.root_mod.len = strlen(global_parser.root_mod.s);
+	return 0;
 }
 
 int print_version()
@@ -56,17 +63,10 @@ int main(int argc, char *argv[])
 			NULL
 		},
 		{
-			"output", 'o',
+			"root-mod", '\0',
 			GETARG_LIST_ARG, 0,
-			opt_read_output,
-			"output file",
-			NULL
-		},
-		{
-			"src", 's',
-			GETARG_LIST_ARG, 0,
-			opt_read_src,
-			"source file",
+			opt_root_mod,
+			"set root module name",
 			NULL
 		},
 		{
@@ -85,5 +85,7 @@ int main(int argc, char *argv[])
 		die("amc: backend_init: cannot init backend.");
 	if (argc < 2)
 		return print_version();
+	if (src == NULL)
+		return err_no_input();
 	return parser_init(src, &f);
 }

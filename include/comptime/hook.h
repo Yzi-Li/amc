@@ -1,6 +1,6 @@
 #ifndef AMC_COMPTIME_HOOK_H
 #define AMC_COMPTIME_HOOK_H
-#include "../type.h"
+#include "../val.h"
 
 enum HOOK_TIME {
 	HOOK_FUNC_CALL_AFTER,

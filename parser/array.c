@@ -34,9 +34,10 @@ int array_get_elem_handle_val(yz_val *val, yz_val *offset, struct symbol *sym)
 	v->elem = sym;
 	v->offset = offset;
 	v->type = YZ_EXTRACT_ARRAY;
-	val->type = AMC_EXPR;
-	if ((val->v = op_extract_val_expr_create(&arr->type.type, v)) == NULL)
+	if ((val->v = op_extract_val_expr_create(&arr->type, v)) == NULL)
 		return 1;
+	val->type.type = AMC_EXPR;
+	val->type.v = val->v;
 	return 0;
 }
 
@@ -104,7 +105,7 @@ err_not_num:
 
 yz_val *array_read_offset(struct parser *parser)
 {
-	yz_val type = {.type = YZ_U64, .l = 0};
+	yz_type type = {.type = YZ_U64, .v = NULL};
 	struct expr *expr = NULL;
 	i64 orig_column = parser->f->cur_column,
 	    orig_line = parser->f->cur_line;
@@ -243,7 +244,7 @@ err_not_end:
 	return 1;
 }
 
-int parse_type_array(struct parser *parser, yz_val *type)
+int parse_type_array(struct parser *parser, yz_type *type)
 {
 	yz_array *arr = NULL;
 	int ret = 0;

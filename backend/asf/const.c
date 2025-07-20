@@ -21,11 +21,11 @@ int const_label_new()
 	return 0;
 }
 
-int asf_const_def_str(char *str, int len)
+int asf_const_def_str(backend_const *self, str *s)
 {
 	const char *temp = ".string \"%s\"\n";
 	struct object_node *node = NULL;
-	if (str == NULL)
+	if (s == NULL)
 		return 1;
 	if (const_label_new())
 		return 1;
@@ -33,7 +33,9 @@ int asf_const_def_str(char *str, int len)
 	if (object_append(&cur_obj->sections[ASF_OBJ_RODATA], node))
 		return 1;
 	node->s = str_new();
-	str_expand(node->s, strlen(temp) - 1 + len);
-	snprintf(node->s->s, node->s->len, temp, str);
-	return const_count;
+	str_expand(node->s, strlen(temp) + s->len);
+	snprintf(node->s->s, node->s->len, temp, s->s);
+	self->val.type.type = YZ_I32;
+	self->val.i = const_count;
+	return 0;
 }

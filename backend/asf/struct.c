@@ -33,7 +33,7 @@ err_free_node:
 int struct_elem_push_empty(yz_val *val)
 {
 	struct asf_imm imm = {
-		.type = asf_yz_type2bytes(val),
+		.type = asf_yz_type2bytes(&val->type),
 		.iq = 0
 	};
 	struct object_node *node = malloc(sizeof(*node));

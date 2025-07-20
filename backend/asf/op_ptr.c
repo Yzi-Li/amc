@@ -71,9 +71,9 @@ str *op_ptr_get_addr_get_src(yz_ptr *ptr)
 {
 	str *result = NULL;
 	struct asf_stack_element *src = NULL;
-	if (ptr->ref.type == AMC_SYM)
+	if (ptr->ref.type.type == AMC_SYM)
 		return op_ptr_get_addr_get_src_from_sym(ptr);
-	if (ptr->ref.type != AMC_EXTRACT_VAL)
+	if (ptr->ref.type.type != AMC_EXTRACT_VAL)
 		goto err_not_expr;
 	if ((src = asf_op_extract_get_mem(ptr->ref.v)) == NULL)
 		return NULL;
@@ -104,12 +104,12 @@ int asf_op_get_addr(struct expr *e)
 	struct object_node *node = NULL;
 	str *src = NULL;
 	const char *temp = "lea%c %s, %%%s\n";
-	if (e->valr->type != YZ_PTR)
+	if (e->valr->type.type != YZ_PTR)
 		goto err_not_ptr;
 	node = malloc(sizeof(*node));
 	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node;
-	dest = asf_reg_get(asf_yz_type_raw2bytes(*e->sum_type));
+	dest = asf_reg_get(asf_yz_type2bytes(e->sum_type));
 	if (*asf_regs[dest].purpose != ASF_REG_PURPOSE_NULL)
 		if (asf_op_save_reg(node, dest))
 			goto err_free_node;
@@ -149,17 +149,17 @@ struct asf_stack_element *asf_op_extract_get_mem(yz_extract_val *val)
 int asf_op_extract_ptr_val(struct symbol *sym)
 {
 	enum ASF_REGS dest = ASF_REG_RAX, src = ASF_REG_RAX;
-	yz_ptr *ptr = NULL;
+	yz_ptr_type *ptr = NULL;
 	if (op_ptr_extract_get_addr(&src, sym))
 		return 1;
 	ptr = sym->result_type.v;
-	dest = asf_reg_get(asf_yz_type_raw2bytes(ptr->ref.type));
+	dest = asf_reg_get(asf_yz_type2bytes(&ptr->ref));
 	return op_ptr_extract_from_reg(src, dest);
 }
 
 int asf_op_extract_ptr_val_from_expr(struct expr *expr)
 {
 	enum ASF_REGS dest = ASF_REG_RAX;
-	dest = asf_reg_get(asf_yz_type_raw2bytes(*expr->sum_type));
+	dest = asf_reg_get(asf_yz_type2bytes(expr->sum_type));
 	return op_ptr_extract_from_reg(ASF_REG_RAX, dest);
 }

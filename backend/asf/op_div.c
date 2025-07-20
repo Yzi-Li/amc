@@ -27,11 +27,11 @@ int asf_op_div(struct expr *e)
 	if ((tmp = asf_op_get_val_left(node, e)) == NULL)
 		goto err_free_node;
 	str_free(tmp);
-	if (YZ_IS_UNSIGNED_DIGIT(*e->sum_type))
+	if (YZ_IS_UNSIGNED_DIGIT(e->sum_type->type))
 		temp = temp_unsigned;
 	str_expand(node->s, strlen(temp) - 1 + divisor->len);
 	snprintf(node->s->s, node->s->len, temp,
-			asf_suffix_get(asf_yz_type_raw2bytes(*e->sum_type)),
+			asf_suffix_get(asf_yz_type2bytes(e->sum_type)),
 			divisor->s);
 	*asf_regs[result_reg].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
 	str_free(divisor);

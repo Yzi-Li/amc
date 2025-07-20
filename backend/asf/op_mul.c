@@ -10,7 +10,7 @@ static const char *temp_unsigned = "mul%c %s\n";
 int asf_op_mul(struct expr *e)
 {
 	struct object_node *node = NULL;
-	const char *temp = YZ_IS_UNSIGNED_DIGIT(*e->sum_type)
+	const char *temp = YZ_IS_UNSIGNED_DIGIT(e->sum_type->type)
 		? temp_unsigned : temp_signed;
 	str *tmp = NULL;
 	str *multiplicand_str = NULL;
@@ -28,7 +28,7 @@ int asf_op_mul(struct expr *e)
 			+ multiplicand_str->len);
 	str_append(multiplicand_str, 1, "\0");
 	snprintf(node->s->s, node->s->len, temp,
-			asf_suffix_get(asf_yz_type_raw2bytes(*e->sum_type)),
+			asf_suffix_get(asf_yz_type2bytes(e->sum_type)),
 			multiplicand_str->s);
 	str_free(multiplicand_str);
 	return 0;

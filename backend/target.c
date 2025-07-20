@@ -73,8 +73,13 @@ int target_write(const char *target_path, struct object_head *obj, int len)
 	FILE *f = NULL;
 	if (target_path == NULL)
 		return 1;
-	f = target_file_create(target_path);
+	if ((f = target_file_create(target_path)) == NULL)
+		goto err_create_failed;
 	if (object_write(cur_obj, f))
 		return 1;
 	return fclose(f);
+err_create_failed:
+	printf("amc: target_write: File: '%s' create failed!\n",
+			target_path);
+	return 1;
 }

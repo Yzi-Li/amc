@@ -1,6 +1,10 @@
 #include "../include/array.h"
 
-const char *yz_type_err_array(yz_val *v)
+yz_type *yz_type_max_arr(yz_type *l, yz_type *r)
 {
-	return "YZ_ARRAY";
+	yz_array *larr = l->v, *rarr = r->v;
+	if (larr == NULL || rarr == NULL)
+		return NULL;
+	return yz_type_max(&larr->type, &rarr->type)
+		== &larr->type ? l : r;
 }

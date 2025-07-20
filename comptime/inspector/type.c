@@ -1,10 +1,9 @@
 #include "../../include/backend.h"
 #include "../../include/comptime/type.h"
 
-int comptime_type_check_equal(yz_val *src, yz_val *dest)
+int comptime_type_check_equal(yz_type *src, yz_type *dest)
 {
-	yz_val *val = NULL;
-	if ((val = yz_type_max(src, dest)) == NULL)
+	if (yz_type_max(src, dest) == NULL)
 		goto err_wrong_type;
 	return 0;
 err_wrong_type:

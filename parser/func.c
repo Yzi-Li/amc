@@ -25,7 +25,7 @@ struct func_call_handle {
 };
 
 static yz_val *func_call_arg_handle(struct expr *expr, struct symbol *arg);
-static yz_val *func_call_arg_val_get(struct expr *expr, yz_val *arg);
+static yz_val *func_call_arg_val_get(struct expr *expr);
 static int func_call_main(struct parser *parser);
 static int func_call_read_arg(const char *se, struct file *f, void *data);
 static yz_val **func_call_read_args(struct parser *parser);
@@ -42,32 +42,33 @@ static int func_ret_get_val(yz_val *val, struct symbol *fn, struct expr *expr);
 
 yz_val *func_call_arg_handle(struct expr *expr, struct symbol *arg)
 {
-	yz_val *type = NULL,
-	       *val = func_call_arg_val_get(expr, &arg->result_type);
-	if (val->type == AMC_SYM && arg->result_type.type == YZ_PTR)
+	yz_type *type = NULL;
+	yz_val *val = func_call_arg_val_get(expr);
+	if (val->type.type == AMC_SYM && arg->result_type.type == YZ_PTR)
 		if (!comptime_ptr_check_can_null(val, arg))
 			return NULL;
-	if ((type = yz_type_max(val, &arg->result_type)) == NULL)
+	if ((type = yz_type_max(&val->type, &arg->result_type)) == NULL)
 		goto err_wrong_arg_type;
 	return val;
 err_wrong_arg_type:
 	printf("amc: func_call_read_arg: Wrong argument type\n"
 			"| Val type: \"%s\"\n"
 			"| Arg type: \"%s\"\n",
-			yz_get_type_name(val),
+			yz_get_type_name(&val->type),
 			yz_get_type_name(&arg->result_type));
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return NULL;
 }
 
-yz_val *func_call_arg_val_get(struct expr *expr, yz_val *arg)
+yz_val *func_call_arg_val_get(struct expr *expr)
 {
 	yz_val *result = NULL;
 	if (expr->op == NULL && expr->valr == NULL)
 		return expr->vall;
 	result = malloc(sizeof(*result));
-	result->type = AMC_EXPR;
 	result->v = expr;
+	result->type.type = AMC_EXPR;
+	result->type.v = result->v;
 	return result;
 }
 
@@ -331,7 +332,7 @@ int func_ret_get_val(yz_val *val, struct symbol *fn, struct expr *expr)
 		goto err_type;
 	val->type = tmp->type;
 	val->v = tmp->v;
-	if (tmp->type == AMC_SYM) {
+	if (tmp->type.type == AMC_SYM) {
 		if (fn->result_type.type == YZ_PTR)
 			return !comptime_ptr_check_can_ret(val->v, fn);
 		return 0;
@@ -341,7 +342,7 @@ err_type:
 	printf("amc: func_ret_get_val:\n"
 			"| Value type: '%s'.\n"
 			"| Function type: '%s'.\n",
-			yz_get_type_name(val),
+			yz_get_type_name(&val->type),
 			yz_get_type_name(&fn->result_type));
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
@@ -414,8 +415,8 @@ int parse_func_def(struct parser *parser)
 		goto err_free_result;
 	return func_def_end_scope(parser);
 err_free_result:
-	free_safe(result);
 	free_safe(result->name);
+	free_safe(result);
 	return 1;
 }
 

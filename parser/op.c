@@ -38,7 +38,7 @@ int op_unary_extract_val(struct parser *parser, struct expr *e)
 	if (!EXPR_IS_UNARY(e))
 		return 1;
 	if (e->op->sym == NULL) {
-		if (e->valr->type != AMC_EXTRACT_VAL)
+		if (e->valr->type.type != AMC_EXTRACT_VAL)
 			return 1;
 	} else {
 		if (op_extract_val_check(parser, e->valr))
@@ -100,16 +100,21 @@ err_not_ptr:
 
 int op_extract_val_handle_expr(struct expr *e)
 {
-	if (e->valr->type == AMC_SYM) {
+	switch (e->valr->type.type) {
+	case AMC_SYM:
 		return op_extract_val_handle_expr_from_sym(e, e->valr->v);
-	} else if (e->valr->type == AMC_EXPR) {
+		break;
+	case AMC_EXPR:
 		if (op_extract_val_handle_expr(e->valr->v))
 			return 1;
 		e->sum_type = ((struct expr*)e->valr->v)->sum_type;
 		return 0;
-	} else if (e->valr->type == AMC_EXTRACT_VAL) {
+		break;
+	case AMC_EXTRACT_VAL:
 		return op_extract_val_handle_expr_from_sym(e,
 				yz_get_extracted_val(e->valr->v));
+		break;
+	default: break;
 	}
 	printf("amc: op_extract_val_handle_expr: Unsupport type!\n");
 	return 1;
@@ -121,7 +126,7 @@ int op_extract_val_handle_expr_from_sym(struct expr *e, struct symbol *sym)
 		goto err_sym_null;
 	if (sym->result_type.type != YZ_PTR)
 		goto err_unsupport_type;
-	e->sum_type = &((yz_ptr*)sym->result_type.v)->ref.type;
+	e->sum_type = &((yz_ptr_type*)sym->result_type.v)->ref;
 	return 0;
 err_sym_null:
 	printf("amc: op_extract_val_handle_expr_from_sym: Symbol null!\n");
@@ -135,17 +140,17 @@ int op_get_addr_check(yz_val *v)
 {
 	struct expr *expr = NULL;
 	struct symbol *sym = NULL;
-	if (v->type == AMC_SYM) {
+	if (v->type.type == AMC_SYM) {
 		sym = v->v;
 		if (sym->type != SYM_IDENTIFIER)
 			goto err_val_not_identifier;
 		return 0;
 	}
-	if (v->type != AMC_EXPR)
+	if (v->type.type != AMC_EXPR)
 		return 1;
 	expr = v->v;
 	if (expr->op->id != OP_EXTRACT_VAL
-			|| expr->valr->type != AMC_EXTRACT_VAL)
+			|| expr->valr->type.type != AMC_EXTRACT_VAL)
 		goto err_not_extracted_val;
 	return -1;
 err_val_not_identifier:
@@ -158,16 +163,23 @@ err_not_extracted_val:
 
 int op_get_addr_handle_val(struct expr *e, int from_extracted_val)
 {
-	yz_ptr *ptr = malloc(sizeof(yz_ptr));
+	yz_ptr *ptr = malloc(sizeof(*ptr));
+	yz_ptr_type *ptr_type = malloc(sizeof(*ptr_type));
 	if (!from_extracted_val) {
-		ptr->ref.type = AMC_SYM;
 		ptr->ref.v = e->valr->v;
+		ptr->ref.type.type = AMC_SYM;
+		ptr->ref.type.v = ptr->ref.v;
 	} else {
-		ptr->ref.type = AMC_EXTRACT_VAL;
 		ptr->ref.v = ((struct expr*)e->valr->v)->valr->v;
+		ptr->ref.type.type = AMC_EXTRACT_VAL;
+		ptr->ref.type.v = ptr->ref.v;
 	}
-	e->valr->type = YZ_PTR;
+	ptr_type->ref.type = ptr->ref.type.type;
+	ptr_type->ref.v = ptr->ref.type.v;
+	ptr_type->level = 1;
 	e->valr->v = ptr;
+	e->valr->type.type = YZ_PTR;
+	e->valr->type.v = ptr_type;
 	e->sum_type = &e->valr->type;
 	return 0;
 }
@@ -175,9 +187,9 @@ int op_get_addr_handle_val(struct expr *e, int from_extracted_val)
 struct symbol *op_get_ptr(struct parser *parser, yz_val *v)
 {
 	struct symbol *ptr = NULL;
-	if (v->type == AMC_EXPR)
+	if (v->type.type == AMC_EXPR)
 		return op_get_ptr_from_expr(parser, v->v);
-	if (v->type != AMC_SYM)
+	if (v->type.type != AMC_SYM)
 		goto err_val_not_ptr;
 	ptr = v->v;
 	if (ptr->type != SYM_IDENTIFIER && ptr->type != SYM_FUNC_ARG)
@@ -194,7 +206,7 @@ struct symbol *op_get_ptr_from_expr(struct parser *parser, struct expr *e)
 	yz_extract_val *src = NULL;
 	if (e->op->id != OP_EXTRACT_VAL)
 		goto err_not_extracted_val;
-	if (e->valr->type != AMC_EXTRACT_VAL)
+	if (e->valr->type.type != AMC_EXTRACT_VAL)
 		goto err_not_extracted_val;
 	src = e->valr->v;
 	ptr = src->elem;
@@ -213,9 +225,9 @@ int op_assign_extracted_val(struct parser *parser, struct expr *e)
 {
 	yz_extract_val *src = NULL;
 	struct expr *src_expr = e->vall->v;
-	if (e->vall->type != AMC_EXPR)
+	if (e->vall->type.type != AMC_EXPR)
 		return 1;
-	if (src_expr->valr->type != AMC_EXTRACT_VAL)
+	if (src_expr->valr->type.type != AMC_EXTRACT_VAL)
 		return 1;
 	src = src_expr->valr->v;
 	if (src->type == YZ_EXTRACT_STRUCT) {
@@ -228,16 +240,16 @@ int op_assign_extracted_val(struct parser *parser, struct expr *e)
 		return 1;
 	}
 	free_expr(src_expr);
-	e->vall->type = AMC_ERR_TYPE;
+	e->vall->type.type = AMC_ERR_TYPE;
 	e->vall->v = NULL;
 	return 0;
 }
 
 int op_assign_get_vall(struct expr *e, struct symbol **result)
 {
-	if (e->vall->type == AMC_SYM)
+	if (e->vall->type.type == AMC_SYM)
 		return op_assign_get_vall_sym(e->vall->v, result);
-	if (e->vall->type == AMC_EXPR)
+	if (e->vall->type.type == AMC_EXPR)
 		return op_assign_get_vall_expr(e->vall->v, result);
 	printf("amc: op_assign_get_vall: Value left cannot be assigned.\n");
 	return 1;
@@ -247,7 +259,7 @@ int op_assign_get_vall_expr(struct expr *e, struct symbol **result)
 {
 	if (e->op->id != OP_EXTRACT_VAL)
 		return 1;
-	if (e->valr->type != AMC_EXTRACT_VAL)
+	if (e->valr->type.type != AMC_EXTRACT_VAL)
 		return 1;
 	return -1;
 }
@@ -263,7 +275,7 @@ int op_assign_get_vall_sym(struct symbol *sym, struct symbol **result)
 int op_cmp_ptr_and_null(struct expr *e)
 {
 	struct symbol *sym = NULL;
-	if (e->vall->type != AMC_SYM)
+	if (e->vall->type.type != AMC_SYM)
 		return 1;
 	sym = e->vall->v;
 	if (sym->result_type.type != YZ_PTR)
@@ -274,7 +286,7 @@ int op_cmp_ptr_and_null(struct expr *e)
 
 int op_apply_cmp(struct expr *e)
 {
-	if (e->valr->type == YZ_NULL)
+	if (e->valr->type.type == YZ_NULL)
 		if (op_cmp_ptr_and_null(e))
 			return 1;
 	if (backend_call(ops[e->op->id])(e))
@@ -308,14 +320,15 @@ int op_assign(struct parser *parser, struct expr *e)
 	return identifier_assign_val(parser, sym, e->op->id);
 }
 
-struct expr *op_extract_val_expr_create(enum YZ_TYPE *sum_type,
+struct expr *op_extract_val_expr_create(yz_type *sum_type,
 		yz_extract_val *val)
 {
 	struct expr *expr = malloc(sizeof(*expr));
 	expr->vall = NULL;
 	expr->valr = malloc(sizeof(*expr->valr));
-	expr->valr->type = AMC_EXTRACT_VAL;
 	expr->valr->v = val;
+	expr->valr->type.type = AMC_EXTRACT_VAL;
+	expr->valr->type.v = expr->valr->v;
 	expr->op = malloc(sizeof(*expr->op));
 	expr->op->id = OP_EXTRACT_VAL;
 	expr->op->priority = 0;

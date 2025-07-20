@@ -7,31 +7,17 @@
 #include <limits.h>
 #include <string.h>
 
-static yz_val *yz_type_arr_max(yz_val *l, yz_val *r);
-static yz_val *yz_type_max_raw(enum YZ_TYPE ltype, enum YZ_TYPE rtype,
-		yz_val *l, yz_val *r);
-static yz_val *yz_type_ptr_max(yz_val *l, yz_val *r);
+static yz_type *yz_type_max_digit(enum YZ_TYPE ltype, enum YZ_TYPE rtype,
+		yz_type *l, yz_type *r);
+static yz_type *yz_type_max_raw(yz_type *lraw, yz_type *rraw,
+		yz_type *l, yz_type *r);
 
-yz_val *yz_type_arr_max(yz_val *l, yz_val *r)
+yz_type *yz_type_max_digit(enum YZ_TYPE ltype, enum YZ_TYPE rtype,
+		yz_type *l, yz_type *r)
 {
-	yz_array *larr, *rarr;
-	if ((larr = l->v) == NULL)
-		return NULL;
-	if ((rarr = r->v) == NULL)
-		return NULL;
-	return yz_type_max(&larr->type, &rarr->type)
-		== &larr->type ? l : r;
-}
-
-yz_val *yz_type_max_raw(enum YZ_TYPE ltype, enum YZ_TYPE rtype,
-		yz_val *l, yz_val *r)
-{
-	if (ltype == YZ_CHAR && rtype == YZ_CHAR)
-		return l;
 	if (!YZ_IS_DIGIT(ltype) || !YZ_IS_DIGIT(rtype))
 		return NULL;
-	if (YZ_IS_UNSIGNED_DIGIT(ltype)
-			&& YZ_IS_UNSIGNED_DIGIT(rtype))
+	if (YZ_IS_UNSIGNED_DIGIT(ltype) && YZ_IS_UNSIGNED_DIGIT(rtype))
 		return ltype > rtype ? l : r;
 	if (YZ_IS_UNSIGNED_DIGIT(ltype))
 		ltype = YZ_UNSIGNED_TO_SIGNED(ltype);
@@ -40,27 +26,20 @@ yz_val *yz_type_max_raw(enum YZ_TYPE ltype, enum YZ_TYPE rtype,
 	return ltype > rtype ? l : r;
 }
 
-yz_val *yz_type_ptr_max(yz_val *l, yz_val *r)
+yz_type *yz_type_max_raw(yz_type *lraw, yz_type *rraw, yz_type *l, yz_type *r)
 {
-	yz_ptr *lptr, *rptr;
-	if ((lptr = yz_ptr_get_from_val(l)) == NULL)
-		return NULL;
-	if ((rptr = yz_ptr_get_from_val(r)) == NULL)
-		return NULL;
-	return yz_ptr_is_equal(lptr, rptr) ? l : NULL;
-}
-
-struct symbol *yz_get_extracted_val(yz_extract_val *val)
-{
-	switch (val->type) {
-	case YZ_EXTRACT_STRUCT:
-		return ((yz_struct*)val->sym->result_type.v)
-			->elems[val->index];
-		break;
-	default:
-		return NULL;
-		break;
-	}
+	if (lraw->type == YZ_CHAR && rraw->type == YZ_CHAR)
+		return l;
+	if (lraw->type == YZ_PTR && rraw->type == YZ_PTR)
+		return yz_type_max_ptr(lraw, rraw, l, r);
+	if (lraw->type == YZ_PTR && rraw->type == YZ_NULL)
+		return l;
+	if (lraw->type == YZ_NULL && rraw->type == YZ_PTR)
+		return r;
+	if (lraw->type == YZ_ARRAY && rraw->type == YZ_ARRAY)
+		return yz_type_max_arr(l, r);
+	if (YZ_IS_DIGIT(lraw->type) && YZ_IS_DIGIT(rraw->type))
+		return yz_type_max_digit(lraw->type, rraw->type, l, r);
 	return NULL;
 }
 
@@ -77,26 +56,35 @@ enum YZ_TYPE yz_get_int_size(long long l)
 	return AMC_ERR_TYPE;
 }
 
-enum YZ_TYPE *yz_get_raw_type(yz_val *val)
+yz_type *yz_get_raw_type(yz_type *type)
 {
-	if (val->type == AMC_EXPR)
-		return ((struct expr*)val->v)->sum_type;
-	if (val->type == AMC_SYM)
+	switch (type->type) {
+	case AMC_EXPR:
+		return yz_get_raw_type(((struct expr*)type->v)->sum_type);
+		break;
+	case AMC_SYM:
 		return yz_get_raw_type(
-				&((struct symbol*)val->v)->result_type);
-	if (val->type == AMC_EXTRACT_VAL)
-		return yz_get_raw_type(&yz_get_extracted_val(val->v)
+				&((struct symbol*)type->v)->result_type);
+		break;
+	case AMC_EXTRACT_VAL:
+		return yz_get_raw_type(&yz_get_extracted_val(type->v)
 				->result_type);
-	return &val->type;
+		break;
+	case YZ_CONST:
+		return yz_get_raw_type(type->v);
+		break;
+	default: break;
+	}
+	return type;
 }
 
-const char *yz_get_type_name(yz_val *val)
+const char *yz_get_type_name(yz_type *type)
 {
-	enum YZ_TYPE type = *yz_get_raw_type(val);
-	int index = type - YZ_TYPE_OFFSET;
-	if (type >= YZ_TYPE_OFFSET && index < LENGTH(yz_type_table))
+	yz_type *raw = yz_get_raw_type(type);
+	int index = raw->type - YZ_TYPE_OFFSET;
+	if (raw->type >= YZ_TYPE_OFFSET && index < LENGTH(yz_type_table))
 		return yz_type_table[index].name;
-	switch (type) {
+	switch (raw->type) {
 	case AMC_ERR_TYPE:
 		return "AMC_ERR_TYPE";
 		break;
@@ -109,17 +97,20 @@ const char *yz_get_type_name(yz_val *val)
 	case AMC_EXTRACT_VAL:
 		return "AMC_EXTRACTED_VAL";
 		break;
-	case YZ_STRUCT:
-		return "YZ_STRUCT";
-		break;
-	case YZ_PTR:
-		return yz_type_err_ptr(val);
-		break;
 	case YZ_ARRAY:
-		return yz_type_err_array(val);
+		return "YZ_ARRAY";
+		break;
+	case YZ_CONST:
+		return "YZ_CONST";
 		break;
 	case YZ_NULL:
 		return "YZ_NULL";
+		break;
+	case YZ_PTR:
+		return "YZ_PTR";
+		break;
+	case YZ_STRUCT:
+		return "YZ_STRUCT";
 		break;
 	default:
 		return "(Cannot get type)";
@@ -136,58 +127,41 @@ enum YZ_TYPE yz_type_get(str *s)
 	return AMC_ERR_TYPE;
 }
 
-yz_val *yz_type_max(yz_val *l, yz_val *r)
+yz_type *yz_type_max(yz_type *l, yz_type *r)
 {
-	yz_val *result_vall = l, *result_valr = r;
-	enum YZ_TYPE lraw = l->type, rraw = r->type;
-	if (l->type == YZ_PTR && r->type == YZ_PTR)
-		return yz_type_ptr_max(l, r);
-	if ((lraw = *yz_get_raw_type(l)) == AMC_ERR_TYPE)
+	yz_type *lraw = yz_get_raw_type(l), *rraw = yz_get_raw_type(r);
+	if (lraw->type == AMC_ERR_TYPE || rraw->type == AMC_ERR_TYPE)
 		return NULL;
-	if ((rraw = *yz_get_raw_type(r)) == AMC_ERR_TYPE)
-		return NULL;
-	if ((lraw == YZ_NULL || rraw == YZ_NULL)
-			&& (lraw == YZ_PTR || rraw == YZ_PTR))
-		return l;
-	if (lraw == YZ_PTR && rraw == YZ_PTR)
-		return yz_type_ptr_max(l, r);
-	if (lraw == YZ_ARRAY && rraw == YZ_ARRAY)
-		return yz_type_arr_max(l, r);
-	if (lraw == YZ_PTR || rraw == YZ_PTR)
-		return NULL;
-	if (l->type == AMC_SYM)
-		result_vall = &((struct symbol*)l->v)->result_type;
-	if (r->type == AMC_SYM)
-		result_vall = &((struct symbol*)r->v)->result_type;
-	return yz_type_max_raw(lraw, rraw, result_vall, result_valr);
+	return yz_type_max_raw(lraw, rraw, l, r);
 }
 
-void free_yz_extract_val(struct yz_extract_val *src)
+void free_yz_type(yz_type *self)
 {
-	if (src == NULL)
+	if (self == NULL)
 		return;
-	switch (src->type) {
-	case YZ_EXTRACT_ARRAY:
-		free_yz_val(src->offset);
+	free_yz_type_noself(self);
+	free(self);
+}
+
+void free_yz_type_noself(yz_type *self)
+{
+	if (self == NULL || self->v == NULL)
+		return;
+	self->v = NULL;
+	if (YZ_IS_DIGIT(self->type))
+		return;
+	//TODO
+	switch (self->type) {
+	case AMC_EXPR:
+		free_expr(self->v);
+	case AMC_EXTRACT_VAL:
+		free_yz_extract_val(self->v);
+	case YZ_PTR:
+		free_yz_ptr_type(self->v);
+		return;
 		break;
 	default:
-		free(src);
+		return;
 		break;
 	}
-}
-
-void free_yz_val(yz_val *src)
-{
-	free_yz_val_noself(src);
-	free(src);
-}
-
-void free_yz_val_noself(yz_val *src)
-{
-	if (src == NULL)
-		return;
-	if (src->type == AMC_EXPR)
-		free_expr(src->v);
-	if (src->type == AMC_EXTRACT_VAL)
-		free_yz_extract_val(src->v);
 }

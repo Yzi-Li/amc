@@ -3,11 +3,11 @@
 #include "type.h"
 
 typedef struct yz_array {
-	yz_val type;
+	yz_type type;
 	// when len == 0: mut array
 	int len;
 } yz_array;
 
-const char *yz_type_err_array(yz_val *v);
+yz_type *yz_type_max_arr(yz_type *l, yz_type *r);
 
 #endif

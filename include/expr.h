@@ -1,6 +1,7 @@
 #ifndef AMC_EXPR_H
 #define AMC_EXPR_H
 #include "op.h"
+#include "val.h"
 #include "../include/type.h"
 #include <stdio.h>
 
@@ -22,7 +23,7 @@ struct expr_operator {
 
 struct expr {
 	struct expr_operator *op;
-	enum YZ_TYPE *sum_type;
+	yz_type *sum_type;
 	yz_val *vall, *valr;
 };
 

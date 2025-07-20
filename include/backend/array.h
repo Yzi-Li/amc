@@ -2,7 +2,7 @@
 #define AMC_BE_ARRAY_H
 #include "symbol.h"
 #include "../op.h"
-#include "../type.h"
+#include "../val.h"
 
 typedef int (*backend_array_def_f)(backend_symbol_status **raw_sym_stat,
 		yz_val **vs, int len);
