@@ -28,11 +28,13 @@ struct hooks {
 
 int hook_append(struct hook *hook, struct hook_callee *callee);
 int hook_apply(struct hook *hook);
+struct hooks *hooks_inherit(struct hooks **src);
 
 void free_hook(struct hook *hook);
 void free_hook_noself(struct hook *hook);
 void free_hook_callee(struct hook_callee *callee);
 void free_hook_callee_args(int argc, yz_val **args);
 void free_hooks(struct hooks *hooks);
+void free_hooks_noself(struct hooks *hooks);
 
 #endif

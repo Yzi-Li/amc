@@ -51,7 +51,7 @@ int parse_decorator_args(struct file *f, struct hook_callee *callee)
 	return 0;
 }
 
-int parse_decorator(struct file *f, struct hooks *hooks)
+int parse_decorator(struct decorators *self, struct file *f)
 {
 	struct hook_callee *callee = NULL;
 	struct decorator *dec = NULL;
@@ -68,7 +68,8 @@ int parse_decorator(struct file *f, struct hooks *hooks)
 	callee->apply = dec->apply;
 	if (parse_decorator_args(f, callee))
 		return 1;
-	if (hook_append(&hooks->times[dec->time], callee))
+	if (hook_append(&self->hooks->times[dec->time], callee))
 		return 1;
+	self->has = 1;
 	return 0;
 }

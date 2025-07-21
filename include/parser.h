@@ -1,5 +1,6 @@
 #ifndef AMC_PARSER_H
 #define AMC_PARSER_H
+#include "decorator/decorator.h"
 #include "file.h"
 #include "module.h"
 #include "scope.h"
@@ -25,12 +26,20 @@ struct parser_imported {
 	yz_module **mods;
 };
 
+/**
+ * Restore this struct after keyword parsed.
+ */
+struct parser_stat {
+	unsigned int has_pub:1;
+	struct decorators decorators;
+};
+
 struct parser {
 	struct file *f;
-	struct hooks *hooks;
 	struct parser_imported imported;
 	str path;
 	struct scope *scope;
+	struct parser_stat stat;
 	struct symbol *sym;
 	str target;
 };
@@ -50,11 +59,13 @@ int parser_imported_append(struct parser_imported *imported, yz_module *mod);
 yz_module *parser_imported_find(struct parser_imported *imported, str *name);
 int parser_init(const char *path, struct file *f);
 struct scope *parser_parsed_file_find(str *path);
+int parser_stat_restore(struct parser_stat *self);
 
-void free_parser(struct parser *parser);
-void free_parser_imported(struct parser_imported *imported);
+void free_parser(struct parser *self);
+void free_parser_imported(struct parser_imported *self);
 void free_parser_imported_mods(int count, yz_module **mods);
 void free_parser_imported_nodes(struct parser_imported_node *root,
 		int free_mod);
+void free_parser_stat_noself(struct parser_stat *self);
 
 #endif

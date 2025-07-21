@@ -40,7 +40,7 @@ int parse_line(struct parser *parser)
 	if (parser->f->src[parser->f->pos] == '\n')
 		return 0;
 	if (parser->f->src[parser->f->pos] == '@')
-		return parse_decorator(parser->f, parser->hooks);
+		return parse_decorator(&parser->stat.decorators, parser->f);
 	if (token_next(&token, parser->f))
 		return 1;
 	if (!keyword_find(&token, &sym))
@@ -113,13 +113,14 @@ struct parser *parser_create(str *path, const char *real_path, struct file *f)
 {
 	struct parser *result = calloc(1, sizeof(*result));
 	result->f = f;
-	result->hooks = calloc(1, sizeof(*result->hooks));
 	result->scope = calloc(1, sizeof(*result->scope));
 	result->scope->fn = NULL;
 	result->scope->indent = 0;
 	result->scope->parent = NULL;
 	result->scope->status = NULL;
 	result->scope->status_type = SCOPE_TOP;
+	result->stat.decorators.hooks
+		= calloc(1, sizeof(*result->stat.decorators.hooks));
 	if (parser_get_target_from_mod_path(&result->target, path))
 		goto err_free_parser;
 	if (parser_create_get_path(&result->path, path))
@@ -218,24 +219,38 @@ struct scope *parser_parsed_file_find(str *path)
 	return cur ? cur->scope : NULL;
 }
 
-void free_parser(struct parser *parser)
+int parser_stat_restore(struct parser_stat *self)
 {
-	free_hooks(parser->hooks);
-	free_parser_imported(&parser->imported);
-	free(parser->path.s);
-	free_scope(parser->scope);
-	free(parser->target.s);
+	self->has_pub = 0;
+	if (self->decorators.has && self->decorators.used)
+		goto err_hook_not_used;
+	free_decorators_noself(&self->decorators);
+	return 0;
+err_hook_not_used:
+	printf("amc: parser_stat_restore: Decorator defined but not used!\n");
+	return 1;
 }
 
-void free_parser_imported(struct parser_imported *imported)
+void free_parser(struct parser *self)
 {
-	if (imported == NULL)
+	if (self == NULL)
 		return;
-	free_parser_imported_mods(imported->count, imported->mods);
+	free_parser_stat_noself(&self->stat);
+	free_parser_imported(&self->imported);
+	free(self->path.s);
+	free_scope(self->scope);
+	free(self->target.s);
+}
+
+void free_parser_imported(struct parser_imported *self)
+{
+	if (self == NULL)
+		return;
+	free_parser_imported_mods(self->count, self->mods);
 	for (int i = 0; i < UCHAR_MAX; i++) {
-		if (imported->nodes[i] == NULL)
+		if (self->nodes[i] == NULL)
 			continue;
-		free_parser_imported_nodes(imported->nodes[i], 0);
+		free_parser_imported_nodes(self->nodes[i], 0);
 	}
 }
 
@@ -261,4 +276,11 @@ void free_parser_imported_nodes(struct parser_imported_node *root,
 	if (free_mod)
 		free_yz_module(root->mod);
 	free(root);
+}
+
+void free_parser_stat_noself(struct parser_stat *self)
+{
+	if (self == NULL)
+		return;
+	free_decorators_noself(&self->decorators);
 }

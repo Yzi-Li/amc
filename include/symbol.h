@@ -4,7 +4,6 @@
 #include "../utils/str/str.h"
 #include "backend/symbol.h"
 #include "comptime/hook.h"
-#include "comptime/symbol.h"
 #include "type.h"
 #include "struct.h"
 #include <limits.h>
@@ -26,13 +25,13 @@ enum SYM_TYPE {
 
 struct symbol_flag {
 	unsigned int can_null:1,
+	             checked_null:1,
 	             only_declaration:1,
 	             rec:1,
 	             toplevel:1,
 	             in_block:1,
 	             is_init:1,
 	             mut:1;
-	struct comptime_symbol_flag comptime_flag;
 };
 
 struct parser;

@@ -40,3 +40,10 @@ struct decorator *get_decorator(str *token)
 	}
 	return NULL;
 }
+
+void free_decorators_noself(struct decorators *self)
+{
+	if (self == NULL)
+		return;
+	free_hooks_noself(self->hooks);
+}

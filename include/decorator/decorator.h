@@ -9,6 +9,13 @@ struct decorator {
 	enum HOOK_TIME time;
 };
 
+struct decorators {
+	unsigned int has:1, used:1;
+	struct hooks *hooks;
+};
+
 struct decorator *get_decorator(str *token);
+
+void free_decorators_noself(struct decorators *self);
 
 #endif

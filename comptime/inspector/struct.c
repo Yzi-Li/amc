@@ -1,4 +1,4 @@
-#include "../../include/comptime/mut.h"
+#include "../../include/comptime/struct.h"
 #include <stdio.h>
 
 int comptime_check_struct_elem_can_assign(struct symbol *sym,
@@ -20,16 +20,5 @@ err_parent_is_immut:
 			"| HINT:  Element: '%s' is mutable.\n"
 			"|        Struct: '%s' is immutable!\n",
 			elem->name, sym->name);
-	return 0;
-}
-
-int comptime_check_sym_can_assign(struct symbol *sym)
-{
-	if (!sym->flags.mut && sym->flags.is_init)
-		goto err_sym_is_immut;
-	return 1;
-err_sym_is_immut:
-	printf("amc: comptime_check_sym_can_assign: "
-			"ERROR: Symbol: \"%s\" is immutable!\n", sym->name);
 	return 0;
 }

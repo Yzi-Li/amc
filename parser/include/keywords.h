@@ -23,6 +23,7 @@ int parse_if(struct parser *parser);
 int parse_let(struct parser *parser);
 int parse_match(struct parser *parser);
 int parse_mod(struct parser *parser);
+int parse_pub(struct parser *parser);
 int parse_struct(struct parser *parser);
 int parse_var(struct parser *parser);
 int parse_while(struct parser *parser);

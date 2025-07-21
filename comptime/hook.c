@@ -1,8 +1,11 @@
 #include "../include/comptime/hook.h"
 #include <stdlib.h>
+#include <string.h>
 
 int hook_append(struct hook *hook, struct hook_callee *callee)
 {
+	if (hook == NULL)
+		return 1;
 	hook->count += 1;
 	hook->s = realloc(hook->s, sizeof(*hook->s) * hook->count);
 	hook->s[hook->count - 1] = callee;
@@ -11,11 +14,23 @@ int hook_append(struct hook *hook, struct hook_callee *callee)
 
 int hook_apply(struct hook *hook)
 {
+	if (hook == NULL)
+		return 1;
 	for (int i = 0; i < hook->count; i++) {
 		if (hook->s[i]->apply(hook->s[i]))
 			return 1;
 	}
 	return 0;
+}
+
+struct hooks *hooks_inherit(struct hooks **src)
+{
+	struct hooks *result = NULL;
+	if (src == NULL)
+		return NULL;
+	result = *src;
+	*src = calloc(1, sizeof(**src));
+	return result;
 }
 
 void free_hook(struct hook *hook)
@@ -32,6 +47,7 @@ void free_hook_noself(struct hook *hook)
 		return;
 	for (int i = 0; i < hook->count; i++) {
 		free_hook_callee(hook->s[i]);
+		hook->s[i] = NULL;
 	}
 }
 
@@ -59,8 +75,15 @@ void free_hooks(struct hooks *hooks)
 {
 	if (hooks == NULL)
 		return;
+	free_hooks_noself(hooks);
+	free(hooks);
+}
+
+void free_hooks_noself(struct hooks *hooks)
+{
+	if (hooks == NULL)
+		return;
 	for (int i = 0; i < HOOK_TIME_COUNT; i++) {
 		free_hook_noself(&hooks->times[i]);
 	}
-	free(hooks);
 }

@@ -7,9 +7,8 @@
 #include "include/type.h"
 #include "include/utils.h"
 #include "../include/backend.h"
-#include "../include/comptime/mut.h"
+#include "../include/comptime/symbol.h"
 #include "../include/comptime/type.h"
-#include "../include/comptime/val.h"
 #include "../include/expr.h"
 #include "../include/parser.h"
 #include "../include/symbol.h"
@@ -155,7 +154,7 @@ int identifier_assign_val(struct parser *parser, struct symbol *sym,
 	i64 orig_column = parser->f->cur_column,
 	    orig_line = parser->f->cur_line;
 	yz_val *val = NULL;
-	sym->flags.comptime_flag.checked_null = 0;
+	sym->flags.checked_null = 0;
 	if (!comptime_check_sym_can_assign(sym))
 		return err_print_pos(__func__, NULL, orig_line, orig_column);
 	if (identifier_assign_get_val(parser, &sym->result_type, &val))

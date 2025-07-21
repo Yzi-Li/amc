@@ -9,8 +9,8 @@
 #include "include/type.h"
 #include "include/utils.h"
 #include "../include/backend.h"
-#include "../include/comptime/mut.h"
-#include "../include/comptime/val.h"
+#include "../include/comptime/struct.h"
+#include "../include/comptime/symbol.h"
 #include "../include/parser.h"
 #include "../include/token.h"
 #include <stdio.h>
@@ -305,7 +305,7 @@ int struct_set_elem(struct parser *parser, struct symbol *sym, int index,
 	    orig_line = parser->f->cur_line;
 	yz_val *val = NULL;
 	struct symbol *elem = ((yz_struct*)sym->result_type.v)->elems[index];
-	elem->flags.comptime_flag.checked_null = 0;
+	elem->flags.checked_null = 0;
 	if (!comptime_check_struct_elem_can_assign(sym, elem))
 		return err_print_pos(__func__, NULL, orig_line, orig_column);
 	if (identifier_assign_get_val(parser, &elem->result_type, &val))

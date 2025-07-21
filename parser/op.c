@@ -280,7 +280,7 @@ int op_cmp_ptr_and_null(struct expr *e)
 	sym = e->vall->v;
 	if (sym->result_type.type != YZ_PTR)
 		return 1;
-	sym->flags.comptime_flag.checked_null = 1;
+	sym->flags.checked_null = 1;
 	return 0;
 }
 

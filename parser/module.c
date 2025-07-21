@@ -188,3 +188,8 @@ err_free_result:
 	free_yz_module(result);
 	return 1;
 }
+
+int parse_pub(struct parser *parser)
+{
+	return 0;
+}

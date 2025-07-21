@@ -30,7 +30,7 @@ int comptime_ptr_check_can_null(yz_val *val, struct symbol *sym)
 	if (!check_val_type(&val->type))
 		goto err;
 	if (!sym->flags.can_null && !((struct symbol*)val->v)
-			->flags.comptime_flag.checked_null)
+			->flags.checked_null)
 		goto err_cannot_null;
 	return 1;
 err:
@@ -52,7 +52,7 @@ int comptime_ptr_check_can_ret(struct symbol *sym, struct symbol *fn)
 		return 1;
 	if (fn->flags.can_null)
 		return 1;
-	if (sym->flags.comptime_flag.checked_null)
+	if (sym->flags.checked_null)
 		return 1;
 	printf("amc: comptime_ptr_check_can_ret:\n"
 			"| Pointer: '%s' must be checked is null.\n"
@@ -65,7 +65,7 @@ int comptime_ptr_check_can_use(struct symbol *sym)
 {
 	if (!sym->flags.can_null)
 		return 1;
-	if (sym->flags.comptime_flag.checked_null)
+	if (sym->flags.checked_null)
 		return 1;
 	printf("amc: comptime_ptr_check_can_use:\n"
 			"| Pointer: '%s' must be checked is null.\n",

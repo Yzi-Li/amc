@@ -213,11 +213,7 @@ int func_def_main(struct parser *parser)
 	parser->scope->fn->result_type.type = YZ_I8;
 	parser->scope->fn->result_type.v = NULL;
 	global_parser.has_main = 1;
-	while (parser->f->src[parser->f->pos] != '=')
-		file_pos_next(parser->f);
-	file_pos_nnext(2, parser->f);
-	file_skip_space(parser->f);
-	keyword_end(parser->f);
+	file_line_next(parser->f);
 	if (backend_call(func_def)(parser->scope->fn))
 		goto err_free_fn;
 	parser->scope->fn->parse_function = func_call_main;
@@ -310,8 +306,10 @@ err_get_path_failed:
 int func_def_read_type(struct parser *parser)
 {
 	int ret = 0;
+	i64 orig_column = parser->f->cur_column,
+	    orig_line = parser->f->cur_line;
 	if (parser->f->src[parser->f->pos] != ':')
-		return 1;
+		goto err_cannot_get_type;
 	file_pos_next(parser->f);
 	file_skip_space(parser->f);
 	if ((ret = parse_type(parser, &parser->scope->fn->result_type)) > 0)
@@ -320,7 +318,8 @@ int func_def_read_type(struct parser *parser)
 		parser->scope->fn->flags.can_null = 1;
 	return 0;
 err_cannot_get_type:
-	printf("amc: func_def_read_type: Cannot get type!\n");
+	printf("amc: func_def_read_type: %lld,%lld: Cannot get type!\n",
+			orig_line, orig_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
@@ -359,17 +358,13 @@ int parse_func_call(struct parser *parser)
 		if (args == NULL)
 			return 1;
 	}
-	if (parser->sym->hooks != NULL)
-		if (hook_apply(&parser->sym
-					->hooks->times[HOOK_FUNC_CALL_BEFORE]))
-			return 1;
+	if (hook_apply(&parser->sym->hooks->times[HOOK_FUNC_CALL_BEFORE]))
+		return 1;
 	if (backend_call(func_call)(parser->sym,
 				args, parser->sym->argc))
 		return 1;
-	if (parser->sym->hooks != NULL)
-		if (hook_apply(&parser->sym
-					->hooks->times[HOOK_FUNC_CALL_AFTER]))
-			return 1;
+	if (hook_apply(&parser->sym->hooks->times[HOOK_FUNC_CALL_AFTER]))
+		return 1;
 	return 0;
 }
 
@@ -398,10 +393,10 @@ int parse_func_def(struct parser *parser)
 	if (func_def_read_type(parser))
 		goto err_free_result;
 	result->flags.in_block = 1;
-	result->hooks = parser->hooks;
+	if (!(result->hooks = hooks_inherit(&parser->stat.decorators.hooks)))
+		goto err_free_result;
 	result->parse_function = parse_func_call;
 	result->type = SYM_FUNC;
-	parser->hooks = NULL;
 	if ((ret = func_def_block_start(parser)) > 0)
 		goto err_free_result;
 	if (symbol_register(result, &parser->scope
@@ -415,8 +410,7 @@ int parse_func_def(struct parser *parser)
 		goto err_free_result;
 	return func_def_end_scope(parser);
 err_free_result:
-	free_safe(result->name);
-	free_safe(result);
+	free_symbol(result);
 	return 1;
 }
 
