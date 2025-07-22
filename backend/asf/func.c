@@ -137,18 +137,41 @@ err_free_node:
 	return 1;
 }
 
-int asf_func_def(struct symbol *fn)
+int asf_func_def(struct symbol *fn, int main)
 {
-	const char *temp =
+	const char *temp_main =
+		".globl _start\n"
+		"_start:\n"
+		"pushq %rbp\n"
+		"movq %rsp, %rbp\n";
+	const char *temp_private =
+		"%s:\n"
+		"pushq %%rbp\n"
+		"movq %%rsp, %%rbp\n";
+	const char *temp_pub =
+		".globl %s\n"
 		"%s:\n"
 		"pushq %%rbp\n"
 		"movq %%rsp, %%rbp\n";
 	struct object_node *node = malloc(sizeof(*node));
+	if (fn == NULL)
+		return 1;
 	node->s = str_new();
 	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node;
-	str_expand(node->s, strlen(temp) - 5 + fn->path.len);
-	snprintf(node->s->s, node->s->len, temp, fn->path.s);
+	if (main) {
+		str_append(node->s, strlen(temp_main), temp_main);
+		return 0;
+	}
+	if (fn->flags.pub) {
+		str_expand(node->s, strlen(temp_pub) - 7 + fn->path.len
+				+ fn->path.len);
+		snprintf(node->s->s, node->s->len, temp_pub,
+				fn->path.s, fn->path.s);
+		return 0;
+	}
+	str_expand(node->s, strlen(temp_private) - 5 + fn->path.len);
+	snprintf(node->s->s, node->s->len, temp_private, fn->path.s);
 	return 0;
 err_free_node:
 	str_free(node->s);

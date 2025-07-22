@@ -16,6 +16,6 @@ fn func_no_arg: i32 =>
 fn func_no_arg_: i32 =>
 	ret [func_no_arg] + 2
 
-fn main: i32 =>
+pub fn main: i32 =>
 	let a: i32 = [func_no_arg]
 	ret [func 1, 2, 3]

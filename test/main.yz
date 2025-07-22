@@ -14,9 +14,6 @@ fn func__(a: i32): i32 =>
 	ret 1
 
 ; The 3rd of comment test
-fn main: i32 => ; comment 4th
+pub fn main: i32 => ; comment 4th
 	ret [func__ (1 + 2)]
 	;ret [func_ [func 2 + 1]] ; The 5th
-
-; The most compact version
-; fn main(argc:i32,argv:*char[]):i32 => 0

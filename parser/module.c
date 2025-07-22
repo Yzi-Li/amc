@@ -191,5 +191,21 @@ err_free_result:
 
 int parse_pub(struct parser *parser)
 {
-	return 0;
+	struct symbol *kw = NULL;
+	str token = TOKEN_NEW;
+	parser->stat.has_pub = 1;
+	keyword_end(parser->f);
+	if (token_next(&token, parser->f))
+		return 1;
+	if (!keyword_find(&token, &kw))
+		return 1;
+	if (kw->parse_function == parse_func_def
+			|| kw->parse_function == parse_struct) {
+		parser->sym = kw;
+		return kw->parse_function(parser);
+	}
+	printf("amc: parse_pub: %lld,%lld: error:\n"
+			"| Keyword 'pub' only can use for 'fn' and 'struct'\n",
+			parser->f->cur_line, parser->f->cur_column);
+	return 1;
 }

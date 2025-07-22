@@ -32,8 +32,9 @@ static int parser_create_get_path(str *result, str *path);
 int parse_line(struct parser *parser)
 {
 	char *err_msg;
-	str token = TOKEN_NEW;
+	int ret = 0;
 	struct symbol *sym = NULL;
+	str token = TOKEN_NEW;
 	file_skip_space(parser->f);
 	if (parse_comment(parser->f))
 		return -1;
@@ -48,9 +49,9 @@ int parse_line(struct parser *parser)
 	if (!sym->flags.toplevel)
 		goto err_not_toplevel;
 	parser->sym = sym;
-	if (sym->parse_function(parser))
+	if ((ret = sym->parse_function(parser)) > 0)
 		return 1;
-	return 0;
+	return ret;
 err_sym_not_found:
 	err_msg = str2chr(token.s, token.len);
 	printf("amc: parser.parse_line: %lld,%lld: "

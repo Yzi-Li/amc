@@ -6,5 +6,5 @@ struct Str =>
 fn private_append: i32 =>
 	ret 114
 
-; pub fn str_append(self: *Str) =>
-; 	ret 2
+pub fn append(self: *Str): i32 =>
+	ret 2

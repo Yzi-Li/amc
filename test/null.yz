@@ -14,7 +14,7 @@ fn funcc(a: *i32?): *i32? =>
 fn funcd(a: *i32?): *i32? =>
 	ret a
 
-fn main: i32 =>
+pub fn main: i32 =>
 	let a: mut i32 = 1
 	let b: *i32? = &a
 	let c: mut *i32 = &a

@@ -210,19 +210,25 @@ int func_def_end_scope(struct parser *parser)
 
 int func_def_main(struct parser *parser)
 {
+	if (!parser->stat.has_pub)
+		goto err_not_pub;
 	parser->scope->fn->result_type.type = YZ_I8;
 	parser->scope->fn->result_type.v = NULL;
 	global_parser.has_main = 1;
 	file_line_next(parser->f);
-	if (backend_call(func_def)(parser->scope->fn))
+	if (backend_call(func_def)(parser->scope->fn, 1))
 		goto err_free_fn;
 	parser->scope->fn->parse_function = func_call_main;
 	if (symbol_register(parser->scope->fn,
 				&parser->scope->parent->sym_groups[SYMG_FUNC]))
 		goto err_free_fn;
 	return parse_block(parser);
+err_not_pub:
+	printf("amc: func_def_main: "ERROR_STR":\n"
+			"| Function: 'main' must be declared as 'pub'.\n");
+	return 1;
 err_free_fn:
-	free_safe(parser->scope->fn);
+	free_symbol(parser->scope->fn);
 	return 1;
 }
 
@@ -392,6 +398,7 @@ int parse_func_def(struct parser *parser)
 		goto err_free_result;
 	if (func_def_read_type(parser))
 		goto err_free_result;
+	result->flags.pub = parser->stat.has_pub;
 	result->flags.in_block = 1;
 	if (!(result->hooks = hooks_inherit(&parser->stat.decorators.hooks)))
 		goto err_free_result;
@@ -404,7 +411,7 @@ int parse_func_def(struct parser *parser)
 		goto err_free_result;
 	if (ret == -1)
 		return func_def_end_scope(parser);
-	if (backend_call(func_def)(result))
+	if (backend_call(func_def)(result, 0))
 		goto err_free_result;
 	if (parse_block(parser))
 		goto err_free_result;

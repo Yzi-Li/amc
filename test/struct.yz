@@ -5,7 +5,7 @@ struct Str =>
 	siz: mut i32
 	s: mut *i32
 
-fn main: i32 =>
+pub fn main: i32 =>
 	let test: mut Str = { 0, 1, null }
 	let a: i32 = test.siz
 	test.siz += 1

@@ -1,7 +1,7 @@
 struct A =>
 	a: mut *i32?
 
-fn main: i32 =>
+pub fn main: i32 =>
 	let a: i32 = 1
 	let b: *i32 = &a
 	let c: i32 = *b

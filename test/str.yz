@@ -3,7 +3,7 @@ fn write(fd: u32,
 	buf: [char],
 	count: u64): u64
 
-fn main: i32 =>
+pub fn main: i32 =>
 	let c: mut [char] = "Hello!"
 	c = "H"
 	[write 1, "Hello world!\n", 13]

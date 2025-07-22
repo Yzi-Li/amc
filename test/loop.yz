@@ -1,4 +1,4 @@
-fn main: i32 =>
+pub fn main: i32 =>
 	let a: mut i32 = 0
 	while 2 <= 2 =>
 		a += 1
