@@ -29,7 +29,7 @@ int asf_cond_if_begin(backend_scope_status *raw_status);
 int asf_const_def_str(backend_const *self, str *s);
 
 int asf_func_call(struct symbol *fn, yz_val **v, int vlen);
-int asf_func_def(struct symbol *fn, int main);
+int asf_func_def(struct symbol *fn, int pub, int main);
 int asf_func_ret(yz_val *v, int is_main);
 
 backend_scope_status *asf_scope_begin();

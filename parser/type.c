@@ -72,7 +72,6 @@ err_type_indicator_not_found:
 
 int parse_type(struct parser *parser, yz_type *result)
 {
-	char *err_msg = NULL;
 	str token = TOKEN_NEW;
 	if (result == NULL)
 		goto err_type_null;
@@ -85,7 +84,7 @@ int parse_type(struct parser *parser, yz_type *result)
 		return 1;
 	if (parser->f->src[parser->f->pos] == '.') {
 		if (type_get_from_module(&token, result, parser))
-			goto err_unknown_type;
+			return 1;
 		return 0;
 	}
 	file_skip_space(parser->f);
@@ -94,23 +93,11 @@ int parse_type(struct parser *parser, yz_type *result)
 	if (result->type != AMC_ERR_TYPE)
 		return 0;
 	if (parse_type_struct(&token, result, parser->scope))
-		goto err_get_type_failed;
+		return 1;
 	return 0;
 err_type_null:
 	printf("amc: parse_type: %lld,%lld: ARG is empty!\n",
 			parser->f->cur_line, parser->f->cur_column);
-	return 1;
-err_get_type_failed:
-	err_msg = str2chr(token.s, token.len);
-	printf("amc; parse_type: %lld,%lld: Try get type: '%s' failed!\n",
-			parser->f->cur_line, parser->f->cur_column, err_msg);
-	free(err_msg);
-	return 1;
-err_unknown_type:
-	err_msg = str2chr(token.s, token.len);
-	printf("| amc; parse_type: %lld,%lld: Unknown type: '%s'\n",
-			parser->f->cur_line, parser->f->cur_column, err_msg);
-	free(err_msg);
 	return 1;
 }
 

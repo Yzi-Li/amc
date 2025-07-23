@@ -1,6 +1,9 @@
 mod str import str
 mod a import a.b
+mod syscall import syscall
 
 pub fn main: i32 =>
 	let a: str.Str = { 6, 6, "Hello\n" }
+	[str.append &a]
+	[syscall.write 1, "Hello world!\n", 13]
 	ret 0

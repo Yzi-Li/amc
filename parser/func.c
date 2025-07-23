@@ -29,10 +29,14 @@ static yz_val *func_call_arg_val_get(struct expr *expr);
 static int func_call_main(struct parser *parser);
 static int func_call_read_arg(const char *se, struct file *f, void *data);
 static yz_val **func_call_read_args(struct parser *parser);
+static int func_call_read_callee(struct parser *parser,
+		struct symbol **callee);
 static int func_call_read_token(struct file *f, str *token);
 static int func_def_block_start(struct parser *parser);
 static int func_def_check_main(const char *name, int len);
 static int func_def_end_scope(struct parser *parser);
+static int func_def_inherit_decorators(struct decorators *src,
+		struct symbol *dest);
 static int func_def_main(struct parser *parser);
 static int func_def_read_arg(const char *se, struct file *f, void *data);
 static int func_def_read_args(struct parser *parser);
@@ -154,6 +158,62 @@ err_too_few_arg:
 	goto err_free_result;
 }
 
+int func_call_read_callee(struct parser *parser, struct symbol **callee)
+{
+	char *err_msg = NULL;
+	yz_module *mod = NULL;
+	i64 orig_column = parser->f->cur_column,
+	    orig_line = parser->f->cur_line;
+	int ret = 0;
+	struct symbol *result = NULL;
+	struct scope *scope = parser->scope;
+	str token = TOKEN_NEW;
+	if ((ret = func_call_read_token(parser->f, &token)) > 0)
+		return 1;
+	if (parser->f->src[parser->f->pos] == '.') {
+		if ((mod = parser_imported_find(&parser->imported, &token))
+				== NULL)
+			return 1;
+		token.len = 0;
+		if ((ret = func_call_read_token(parser->f, &token)) > 0)
+			return 1;
+		scope = mod->scope;
+	}
+	if (!symbol_find_in_group_in_scope(&token, &result, scope, SYMG_FUNC))
+		goto err_func_not_found;
+	if (!result->flags.in_block)
+		goto err_func_not_in_block;
+	if (ret == -1 && result->argc > 0)
+		goto err_func_miss_args;
+	*callee = result;
+	return 0;
+err_func_not_found:
+	err_msg = str2chr(token.s, token.len);
+	printf("amc: func_call_read: %lld,%lld: Function: '%s' not found!\n",
+			orig_line, orig_column, err_msg);
+	free(err_msg);
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 1;
+err_func_not_in_block:
+	err_msg = str2chr(result->name, result->name_len);
+	printf("amc: func_call_read: %lld,%lld: "
+			"Function: '%s' cannot be called in block!\n",
+			orig_line, orig_column, err_msg);
+	free(err_msg);
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 1;
+err_func_miss_args:
+	err_msg = str2chr(result->name, result->name_len);
+	printf("amc: func_call_read: %lld,%lld: "
+			"Function: '%s' need %d arguments "
+			"but not have any arguments!\n",
+			orig_line, orig_column,
+			err_msg, result->argc);
+	free(err_msg);
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 1;
+}
+
 int func_call_read_token(struct file *f, str *token)
 {
 	file_pos_next(f);
@@ -208,19 +268,28 @@ int func_def_end_scope(struct parser *parser)
 	return 0;
 }
 
+int func_def_inherit_decorators(struct decorators *src,
+		struct symbol *dest)
+{
+	if ((dest->hooks = hooks_inherit(&src->hooks)) == NULL)
+		return 1;
+	src->used = 1;
+	return 0;
+}
+
 int func_def_main(struct parser *parser)
 {
+	struct symbol *fn = parser->scope->fn;
 	if (!parser->stat.has_pub)
 		goto err_not_pub;
-	parser->scope->fn->result_type.type = YZ_I8;
-	parser->scope->fn->result_type.v = NULL;
+	fn->result_type.type = YZ_I8;
+	fn->result_type.v = NULL;
 	global_parser.has_main = 1;
 	file_line_next(parser->f);
-	if (backend_call(func_def)(parser->scope->fn, 1))
+	if (backend_call(func_def)(fn, 1, 1))
 		goto err_free_fn;
-	parser->scope->fn->parse_function = func_call_main;
-	if (symbol_register(parser->scope->fn,
-				&parser->scope->parent->sym_groups[SYMG_FUNC]))
+	fn->parse_function = func_call_main;
+	if (symbol_register(fn, &parser->scope_pub->sym_groups[SYMG_FUNC]))
 		goto err_free_fn;
 	return parse_block(parser);
 err_not_pub:
@@ -376,6 +445,8 @@ int parse_func_call(struct parser *parser)
 
 int parse_func_def(struct parser *parser)
 {
+	struct scope *dest_scope = parser->stat.has_pub
+		? parser->scope_pub : parser->scope;
 	struct symbol *result = calloc(1, sizeof(*result));
 	int ret = 0;
 	struct scope fn_scope = {
@@ -398,20 +469,18 @@ int parse_func_def(struct parser *parser)
 		goto err_free_result;
 	if (func_def_read_type(parser))
 		goto err_free_result;
-	result->flags.pub = parser->stat.has_pub;
-	result->flags.in_block = 1;
-	if (!(result->hooks = hooks_inherit(&parser->stat.decorators.hooks)))
+	if (func_def_inherit_decorators(&parser->stat.decorators, result))
 		goto err_free_result;
+	result->flags.in_block = 1;
 	result->parse_function = parse_func_call;
 	result->type = SYM_FUNC;
 	if ((ret = func_def_block_start(parser)) > 0)
 		goto err_free_result;
-	if (symbol_register(result, &parser->scope
-				->parent->sym_groups[SYMG_FUNC]))
+	if (symbol_register(result, &dest_scope->sym_groups[SYMG_FUNC]))
 		goto err_free_result;
 	if (ret == -1)
 		return func_def_end_scope(parser);
-	if (backend_call(func_def)(result, 0))
+	if (backend_call(func_def)(result, parser->stat.has_pub, 0))
 		goto err_free_result;
 	if (parse_block(parser))
 		goto err_free_result;
@@ -461,17 +530,8 @@ int func_call_read(struct parser *parser, struct symbol **fn)
 	char *err_msg = NULL;
 	i64 orig_column = parser->f->cur_column,
 	    orig_line = parser->f->cur_line;
-	int ret = 0;
-	str token = TOKEN_NEW;
-	if ((ret = func_call_read_token(parser->f, &token)) > 0)
+	if (func_call_read_callee(parser, &callee))
 		return 1;
-	if (!symbol_find_in_group_in_scope(&token, &callee, parser->scope,
-				SYMG_FUNC))
-		goto err_func_not_found;
-	if (!callee->flags.in_block)
-		goto err_func_not_in_block;
-	if (ret == -1 && callee->argc > 0)
-		goto err_func_miss_args;
 	if (parser->scope->fn == callee && callee->flags.rec == 0)
 		goto err_func_cannot_rec;
 	parser->sym = callee;
@@ -480,31 +540,6 @@ int func_call_read(struct parser *parser, struct symbol **fn)
 	if (fn != NULL)
 		*fn = callee;
 	return 0;
-err_func_not_found:
-	err_msg = str2chr(token.s, token.len);
-	printf("amc: func_call_read: %lld,%lld: Function: '%s' not found!\n",
-			orig_line, orig_column, err_msg);
-	free(err_msg);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
-err_func_not_in_block:
-	err_msg = str2chr(callee->name, callee->name_len);
-	printf("amc: func_call_read: %lld,%lld: "
-			"Function: '%s' cannot be called in block!\n",
-			orig_line, orig_column, err_msg);
-	free(err_msg);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
-err_func_miss_args:
-	err_msg = str2chr(callee->name, callee->name_len);
-	printf("amc: func_call_read: %lld,%lld: "
-			"Function: '%s' need %d arguments "
-			"but not have any arguments!\n",
-			orig_line, orig_column,
-			err_msg, callee->argc);
-	free(err_msg);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
 err_func_cannot_rec:
 	err_msg = str2chr(callee->name, callee->name_len);
 	printf("amc: func_call_read: %lld,%lld: "

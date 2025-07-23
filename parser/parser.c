@@ -40,8 +40,10 @@ int parse_line(struct parser *parser)
 		return -1;
 	if (parser->f->src[parser->f->pos] == '\n')
 		return 0;
-	if (parser->f->src[parser->f->pos] == '@')
+	if (parser->f->src[parser->f->pos] == '@') {
+		parser->stat.decorators.has = 1;
 		return parse_decorator(&parser->stat.decorators, parser->f);
+	}
 	if (token_next(&token, parser->f))
 		return 1;
 	if (!keyword_find(&token, &sym))
@@ -50,6 +52,8 @@ int parse_line(struct parser *parser)
 		goto err_not_toplevel;
 	parser->sym = sym;
 	if ((ret = sym->parse_function(parser)) > 0)
+		return 1;
+	if (parser_stat_restore(&parser->stat))
 		return 1;
 	return ret;
 err_sym_not_found:
@@ -120,6 +124,13 @@ struct parser *parser_create(str *path, const char *real_path, struct file *f)
 	result->scope->parent = NULL;
 	result->scope->status = NULL;
 	result->scope->status_type = SCOPE_TOP;
+	result->scope_pub = calloc(1, sizeof(*result->scope_pub));
+	result->scope_pub->fn = NULL;
+	result->scope_pub->indent = 0;
+	result->scope_pub->parent = NULL;
+	result->scope_pub->status = NULL;
+	result->scope_pub->status_type = SCOPE_TOP;
+	result->scope->parent = result->scope_pub;
 	result->stat.decorators.hooks
 		= calloc(1, sizeof(*result->stat.decorators.hooks));
 	if (parser_get_target_from_mod_path(&result->target, path))
@@ -223,9 +234,11 @@ struct scope *parser_parsed_file_find(str *path)
 int parser_stat_restore(struct parser_stat *self)
 {
 	self->has_pub = 0;
-	if (self->decorators.has && self->decorators.used)
-		goto err_hook_not_used;
-	free_decorators_noself(&self->decorators);
+	if (self->decorators.has) {
+		if (!self->decorators.used)
+			goto err_hook_not_used;
+		free_decorators_noself(&self->decorators);
+	}
 	return 0;
 err_hook_not_used:
 	printf("amc: parser_stat_restore: Decorator defined but not used!\n");

@@ -1,9 +1,9 @@
-struct Str =>
+pub struct Str =>
 	len: mut i32
 	siz: mut i32
 	s: [char]
 
-fn private_append: i32 =>
+fn private: i32 =>
 	ret 114
 
 pub fn append(self: *Str): i32 =>

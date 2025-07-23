@@ -137,7 +137,7 @@ err_free_node:
 	return 1;
 }
 
-int asf_func_def(struct symbol *fn, int main)
+int asf_func_def(struct symbol *fn, int pub, int main)
 {
 	const char *temp_main =
 		".globl _start\n"
@@ -163,7 +163,7 @@ int asf_func_def(struct symbol *fn, int main)
 		str_append(node->s, strlen(temp_main), temp_main);
 		return 0;
 	}
-	if (fn->flags.pub) {
+	if (pub) {
 		str_expand(node->s, strlen(temp_pub) - 7 + fn->path.len
 				+ fn->path.len);
 		snprintf(node->s->s, node->s->len, temp_pub,
@@ -216,6 +216,8 @@ int asf_syscall(int code)
 		? node->prev->prev->prev
 		: node->prev->prev;
 	tmp = prev->next;
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], tmp->next))
+		goto err_free_node;
 	prev->next = node;
 	node->prev = prev;
 	str_free(tmp->s);

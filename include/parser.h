@@ -1,6 +1,6 @@
 #ifndef AMC_PARSER_H
 #define AMC_PARSER_H
-#include "decorator/decorator.h"
+#include "decorator.h"
 #include "file.h"
 #include "module.h"
 #include "scope.h"
@@ -39,6 +39,7 @@ struct parser {
 	struct parser_imported imported;
 	str path;
 	struct scope *scope;
+	struct scope *scope_pub;
 	struct parser_stat stat;
 	struct symbol *sym;
 	str target;

@@ -259,7 +259,9 @@ int parse_struct(struct parser *parser)
 		goto err_free_result;
 	if (struct_def_read_elems(parser, result))
 		goto err_free_result;
-	if (struct_def_reg(result, parser->scope))
+	if (struct_def_reg(result, parser->stat.has_pub
+				? parser->scope_pub
+				: parser->scope))
 		goto err_free_result;
 	return 0;
 err_free_result:
