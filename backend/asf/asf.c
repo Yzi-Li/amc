@@ -1,8 +1,7 @@
 #include "include/asf.h"
 #include "include/register.h"
 #include "../../include/backend.h"
-#include "../../include/backend/target.h"
-#include <stdlib.h>
+#include "../../include/backend/object.h"
 #include <string.h>
 
 struct backend backend_asf = {
@@ -75,44 +74,6 @@ struct backend backend_asf = {
 int asf_init(int argc, char *argv[])
 {
 	return asf_regs_init();
-}
-
-int asf_file_end(const char *target_path, int len)
-{
-	struct object_head *prev = cur_obj->prev;
-	if (target_write(target_path, cur_obj, ASF_OBJ_COUNT))
-		return 1;
-	object_head_free(cur_obj);
-	cur_obj = prev;
-	return 0;
-}
-
-char *asf_file_get_suffix(int *result_len, int *need_free)
-{
-	*result_len = 2;
-	*need_free = 0;
-	return ".s";
-}
-
-int asf_file_new(struct file *f)
-{
-	const char *temp_rodata = ".section .rodata\n";
-	struct object_node *rodata = NULL;
-	struct object_head *prev = cur_obj;
-	cur_obj = calloc(1, sizeof(*cur_obj));
-	cur_obj->prev = prev;
-	cur_obj->sec_count = 3;
-	cur_obj->sections = calloc(cur_obj->sec_count,
-			sizeof(*cur_obj->sections));
-	rodata = malloc(sizeof(*rodata));
-	if (object_append(&cur_obj->sections[ASF_OBJ_RODATA], rodata))
-		goto err_free_rodata;
-	rodata->s = str_new();
-	str_append(rodata->s, strlen(temp_rodata), temp_rodata);
-	return 0;
-err_free_rodata:
-	free(rodata);
-	return 1;
 }
 
 int asf_stop(enum BE_STOP_SIGNAL bess)

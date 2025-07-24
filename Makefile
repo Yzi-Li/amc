@@ -37,13 +37,13 @@ DEBUG_TARGET = $(TARGET).debug
 
 # libs
 include lib/libgetarg.mk
+include lib/sctire.mk
 
-CLIBS = -L$(STRDIR) -lstr\
-	$(LIBGETARG)
+CLIBS = -L$(STRDIR) -lstr \
+	$(LIBGETARG) $(SCTIRE_H)
 
-.PHONY: all clean debug debug_target
-.PHONY: $(COREDIR) $(COMPTIME) $(PARSER) $(BACKEND) $(STRLIB)\
-	$(UTILSDIR)
+.PHONY: all clean debug debug_target install_lib
+.PHONY: $(COREDIR) $(COMPTIME) $(PARSER) $(BACKEND) $(STRLIB) $(UTILSDIR)
 all: $(TARGET)
 debug: $(DEBUG_TARGET)
 debug_target:
@@ -52,6 +52,9 @@ debug_target:
 	@$(MAKE) -C $(PARSER) debug
 	@$(MAKE) -C $(BACKEND) debug
 	@$(MAKE) -C $(UTILSDIR) debug
+
+install_lib:
+	@$(MAKE) -C lib install
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

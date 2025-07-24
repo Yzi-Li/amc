@@ -12,6 +12,7 @@ BE_ASF_SRC =\
 	cond.c\
 	const.c\
 	expr.c\
+	file.c\
 	func.c\
 	identifier.c\
 	imm.c\

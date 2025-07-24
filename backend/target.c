@@ -11,8 +11,8 @@
 
 static int object_section_write(struct object_section *sec, FILE *f);
 static int object_write(struct object_head *obj, FILE *f);
-static FILE *target_file_create(const char *path);
-static int target_file_create_dir(const char *path);
+static FILE *target_file_create(const char *path, int path_len);
+static int target_file_create_dir(const char *path, int path_len);
 
 int object_section_write(struct object_section *sec, FILE *f)
 {
@@ -39,10 +39,10 @@ int object_write(struct object_head *obj, FILE *f)
 	return 0;
 }
 
-FILE *target_file_create(const char *path)
+FILE *target_file_create(const char *path, int path_len)
 {
 	FILE *f = NULL;
-	if (target_file_create_dir(path))
+	if (target_file_create_dir(path, path_len))
 		return NULL;
 	if ((f = fopen(path, "w")) != NULL)
 		return f;
@@ -50,10 +50,10 @@ FILE *target_file_create(const char *path)
 	return NULL;
 }
 
-int target_file_create_dir(const char *path)
+int target_file_create_dir(const char *path, int path_len)
 {
 	str tmp = {
-		.len = strlen(path),
+		.len = path_len,
 		.s = malloc(tmp.len + 1)
 	};
 	char *dir = NULL;
@@ -68,18 +68,17 @@ err_free_tmp:
 	return 1;
 }
 
-int target_write(const char *target_path, struct object_head *obj, int len)
+int target_write(const char *path, int path_len, struct object_head *obj)
 {
 	FILE *f = NULL;
-	if (target_path == NULL)
+	if (path == NULL)
 		return 1;
-	if ((f = target_file_create(target_path)) == NULL)
+	if ((f = target_file_create(path, path_len)) == NULL)
 		goto err_create_failed;
-	if (object_write(cur_obj, f))
+	if (object_write(obj, f))
 		return 1;
 	return fclose(f);
 err_create_failed:
-	printf("amc: target_write: File: '%s' create failed!\n",
-			target_path);
+	printf("amc: target_write: File: '%s' create failed!\n", path);
 	return 1;
 }

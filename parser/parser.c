@@ -8,6 +8,7 @@
 #include "../utils/str/str.h"
 #include "include/keywords.h"
 #include <limits.h>
+#include <sctire.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -192,15 +193,7 @@ int parser_init(const char *path, struct file *f)
 int parser_imported_append(struct parser_imported *imported, yz_module *mod)
 {
 	struct parser_imported_node *cur =
-		(struct parser_imported_node*)imported;
-	for (int i = 0; i < mod->name.len; i++) {
-		if (cur->nodes[(int)mod->name.s[i]] != NULL) {
-			cur = cur->nodes[(int)mod->name.s[i]];
-			continue;
-		}
-		cur->nodes[(int)mod->name.s[i]] = calloc(1, sizeof(*cur));
-		cur = cur->nodes[(int)mod->name.s[i]];
-	}
+		sctire_append_elem(imported, mod->name.s, mod->name.len);
 	imported->count += 1;
 	imported->mods = realloc(imported->mods, sizeof(*imported->mods)
 			* imported->count);
@@ -211,24 +204,16 @@ int parser_imported_append(struct parser_imported *imported, yz_module *mod)
 
 yz_module *parser_imported_find(struct parser_imported *imported, str *name)
 {
-	struct parser_imported_node *cur = (struct parser_imported_node*)imported;
-	for (int i = 0; i < name->len; i++) {
-		if (cur->nodes[(int)name->s[i]] == NULL)
-			return NULL;
-		cur = cur->nodes[(int)name->s[i]];
-	}
-	return cur ? cur->mod : NULL;
+	struct parser_imported_node *result =
+		sctire_find_elem(imported, name->s, name->len);
+	return result ? result->mod : NULL;
 }
 
 struct scope *parser_parsed_file_find(str *path)
 {
-	struct parsed_node *cur = (struct parsed_node*)&global_parser.parsed;
-	for (int i = 0; i < path->len; i++) {
-		if (cur->nodes[(int)path->s[i]] == NULL)
-			return NULL;
-		cur = cur->nodes[(int)path->s[i]];
-	}
-	return cur ? cur->scope : NULL;
+	struct parsed_node *result =
+		sctire_find_elem(&global_parser.parsed, path->s, path->len);
+	return result ? result->scope : NULL;
 }
 
 int parser_stat_restore(struct parser_stat *self)

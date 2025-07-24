@@ -37,7 +37,7 @@ enum BE_STOP_SIGNAL {
  */
 struct backend {
 	int (*end)();
-	int (*file_end)(const char *target_path, int len);
+	int (*file_end)(const char *path, int path_len);
 	char *(*file_get_suffix)(int *result_len, int *need_free);
 	int (*file_new)(struct file *f);
 	int (*init)(int argc, char *argv[]);
