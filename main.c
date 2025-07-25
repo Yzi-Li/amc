@@ -15,6 +15,7 @@
 static const char *src = NULL;
 
 static int err_no_input();
+static int opt_output(int argc, char *argv[], struct option *opt);
 static int opt_read_src(int argc, char *argv[], struct option *opt);
 static int opt_root_mod(int argc, char *argv[], struct option *opt);
 static int print_version();
@@ -22,6 +23,18 @@ static int print_version();
 int err_no_input()
 {
 	die("amc: \x1b[31merror\x1b[0m: no input file!\n");
+	return 1;
+}
+
+int opt_output(int argc, char *argv[], struct option *opt)
+{
+	if (argc > 1 || argv == NULL)
+		goto err_too_many_files;
+	global_parser.output.s = argv[0];
+	global_parser.output.len = strlen(argv[0]);
+	return 0;
+err_too_many_files:
+	printf("amc: opt_read_src: Unsupport multiple entry files!\n");
 	return 1;
 }
 
@@ -60,6 +73,13 @@ int main(int argc, char *argv[])
 			GETARG_HELP_OPT, 0,
 			NULL,
 			"show help documents",
+			NULL
+		},
+		{
+			"output", 'o',
+			GETARG_LIST_ARG, 0,
+			opt_output,
+			"output file name",
 			NULL
 		},
 		{

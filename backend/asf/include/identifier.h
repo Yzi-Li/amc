@@ -1,5 +1,5 @@
-#ifndef AMC_BE_IDENTIFIER_H
-#define AMC_BE_IDENTIFIER_H
+#ifndef AMC_BE_ASF_IDENTIFIER_H
+#define AMC_BE_ASF_IDENTIFIER_H
 #include "stack.h"
 #include "../../../include/backend/symbol.h"
 #include "../../../include/op.h"

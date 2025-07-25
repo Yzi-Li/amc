@@ -22,6 +22,7 @@ struct global_parser global_parser = {
 	.has_err = 0,
 	.has_main = 0,
 	.parsed = {},
+	.output = {},
 	.root_dir = {},
 	.root_mod = {},
 	.target_path = {}
@@ -171,6 +172,10 @@ int parser_init(const char *path, struct file *f)
 	};
 	char *root_dir_cpy;
 	strncpy(path_cpy.s, path, path_cpy.len);
+	if (global_parser.output.s == NULL) {
+		global_parser.output.s = "a.out";
+		global_parser.output.len = strlen(global_parser.output.s);
+	}
 	if (global_parser.root_dir.s == NULL) {
 		global_parser.root_dir.s = dirname(path_cpy.s);
 		global_parser.root_dir.len = strlen(global_parser.root_dir.s);
@@ -187,7 +192,7 @@ int parser_init(const char *path, struct file *f)
 			return 0;
 	if (parse_file(&global_parser.root_mod, path, f) == NULL)
 		return 1;
-	return backend_end();
+	return backend_end(&global_parser.output);
 }
 
 int parser_imported_append(struct parser_imported *imported, yz_module *mod)

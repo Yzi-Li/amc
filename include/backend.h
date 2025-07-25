@@ -36,7 +36,7 @@ enum BE_STOP_SIGNAL {
  * @note: control signal declaration in this file.
  */
 struct backend {
-	int (*end)();
+	int (*end)(str *output);
 	int (*file_end)(const char *path, int path_len);
 	char *(*file_get_suffix)(int *result_len, int *need_free);
 	int (*file_new)(struct file *f);
@@ -96,6 +96,6 @@ int backend_stop(enum BE_STOP_SIGNAL bess);
  * Compiler completed, notify backend operation.
  * End backend normally.
  */
-int backend_end();
+int backend_end(str *output);
 
 #endif

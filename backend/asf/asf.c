@@ -1,4 +1,5 @@
 #include "include/asf.h"
+#include "include/file.h"
 #include "include/register.h"
 #include "../../include/backend.h"
 #include "../../include/backend/object.h"
@@ -79,18 +80,16 @@ int asf_init(int argc, char *argv[])
 int asf_stop(enum BE_STOP_SIGNAL bess)
 {
 	switch (bess) {
-	case BE_STOP_SIGNAL_NULL:
-		//break;
-	case BE_STOP_SIGNAL_ERR:
 	default:
 		object_head_free(cur_obj);
 		break;
 	}
-
 	return 0;
 }
 
-int asf_end()
+int asf_end(str *output)
 {
+	if (asf_link_files(output))
+		return 1;
 	return 0;
 }

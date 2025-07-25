@@ -7,8 +7,6 @@ fi
 
 items=$(find .. -maxdepth 1 -name '*.yz')
 
-AS="as -gstabs"
-LD="ld"
 COMPILER_BIN="../../amc"
 COMPILER_BIN_DEBUG="../../amc.debug"
 
@@ -24,41 +22,13 @@ else
 	exit 1
 fi
 
-assemble() {
-	local input="$(get_output_asm $1)"
-	local output="$(get_output_obj $input)"
-	echo -e " -> \x1b[33mAssembling\x1b[0m: $(basename $input) -o $output"
-	$AS "$input" -o "$output"
-	local err=$?
-	if [ $err -ne 0 ]; then
-		echo -e "\x1b[31m -> ERROR\x1b[0m: Assembler stopped: $err!"
-		echo -e "  > $AS $input -o $output"
-		echo -en "  > \x1b[34mHINT\x1b[0m: Review this file? [y/n] "
-		read ans
-		if [ "$ans" = "y" ]; then
-			$EDITOR $input
-		else
-			test_failed
-		fi
-	fi
-}
-
-clean_outputs() {
-	local items=$(find $BUILD_DIR -name '*.yz.s')
-	echo "Will remove these files:"
-	for item in $items; do
-		echo "$item"
-	done
-	echo -n "Remove?[y/n] "
-	read ans
-	[ "$ans" = "y" ] && rm -f $items
-}
+mkdir -p ../build
 
 compile() {
 	local input="$1"
-	local output="$(get_output_asm $input)"
+	local output="../build/$(basename $input .yz).out"
 
-	local arg="$input --root-mod $(basename $input .yz)"
+	local arg="$input --root-mod $(basename $input .yz) -o $output"
 	local cmd="$COMPILER $arg"
 	echo -e "==> \x1b[34mCompiling\x1b[0m: $(basename $input) $arg"
 	$cmd
@@ -81,31 +51,8 @@ compile() {
 	fi
 }
 
-get_output_asm() {
-	echo "$BUILD_DIR/$(basename $1).s"
-}
-
-get_output_bin() {
-	echo "$BUILD_DIR/$(basename $1 .yz)"
-}
-
-get_output_obj() {
-	echo "$BUILD_DIR/$(basename $1 .s).o"
-}
-
-get_outputs() {
-	for i in $items; do
-		outputs+="$(get_output_asm $i) "
-	done
-	echo $outputs
-}
-
 get_unit() {
 	echo "$UNITS_DIR/test-$(basename $1).sh"
-}
-
-review() {
-	$EDITOR $(get_outputs)
 }
 
 test_all() {
@@ -126,10 +73,8 @@ test_src() {
 	local input="$1"
 	local unit="$(get_unit $input)"
 	compile "$input"
-	assemble "$input"
-	link_obj "$input"
 	if [ -f "$unit" ]; then
-		test_unit "$unit" "$input" "$(get_output_bin $input)"
+		test_unit "$unit" "$input" "../build/$(basename $input .yz).out"
 	fi
 	echo -e "\x1b[32mDONE\x1b[0m: $(basename $input)"
 }
@@ -148,19 +93,6 @@ test_unit() {
 		exit 1
 	fi
 	echo -e " <- \x1b[33mUnit test end\x1b[0m"
-}
-
-link_obj() {
-	local input="$(get_output_obj $1)"
-	local output="$(get_output_bin $1)"
-	echo -e " -> \x1b[33mLinking\x1b[0m: $(basename $input) -o $output"
-	$LD "$input" -o "$output"
-	local err=$?
-	if [ $err -ne 0 ]; then
-		echo -e "\x1b[31m -> ERROR\x1b[0m: Linker stopped: $err!"
-		echo -e "  > $LD $input -o $output"
-		exit 1
-	fi
 }
 
 case $1 in

@@ -47,9 +47,9 @@ int backend_stop(enum BE_STOP_SIGNAL bess)
 	return 0;
 }
 
-int backend_end()
+int backend_end(str *output)
 {
 	if (backend_flag & BE_FLAG_ENDED)
 		return 0;
-	return backends[cur_backend]->end();
+	return backends[cur_backend]->end(output);
 }

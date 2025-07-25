@@ -48,7 +48,7 @@ struct parser {
 struct global_parser {
 	unsigned int has_err:1, has_main:1;
 	struct parsed_list parsed;
-	str root_dir, root_mod, target_path;
+	str output, root_dir, root_mod, target_path;
 };
 
 extern struct global_parser global_parser;

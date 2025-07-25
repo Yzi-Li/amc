@@ -3,7 +3,6 @@
 #include "imm.h"
 #include "register.h"
 #include "stack.h"
-#include "../../../include/type.h"
 
 enum ASF_VAL_TYPE {
 	ASF_VAL_CONST,
