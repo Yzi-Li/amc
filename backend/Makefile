@@ -2,13 +2,17 @@ include ../config.mk
 include config.mk
 
 .PHONY: all clean debug
-all: $(BACKEND_OBJ)
-debug: $(BACKEND_DEBUG_OBJ)
+all: $(BACKEND_BUILD) $(BACKEND_OBJ)
+debug: $(BACKEND_BUILD) $(BACKEND_DEBUG_OBJ)
 
-%.o: %.c
+$(BACKEND_BUILD):
+	mkdir -p $@
+	mkdir -p $@/asf
+
+$(BACKEND_BUILD)/%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-%.debug.o: %.c
+$(BACKEND_BUILD)/%.debug.o: %.c
 	$(CC) $(CFLAGS) $(CDEBUG) -c $< -o $@
 
 clean:

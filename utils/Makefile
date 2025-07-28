@@ -2,13 +2,16 @@ include ../config.mk
 include config.mk
 
 .PHONY: all clean debug
-all: $(UTILS_OBJ)
-debug: $(UTILS_DEBUG_OBJ)
+all: $(UTILS_BUILD) $(UTILS_OBJ)
+debug: $(UTILS_BUILD) $(UTILS_DEBUG_OBJ)
 
-%.o: %.c
+$(UTILS_BUILD):
+	mkdir -p $@
+
+$(UTILS_BUILD)/%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-%.debug.o: %.c
+$(UTILS_BUILD)/%.debug.o: %.c
 	$(CC) $(CFLAGS) $(CDEBUG) -c $< -o $@
 
 clean:

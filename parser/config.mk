@@ -5,8 +5,9 @@ PARSER_SRC =\
 	comment.c\
 	constructor.c\
 	decorator.c\
-	func.c\
+	enum.c\
 	expr.c\
+	func.c\
 	identifier.c\
 	if.c\
 	indent.c\
@@ -18,7 +19,10 @@ PARSER_SRC =\
 	parser.c\
 	ptr.c\
 	struct.c\
+	symbol.c\
 	type.c\
 	utils.c
-PARSER_OBJ = $(PARSER_SRC:.c=.o)
-PARSER_DEBUG_OBJ = $(PARSER_SRC:.c=.debug.o)
+
+PARSER_BUILD = ../build/parser
+PARSER_OBJ = $(addprefix $(PARSER_BUILD)/, $(PARSER_SRC:.c=.o))
+PARSER_DEBUG_OBJ = $(addprefix $(PARSER_BUILD)/, $(PARSER_SRC:.c=.debug.o))
