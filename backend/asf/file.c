@@ -10,10 +10,10 @@
 #include <unistd.h>
 #endif
 
-static char *assembler = "as";
-static char *linker = "ld";
 static char **assembled_files = NULL;
 static int assembled_files_count = 0;
+static char *assembler = "as";
+static char *linker = "ld";
 
 static int assemble_file(const char *path, int path_len);
 static int assemble_file_call_as(const char *path, int path_len, char *output);

@@ -1,4 +1,5 @@
 #include "../include/backend.h"
+#include "../include/comptime/hook.h"
 #include "../include/scope.h"
 #include "../include/symbol.h"
 #include <stdio.h>
@@ -32,14 +33,14 @@ err_c_in_name:
 	return 1;
 }
 
-int symbol_find(str *token, struct symbol **result, struct scope *scope)
+int symbol_find(str *token, struct symbol **result,
+		struct scope *scope, enum SYMG group_type)
 {
-	for (int i = 0; i < SYM_GROUPS_SIZE; i++) {
-		if (symbol_find_in_group(token, &scope->sym_groups[i], result))
-			return 1;
-	}
+	if (symbol_find_in_group(token, &scope->sym_groups[group_type],
+				result))
+		return 1;
 	if (scope->parent != NULL)
-		return symbol_find(token, result, scope->parent);
+		return symbol_find(token, result, scope->parent, group_type);
 	return 0;
 }
 
@@ -47,9 +48,9 @@ int symbol_find_in_group(str *token, struct symbol_group *group,
 		struct symbol **result)
 {
 	for (int i = 0; i < group->size; i++) {
-		if (token->len != group->symbols[i]->name_len)
+		if (token->len != group->symbols[i]->name.len)
 			continue;
-		if (strncmp(token->s, group->symbols[i]->name,
+		if (strncmp(token->s, group->symbols[i]->name.s,
 					token->len) == 0) {
 			*result = group->symbols[i];
 			return 1;
@@ -59,25 +60,12 @@ int symbol_find_in_group(str *token, struct symbol_group *group,
 	return 0;
 }
 
-int symbol_find_in_group_in_scope(str *token, struct symbol **result,
-		struct scope *scope, enum SYMG group_type)
-{
-	if (symbol_find_in_group(token, &scope->sym_groups[group_type],
-				result))
-		return 1;
-	if (scope->parent != NULL)
-		return symbol_find_in_group_in_scope(token, result,
-				scope->parent, group_type);
-	return 0;
-}
-
 int symbol_register(struct symbol *symbol, struct symbol_group *group)
 {
-	str name_token = {.s = (char*)symbol->name, .len = symbol->name_len};
 	struct symbol *tmp = NULL;
-	if (symbol_check_name(symbol->name, symbol->name_len))
+	if (symbol_check_name(symbol->name.s, symbol->name.len))
 		return 1;
-	if (symbol_find_in_group(&name_token, group, &tmp)) {
+	if (symbol_find_in_group(&symbol->name, group, &tmp)) {
 		if (!tmp->flags.only_declaration)
 			goto err_defined;
 	}
@@ -87,7 +75,8 @@ int symbol_register(struct symbol *symbol, struct symbol_group *group)
 	group->symbols[group->size - 1] = symbol;
 	return 0;
 err_defined:
-	printf("amc: symbol_register: symbol: \"%s\" defined!\n", symbol->name);
+	printf("amc: symbol_register: symbol: \"%s\" defined!\n",
+			symbol->name.s);
 	return 1;
 }
 
@@ -97,7 +86,7 @@ void free_symbol(struct symbol *sym)
 	backend_call(symbol_status_free)(sym->backend_status);
 	free_yz_type_noself(&sym->result_type);
 	free_hooks_noself(sym->hooks);
-	free_safe(sym->name);
+	str_free(&sym->name);
 	free_safe(sym);
 }
 

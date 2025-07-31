@@ -1,6 +1,6 @@
 #include "../include/backend.h"
 #include "../include/scope.h"
-#include "../include/struct.h"
+#include <sctrie.h>
 #include <stdio.h>
 
 int scope_check_is_correct(struct scope *scope)
@@ -32,5 +32,5 @@ void free_scope(struct scope *scope)
 			scope->sym_groups[SYMG_FUNC].size);
 	free_symbol_group(scope->sym_groups[SYMG_SYM].symbols,
 			scope->sym_groups[SYMG_SYM].size);
-	free_structs(scope->structures.elems, scope->structures.count);
+	sctrie_free_tree_noself(&scope->types, free_yz_user_type);
 }

@@ -1,6 +1,6 @@
 pub fn main: i32 =>
 	let a: i32 = 0
-	let b: mut i32 = 0
+	let mut b: i32 = 0
 	if a == 0 =>
 		if 5 == 1 =>
 			let c: i32 = 1

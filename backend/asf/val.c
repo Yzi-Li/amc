@@ -47,7 +47,8 @@ int val_get_identifier(struct symbol *src, struct asf_val *result)
 	return 0;
 err_identifier_not_found:
 	printf("amc[backend.asf:%s]: op_get_valr_identifier: "
-			"Identifier not found: \"%s\"!\n", __FILE__, src->name);
+			"Identifier not found: \"%s\"!\n", __FILE__,
+			src->name.s);
 	return 1;
 }
 

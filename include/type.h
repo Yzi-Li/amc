@@ -2,6 +2,7 @@
 #define AMC_TYPE_H
 #include "../utils/str/str.h"
 #include "../utils/utils.h"
+#include <limits.h>
 
 enum YZ_TYPE {
 	AMC_ERR_TYPE,
@@ -9,6 +10,7 @@ enum YZ_TYPE {
 
 	YZ_ARRAY,
 	YZ_CONST,
+	YZ_ENUM,
 	YZ_NULL,
 	YZ_PTR,
 	YZ_STRUCT,
@@ -40,6 +42,15 @@ typedef struct yz_type {
 	enum YZ_TYPE type;
 } yz_type;
 
+typedef struct yz_user_type {
+	struct yz_user_type *nodes[UCHAR_MAX + 1];
+	enum YZ_TYPE type;
+	union {
+		struct yz_enum *enum_;
+		struct yz_struct *struct_;
+	};
+} yz_user_type;
+
 static const struct yz_type_group yz_type_table[] = {
 	{"void",  YZ_VOID,  0},
 	{"char",  YZ_CHAR,  1},
@@ -55,11 +66,13 @@ static const struct yz_type_group yz_type_table[] = {
 
 enum YZ_TYPE yz_get_int_size(long long l);
 yz_type *yz_get_raw_type(yz_type *type);
+const char *yz_get_raw_type_name(enum YZ_TYPE type);
 const char *yz_get_type_name(yz_type *type);
 enum YZ_TYPE yz_type_get(str *s);
 yz_type *yz_type_max(yz_type *l, yz_type *r);
 
 void free_yz_type(yz_type *self);
 void free_yz_type_noself(yz_type *self);
+void free_yz_user_type(void *self);
 
 #endif

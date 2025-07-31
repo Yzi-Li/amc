@@ -8,6 +8,9 @@ Implementation on C.
 Follow [libgetarg.mk](lib/libgetarg.mk) to install libgetarg
 and configuration makefile.
 
+## Install 'libsctrie'
+Like `Install 'libgetarg'` but see [libsctrie.mk](lib/libsctrie.mk).
+
 ## Build 'amc'
 > Try read [Makefile](Makefile) to learn more build options.
 

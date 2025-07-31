@@ -12,6 +12,7 @@ PARSER_SRC =\
 	if.c\
 	indent.c\
 	keywords.c\
+	let.c\
 	loop.c\
 	match.c\
 	module.c\

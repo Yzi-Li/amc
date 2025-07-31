@@ -1,5 +1,5 @@
 pub fn main: i32 =>
-	let a: mut i32 = 0
+	let mut a: i32 = 0
 	while 2 <= 2 =>
 		a += 1
 	ret 0

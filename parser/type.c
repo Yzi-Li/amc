@@ -1,17 +1,18 @@
 #include "include/array.h"
 #include "include/ptr.h"
 #include "include/struct.h"
+#include "include/symbol.h"
 #include "include/token.h"
 #include "include/type.h"
 #include "../include/parser.h"
 #include "../include/token.h"
+#include <sctrie.h>
 #include <stdio.h>
 #include <string.h>
 
 static int type_get_from_module(str *name, yz_type *type,
 		struct parser *parser);
-static int type_pair_parse_name(struct file *f, str *name);
-static int type_pair_parse_type(struct parser *parser, struct symbol *sym);
+static int type_pair_parse_type(struct parser *parser, yz_type *type);
 
 int type_get_from_module(str *name, yz_type *type, struct parser *parser)
 {
@@ -35,34 +36,13 @@ err_has_space:
 	return 1;
 }
 
-int type_pair_parse_name(struct file *f, str *name)
+int type_pair_parse_type(struct parser *parser, yz_type *type)
 {
-	if (token_read_before(SPECIAL_TOKEN_END, name, f) == NULL)
-		return 1;
-	if (strchr(" \t\n", f->src[f->pos]) != NULL)
-		file_skip_space(f);
-	return 0;
-}
-
-int type_pair_parse_type(struct parser *parser, struct symbol *sym)
-{
-	int ret = 0;
 	if (parser->f->src[parser->f->pos] != ':')
 		goto err_type_indicator_not_found;
 	file_pos_next(parser->f);
 	file_skip_space(parser->f);
-	if (parser->f->src[parser->f->pos] == 'm'
-			&& parser->f->src[parser->f->pos + 1] == 'u'
-			&& parser->f->src[parser->f->pos + 2] == 't') {
-		file_pos_nnext(3, parser->f);
-		file_skip_space(parser->f);
-		sym->flags.mut = 1;
-	}
-	if ((ret = parse_type(parser, &sym->result_type)) > 0)
-		return 1;
-	if (ret == -1)
-		sym->flags.can_null = 1;
-	return 0;
+	return parse_type(parser, type);
 err_type_indicator_not_found:
 	printf("amc: type_pair_parse_name: %lld,%lld: "
 			"Type indicator not found\n",
@@ -101,14 +81,21 @@ err_type_null:
 	return 1;
 }
 
-int parse_type_name_pair(struct parser *parser, struct symbol *result)
+int parse_type_name_pair(struct parser *parser, str *name, yz_type *type)
 {
-	str name = TOKEN_NEW;
-	if (type_pair_parse_name(parser->f, &name))
+	str token = TOKEN_NEW;
+	if (symbol_read(&token, parser->f))
 		return 1;
-	if (type_pair_parse_type(parser, result))
-		return 1;
-	result->name = str2chr(name.s, name.len);
-	result->name_len = name.len;
-	return 0;
+	str_copy(&token, name);
+	return type_pair_parse_type(parser, type);
+}
+
+yz_user_type *yz_user_type_find(str *s, struct scope *scope)
+{
+	yz_user_type *result = sctrie_find_elem(&scope->types, s->s, s->len);
+	if (result != NULL)
+		return result;
+	if (scope->parent != NULL)
+		return yz_user_type_find(s, scope->parent);
+	return NULL;
 }

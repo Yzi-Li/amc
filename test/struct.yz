@@ -2,11 +2,11 @@
 ;    here v
 struct Str =>
 	len: i32
-	siz: mut i32
-	s: mut *i32
+	mut siz: i32
+	mut s: *i32
 
 pub fn main: i32 =>
-	let test: mut Str = { 0, 1, null }
+	let mut test: Str = { 0, 1, null }
 	let a: i32 = test.siz
 	test.siz += 1
 	test.s = &test.siz

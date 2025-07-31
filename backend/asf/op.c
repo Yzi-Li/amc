@@ -117,12 +117,10 @@ str *op_get_vall_from_mem_or_reg(struct object_node *parent, struct expr *e,
 str *op_get_vall_identifier(struct object_node *parent, struct symbol *src,
 		enum ASF_REGS dest)
 {
-	char *name = str2chr(src->name, src->name_len);
 	struct asf_stack_element *identifier = src->backend_status;
 	struct object_node *node = NULL;
 	if (identifier == NULL)
 		goto err_identifier_not_found;
-	free(name);
 	node = malloc(sizeof(*node));
 	if (op_init_obj_node(parent, node))
 		goto err_free_node;
@@ -131,8 +129,8 @@ str *op_get_vall_identifier(struct object_node *parent, struct symbol *src,
 	return asf_reg_get_str(&asf_regs[dest]);
 err_identifier_not_found:
 	printf("amc[backend.asf:%s]: op_get_vall_identifier: "
-			"Identifier not found: \"%s\"!\n", __FILE__, name);
-	free(name);
+			"Identifier not found: \"%s\"!\n", __FILE__,
+			src->name.s);
 	return NULL;
 err_free_node:
 	free(node);
@@ -198,7 +196,8 @@ str *op_get_valr_identifier(struct object_node *parent, struct symbol *src)
 	return asf_stack_get_element(identifier, 0);
 err_identifier_not_found:
 	printf("amc[backend.asf:%s]: op_get_valr_identifier: "
-			"Identifier not found: \"%s\"!\n", __FILE__, src->name);
+			"Identifier not found: \"%s\"!\n", __FILE__,
+			src->name.s);
 	return NULL;
 }
 

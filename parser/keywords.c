@@ -6,8 +6,7 @@
 #define KW_DEF(NAME, NAME_LEN, PARSE_FUNC,            \
 		REC, TOPLEVEL, IN_BLOCK)              \
 	{                                             \
-		.name           = NAME,               \
-		.name_len       = NAME_LEN,           \
+		.name           = {.len = NAME_LEN, .s =NAME}, \
 		.parse_function = PARSE_FUNC,         \
 		.flags = {                            \
 			.can_null         = 0,        \
@@ -26,8 +25,8 @@
 
 static struct symbol keywords[] = {
 	KW_DEF("elif",   4, parse_elif,      KW_REC, !KW_TOPLEVEL,  KW_IN_BLOCK),
-	KW_DEF("elif",   4, parse_elif,      KW_REC, !KW_TOPLEVEL,  KW_IN_BLOCK),
 	KW_DEF("else",   4, parse_else,      KW_REC, !KW_TOPLEVEL,  KW_IN_BLOCK),
+	KW_DEF("enum",   4, parse_enum,     !KW_REC,  KW_TOPLEVEL,  KW_IN_BLOCK),
 	KW_DEF("fn",     2, parse_func_def, !KW_REC,  KW_TOPLEVEL, !KW_IN_BLOCK),
 	KW_DEF("if",     2, parse_if,        KW_REC, !KW_TOPLEVEL,  KW_IN_BLOCK),
 	KW_DEF("let",    3, parse_let,      !KW_REC,  KW_TOPLEVEL,  KW_IN_BLOCK),
@@ -50,9 +49,9 @@ int keyword_end(struct file *f)
 int keyword_find(str *token, struct symbol **result)
 {
 	for (int i = 0; i < LENGTH(keywords); i++) {
-		if (token->len != keywords[i].name_len)
+		if (token->len != keywords[i].name.len)
 			continue;
-		if (strncmp(token->s, keywords[i].name, token->len) == 0) {
+		if (strncmp(token->s, keywords[i].name.s, token->len) == 0) {
 			*result = &keywords[i];
 			return 1;
 		}

@@ -306,7 +306,8 @@ int expr_term(struct parser *parser, int top, yz_val *v)
 		return expr_term_func(parser, top, v);
 	} else if (parser->f->src[parser->f->pos] == '"') {
 		return expr_term_str(parser, top, v);
-	} else if ((unary = expr_unary_get_op(parser->f->src[parser->f->pos])) != NULL) {
+	} else if ((unary = expr_unary_get_op(parser->f->src[parser->f->pos]))
+			!= NULL) {
 		return expr_unary(parser, top, v, unary);
 	} else if (parser->f->src[parser->f->pos] == CHR_NULL[0]
 			&& CHR_IS_NULL(&parser->f->src[parser->f->pos])) {
@@ -448,7 +449,8 @@ err_backend_failed:
 	return 1;
 }
 
-int expr_unary(struct parser *parser, int top, yz_val *v, struct expr_operator *op)
+int expr_unary(struct parser *parser, int top, yz_val *v,
+		struct expr_operator *op)
 {
 	int ret = 0;
 	struct expr *unary = NULL;

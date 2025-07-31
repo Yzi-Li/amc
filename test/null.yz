@@ -1,3 +1,4 @@
+; TODO
 fn funca(a: *i32): i32 =>
 	let b: i32 = *a
 	ret b + 2
@@ -15,11 +16,12 @@ fn funcd(a: *i32?): *i32? =>
 	ret a
 
 pub fn main: i32 =>
-	let a: mut i32 = 1
-	let b: *i32? = &a
-	let c: mut *i32 = &a
-	if b == null =>
-		ret 1
-	a = [funca b]
-	c = [funcd b]
+	let mut a: i32 = 1
+	let mut b: *i32? = &a
+	let mut c: *i32 = &a
+	; |? ret 1
+	; ERROR
+	; a = [funca b]
+	; c = [funcd b]
+	; |? ret 1
 	ret a

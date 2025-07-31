@@ -121,7 +121,6 @@ err_cannot_handle_arg:
 
 yz_val **func_call_read_args(struct parser *parser)
 {
-	char *err_msg;
 	yz_val **result = calloc(parser->sym->argc, sizeof(*result));
 	struct func_call_handle *handle = malloc(sizeof(*handle));
 	handle->f = parser->f;
@@ -146,14 +145,12 @@ err_free_result:
 	free_safe(result);
 	return NULL;
 err_too_few_arg:
-	err_msg = str2chr(parser->sym->name, parser->sym->name_len);
 	printf("amc: func_call_read_args: %lld,%lld: Too few arguments!\n"
 			"| Function: \"%s\"\n"
 			"| Need %d but only has %d\n",
 			parser->f->cur_line, parser->f->cur_column,
-			err_msg,
+			parser->sym->name.s,
 			parser->sym->argc, handle->index);
-	free(err_msg);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	goto err_free_result;
 }
@@ -179,7 +176,7 @@ int func_call_read_callee(struct parser *parser, struct symbol **callee)
 			return 1;
 		scope = mod->scope;
 	}
-	if (!symbol_find_in_group_in_scope(&token, &result, scope, SYMG_FUNC))
+	if (!symbol_find(&token, &result, scope, SYMG_FUNC))
 		goto err_func_not_found;
 	if (!result->flags.in_block)
 		goto err_func_not_in_block;
@@ -195,21 +192,17 @@ err_func_not_found:
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_func_not_in_block:
-	err_msg = str2chr(result->name, result->name_len);
 	printf("amc: func_call_read: %lld,%lld: "
 			"Function: '%s' cannot be called in block!\n",
-			orig_line, orig_column, err_msg);
-	free(err_msg);
+			orig_line, orig_column, result->name.s);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_func_miss_args:
-	err_msg = str2chr(result->name, result->name_len);
 	printf("amc: func_call_read: %lld,%lld: "
 			"Function: '%s' need %d arguments "
 			"but not have any arguments!\n",
 			orig_line, orig_column,
-			err_msg, result->argc);
-	free(err_msg);
+			result->name.s, result->argc);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
@@ -244,7 +237,7 @@ err_not_func_def_start:
 	printf("amc: func_def_block_start: %lld,%lld: "
 			"Function: '%s' define start character not found\n",
 			parser->f->cur_line, parser->f->cur_column,
-			parser->sym->name);
+			parser->sym->name.s);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }
@@ -303,11 +296,15 @@ err_free_fn:
 
 int func_def_read_arg(const char *se, struct file *f, void *data)
 {
-	struct symbol *sym = NULL;
 	struct parser *parser = data;
+	int ret = 0;
+	struct symbol *sym = NULL;
 	sym = calloc(1, sizeof(*sym));
-	if (parse_type_name_pair(parser, sym))
+	if ((ret = parse_type_name_pair(parser, &sym->name,
+					&sym->result_type)) > 0)
 		goto err_free_sym;
+	if (ret == -1)
+		sym->flags.can_null = 1;
 	sym->argc = parser->scope->fn->argc;
 	sym->args = NULL;
 	sym->parse_function = NULL;
@@ -360,12 +357,11 @@ int func_def_read_name(struct parser *parser)
 		file_skip_space(parser->f);
 		keyword_end(parser->f);
 	}
-	parser->scope->fn->name = str2chr(token.s, token.len);
-	parser->scope->fn->name_len = token.len;
+	str_copy(&token, &parser->scope->fn->name);
 	if (backend_call(symbol_get_path)(&parser->scope->fn->path,
 				&parser->path,
-				parser->scope->fn->name,
-				parser->scope->fn->name_len))
+				parser->scope->fn->name.s,
+				parser->scope->fn->name.len))
 		goto err_get_path_failed;
 	return 0;
 err_eof:
@@ -462,7 +458,7 @@ int parse_func_def(struct parser *parser)
 		return 1;
 	if (func_def_read_name(parser))
 		goto err_free_result;
-	if (func_def_check_main(result->name, result->name_len))
+	if (func_def_check_main(result->name.s, result->name.len))
 		return func_def_main(parser);
 	if (parser->f->src[parser->f->pos] != ':'
 			&& func_def_read_args(parser))
@@ -504,8 +500,8 @@ int parse_func_ret(struct parser *parser)
 	keyword_end(parser->f);
 	if (func_ret_get_val(&val, parser->scope->fn, expr))
 		goto err_get_val_failed;
-	if (backend_call(func_ret)(&val,
-				strncmp(parser->scope->fn->name, "main", 4) == 0))
+	if (backend_call(func_ret)(&val, strncmp(parser->scope->fn->name.s,
+					"main", 4) == 0))
 		return err_print_pos(__func__, "Backend call failed!",
 				orig_line, orig_column);
 	free_expr(expr);
@@ -527,7 +523,6 @@ err_get_val_failed:
 int func_call_read(struct parser *parser, struct symbol **fn)
 {
 	struct symbol *callee = NULL;
-	char *err_msg = NULL;
 	i64 orig_column = parser->f->cur_column,
 	    orig_line = parser->f->cur_line;
 	if (func_call_read_callee(parser, &callee))
@@ -541,11 +536,9 @@ int func_call_read(struct parser *parser, struct symbol **fn)
 		*fn = callee;
 	return 0;
 err_func_cannot_rec:
-	err_msg = str2chr(callee->name, callee->name_len);
 	printf("amc: func_call_read: %lld,%lld: "
 			"Function: '%s' cannot be recursively called\n",
-			orig_line, orig_column, err_msg);
-	free(err_msg);
+			orig_line, orig_column, callee->name.s);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 }

@@ -1,8 +1,11 @@
 #include "../include/array.h"
+#include "../include/enum.h"
 #include "../include/expr.h"
+#include "../include/struct.h"
 #include "../include/symbol.h"
 #include "../include/type.h"
 #include "../include/ptr.h"
+#include "../utils/die.h"
 #include "../utils/utils.h"
 #include <limits.h>
 #include <string.h>
@@ -78,13 +81,9 @@ yz_type *yz_get_raw_type(yz_type *type)
 	return type;
 }
 
-const char *yz_get_type_name(yz_type *type)
+const char *yz_get_raw_type_name(enum YZ_TYPE type)
 {
-	yz_type *raw = yz_get_raw_type(type);
-	int index = raw->type - YZ_TYPE_OFFSET;
-	if (raw->type >= YZ_TYPE_OFFSET && index < LENGTH(yz_type_table))
-		return yz_type_table[index].name;
-	switch (raw->type) {
+	switch (type) {
 	case AMC_ERR_TYPE:
 		return "AMC_ERR_TYPE";
 		break;
@@ -114,8 +113,17 @@ const char *yz_get_type_name(yz_type *type)
 		break;
 	default:
 		return "(Cannot get type)";
+		break;
 	}
-	return NULL;
+}
+
+const char *yz_get_type_name(yz_type *type)
+{
+	yz_type *raw = yz_get_raw_type(type);
+	int index = raw->type - YZ_TYPE_OFFSET;
+	if (raw->type >= YZ_TYPE_OFFSET && index < LENGTH(yz_type_table))
+		return yz_type_table[index].name;
+	return yz_get_raw_type_name(raw->type);
 }
 
 enum YZ_TYPE yz_type_get(str *s)
@@ -164,4 +172,20 @@ void free_yz_type_noself(yz_type *self)
 		return;
 		break;
 	}
+}
+
+void free_yz_user_type(void *self)
+{
+	yz_user_type *type = self;
+	if (self == NULL)
+		return;
+	switch (type->type) {
+	case YZ_ENUM:   free_yz_enum(type->enum_);     break;
+	case YZ_STRUCT: free_yz_struct(type->struct_); break;
+	default:
+		die("amc: free_yz_user_type: Unknown type: '%s'!\n",
+				yz_get_raw_type_name(type->type));
+		break;
+	}
+	free(self);
 }

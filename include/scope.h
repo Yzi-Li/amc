@@ -1,7 +1,7 @@
 #ifndef AMC_SCOPE_H
 #define AMC_SCOPE_H
-#include "symbol.h"
 #include "backend/scope.h"
+#include "symbol.h"
 
 enum SCOPE_STATUS_TYPE {
 	SCOPE_AFTER_IF,
@@ -18,10 +18,8 @@ struct scope {
 	backend_scope_status *status;
 	enum SCOPE_STATUS_TYPE status_type;
 
-	struct {
-		yz_struct **elems;
-		int count;
-	} structures;
+	struct yz_user_type *types[UCHAR_MAX + 1];
+
 	struct symbol_group sym_groups[SYM_GROUPS_SIZE];
 };
 

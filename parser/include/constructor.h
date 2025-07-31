@@ -1,7 +1,7 @@
 #ifndef AMC_PARSER_CONSTRUCTOR_H
 #define AMC_PARSER_CONSTRUCTOR_H
 #include "../../include/symbol.h"
-#include "../../include/type.h"
+#include "../../include/val.h"
 
 struct constructor_handle {
 	int index;

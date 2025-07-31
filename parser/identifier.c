@@ -1,10 +1,10 @@
 #include "include/array.h"
+#include "include/enum.h"
 #include "include/expr.h"
 #include "include/identifier.h"
-#include "include/keywords.h"
 #include "include/struct.h"
+#include "include/symbol.h"
 #include "include/token.h"
-#include "include/type.h"
 #include "include/utils.h"
 #include "../include/backend.h"
 #include "../include/comptime/symbol.h"
@@ -20,9 +20,7 @@
 static int identifier_assign_backend_call(struct symbol *sym, yz_val *val,
 		enum OP_ID mode);
 static int identifier_handle_val_type(yz_type *src, yz_type *dest);
-static int let_init_constructor(struct parser *parser, struct symbol *sym);
-static int let_init_val(struct parser *parser, struct symbol *sym);
-static int let_reg_sym(struct parser *parser, struct symbol *sym);
+static int identifier_read_enum(struct parser *parser, yz_val *val, str *name);
 
 int identifier_assign_backend_call(struct symbol *sym, yz_val *val,
 		enum OP_ID mode)
@@ -55,71 +53,27 @@ int identifier_handle_val_type(yz_type *src, yz_type *dest)
 	return 0;
 }
 
-int let_init_constructor(struct parser *parser, struct symbol *sym)
+int identifier_read_enum(struct parser *parser, yz_val *val, str *name)
 {
+	char *err_msg;
+	yz_enum_item *item = NULL;
+	yz_enum *src = yz_enum_find(name, parser->scope);
+	str token = TOKEN_NEW;
+	if (src == NULL)
+		goto err_enum_not_found;
 	file_pos_next(parser->f);
-	file_skip_space(parser->f);
-	if (parser->f->src[parser->f->pos] == '\n')
-		file_line_next(parser->f);
-	switch (sym->result_type.type) {
-	case YZ_ARRAY:
-		return constructor_array(parser, sym);
-		break;
-	case YZ_STRUCT:
-		return constructor_struct(parser, sym);
-		break;
-	default:
+	if (symbol_read(&token, parser->f))
 		return 1;
-		break;
-	}
-	return 0;
-}
-
-int let_init_val(struct parser *parser, struct symbol *sym)
-{
-	file_pos_next(parser->f);
-	file_skip_space(parser->f);
-	if (parser->f->src[parser->f->pos] == '{')
-		return let_init_constructor(parser, sym);
-	if (identifier_assign_val(parser, sym, OP_ASSIGN))
+	if ((item = yz_enum_item_find(&token, src)) == NULL)
 		return 1;
-	return keyword_end(parser->f);
-}
-
-int let_reg_sym(struct parser *parser, struct symbol *sym)
-{
-	sym->argc = 1;
-	if (symbol_register(sym, &parser->scope->sym_groups[SYMG_SYM]))
-		goto err_cannot_register_sym;
+	val->type = src->type;
 	return 0;
-err_cannot_register_sym:
-	printf("amc: let_reg_sym: %lld,%lld: Cannot register symbol!\n",
-			parser->f->cur_line, parser->f->cur_column);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
-}
-
-int parse_let(struct parser *parser)
-{
-	struct symbol *result = calloc(1, sizeof(*result));
-	result->type = SYM_IDENTIFIER;
-	if (parse_type_name_pair(parser, result))
-		goto err_free_result;
-	if (let_reg_sym(parser, result))
-		goto err_free_result;
-	if (parser->f->src[parser->f->pos] == '\n')
-		return file_line_next(parser->f);
-	if (parse_comment(parser->f))
-		return 0;
-	if (parser->f->src[parser->f->pos] != '=')
-		goto err_syntax_err;
-	return let_init_val(parser, result);
-err_syntax_err:
-	printf("amc: parse_let: %lld,%lld: Syntax error!\n",
-			parser->f->cur_line, parser->f->cur_column);
-err_free_result:
-	free_symbol(result);
-	backend_stop(BE_STOP_SIGNAL_ERR);
+err_enum_not_found:
+	err_msg = str2chr(name->s, name->len);
+	printf("amc: identifier_read_enum: %lld,%lld: Enum: '%s' not found!\n",
+			parser->f->cur_line, parser->f->cur_column,
+			err_msg);
+	free(err_msg);
 	return 1;
 }
 
@@ -170,6 +124,14 @@ int identifier_assign_val(struct parser *parser, struct symbol *sym,
 	return 0;
 }
 
+int identifier_check_mut(struct file *f)
+{
+	str expect = {.len = 3, .s = "mut"};
+	if (token_try_read(&expect, f))
+		return 1;
+	return 0;
+}
+
 yz_val *identifier_expr_val_handle(struct expr **e, yz_type *type)
 {
 	yz_val *val = NULL;
@@ -195,9 +157,11 @@ int identifier_read(struct parser *parser, yz_val *val)
 	str token = TOKEN_NEW;
 	if (token_read_before(SPECIAL_TOKEN_END, &token, parser->f) == NULL)
 		return 1;
-	if (!symbol_find_in_group_in_scope(&token, &sym, parser->scope,
-				SYMG_SYM))
-		goto err_identifier_not_found;
+	if (!symbol_find(&token, &sym, parser->scope, SYMG_SYM)) {
+		if (parser->f->src[parser->f->pos] != '.')
+			goto err_identifier_not_found;
+		return identifier_read_enum(parser, val, &token);
+	}
 	val->v = sym;
 	val->type.type = AMC_SYM;
 	val->type.v = val->v;

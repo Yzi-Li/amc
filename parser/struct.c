@@ -13,6 +13,7 @@
 #include "../include/comptime/symbol.h"
 #include "../include/parser.h"
 #include "../include/token.h"
+#include <sctrie.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -75,7 +76,7 @@ err_cannot_apply_expr:
 
 int struct_def_read_elem(struct parser *parser, yz_struct *src)
 {
-	int indent = 0;
+	int indent = 0, ret = 0;
 	i64 orig_column = parser->f->cur_column,
 	    orig_line = parser->f->cur_line,
 	    orig_pos = parser->f->pos;
@@ -90,8 +91,12 @@ int struct_def_read_elem(struct parser *parser, yz_struct *src)
 		return 0;
 	elem = calloc(1, sizeof(*elem));
 	elem->type = SYM_STRUCT_ELEM;
-	if (parse_type_name_pair(parser, elem))
+	elem->flags.mut = identifier_check_mut(parser->f);
+	if ((ret = parse_type_name_pair(parser, &elem->name,
+					&elem->result_type)) > 0)
 		goto err_free_elem;
+	if (ret == -1)
+		elem->flags.can_null = 1;
 	if (struct_def_reg_elem(src, elem))
 		goto err_free_elem;
 	return keyword_end(parser->f);
@@ -141,14 +146,20 @@ int struct_def_read_start(struct file *f, const char *name)
 	return 1;
 }
 
-int struct_def_reg(yz_struct *src, struct scope *scope)
+int struct_def_reg(yz_struct *self, struct scope *scope)
 {
-	scope->structures.count += 1;
-	scope->structures.elems = realloc(scope->structures.elems,
-			sizeof(*scope->structures.elems)
-			* scope->structures.count);
-	scope->structures.elems[scope->structures.count - 1] = src;
+	yz_user_type *type = sctrie_append_elem(&scope->types, sizeof(*type),
+			self->name.s, self->name.len);
+	if (type == NULL)
+		goto err_defined;
+	type->type = YZ_STRUCT;
+	type->struct_ = self;
 	return 0;
+err_defined:
+	printf("amc: struct_def_reg: "
+			"Type defined: '%s'\n", self->name.s);
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 1;
 }
 
 int struct_def_reg_elem(yz_struct *src, struct symbol *elem)
@@ -194,9 +205,9 @@ int struct_get_elem_read_name(struct file *f, str *name)
 int struct_get_elem_read_elem(str *name, yz_struct *src)
 {
 	for (int i = 0; i < src->elem_count; i++) {
-		if (name->len != src->elems[i]->name_len)
+		if (name->len != src->elems[i]->name.len)
 			continue;
-		if (strncmp(name->s, src->elems[i]->name, name->len) == 0)
+		if (strncmp(name->s, src->elems[i]->name.s, name->len) == 0)
 			return i;
 	}
 	return -1;
@@ -252,10 +263,10 @@ int parse_struct(struct parser *parser)
 	if ((ret = struct_def_read_name(parser->f, &name)) > 0)
 		return 1;
 	result = calloc(1, sizeof(*result));
-	result->name = str2chr(name.s, name.len);
+	str_copy(&name, &result->name);
 	if (ret == -1)
 		result->flags.rec = 1;
-	if (struct_def_read_start(parser->f, result->name))
+	if (struct_def_read_start(parser->f, result->name.s))
 		goto err_free_result;
 	if (struct_def_read_elems(parser, result))
 		goto err_free_result;
@@ -265,7 +276,7 @@ int parse_struct(struct parser *parser)
 		goto err_free_result;
 	return 0;
 err_free_result:
-	free(result->name);
+	str_free(&result->name);
 	free(result);
 	return 1;
 }
@@ -323,22 +334,8 @@ int struct_set_elem(struct parser *parser, struct symbol *sym, int index,
 
 yz_struct *struct_type_find(str *s, struct scope *scope)
 {
-	yz_struct *result = NULL;
-	if ((result = struct_type_get(s, scope->structures.elems,
-					scope->structures.count)) != NULL)
-		return result;
-	if (scope->parent != NULL)
-		return struct_type_find(s, scope->parent);
-	return NULL;
-}
-
-yz_struct *struct_type_get(str *s, yz_struct **structures, int count)
-{
-	for (int i = 0; i < count; i++) {
-		if (s->len != strlen(structures[i]->name))
-			continue;
-		if (strncmp(s->s, structures[i]->name, s->len) == 0)
-			return structures[i];
-	}
-	return NULL;
+	struct yz_user_type *type = yz_user_type_find(s, scope);
+	if (!type || type->type != YZ_STRUCT)
+		return NULL;
+	return type->struct_;
 }

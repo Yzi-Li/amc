@@ -4,6 +4,7 @@
 #include "../../include/symbol.h"
 
 int parse_type(struct parser *parser, yz_type *result);
-int parse_type_name_pair(struct parser *parser, struct symbol *result);
+int parse_type_name_pair(struct parser *parser, str *name, yz_type *type);
+yz_user_type *yz_user_type_find(str *s, struct scope *scope);
 
 #endif

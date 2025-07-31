@@ -9,7 +9,7 @@ int comptime_check_sym_can_assign(struct symbol *sym)
 	return 1;
 err_sym_is_immut:
 	printf("amc: comptime_check_sym_can_assign: "
-			"ERROR: Symbol: \"%s\" is immutable!\n", sym->name);
+			"ERROR: Symbol: \"%s\" is immutable!\n", sym->name.s);
 	return 0;
 }
 

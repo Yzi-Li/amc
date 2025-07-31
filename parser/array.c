@@ -181,7 +181,8 @@ int array_get_elem(struct parser *parser, yz_val *val)
 	return array_get_elem_handle_val(val, offset, sym);
 err_not_arr:
 	printf("amc: array_get_elem: %lld,%lld: Symbol: '%s' isn't array!\n",
-			parser->f->cur_line, parser->f->cur_column, sym->name);
+			parser->f->cur_line, parser->f->cur_column,
+			sym->name.s);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_not_end:

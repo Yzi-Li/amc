@@ -8,7 +8,7 @@
 #include "../utils/str/str.h"
 #include "include/keywords.h"
 #include <limits.h>
-#include <sctire.h>
+#include <sctrie.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -198,7 +198,8 @@ int parser_init(const char *path, struct file *f)
 int parser_imported_append(struct parser_imported *imported, yz_module *mod)
 {
 	struct parser_imported_node *cur =
-		sctire_append_elem(imported, mod->name.s, mod->name.len);
+		sctrie_append_elem(imported, sizeof(*cur),
+				mod->name.s, mod->name.len);
 	imported->count += 1;
 	imported->mods = realloc(imported->mods, sizeof(*imported->mods)
 			* imported->count);
@@ -210,14 +211,14 @@ int parser_imported_append(struct parser_imported *imported, yz_module *mod)
 yz_module *parser_imported_find(struct parser_imported *imported, str *name)
 {
 	struct parser_imported_node *result =
-		sctire_find_elem(imported, name->s, name->len);
+		sctrie_find_elem(imported, name->s, name->len);
 	return result ? result->mod : NULL;
 }
 
 struct scope *parser_parsed_file_find(str *path)
 {
 	struct parsed_node *result =
-		sctire_find_elem(&global_parser.parsed, path->s, path->len);
+		sctrie_find_elem(&global_parser.parsed, path->s, path->len);
 	return result ? result->scope : NULL;
 }
 

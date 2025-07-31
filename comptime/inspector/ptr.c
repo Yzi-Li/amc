@@ -21,7 +21,7 @@ int check_val_type(yz_type *val)
 err_not_ptr:
 	printf("amc[comptime:%s]: check_val_type:\n"
 			"| Value(symbol): '%s' isn't pointer.\n",
-			__FILE__, sym->name);
+			__FILE__, sym->name.s);
 	return 0;
 }
 
@@ -36,13 +36,13 @@ int comptime_ptr_check_can_null(yz_val *val, struct symbol *sym)
 err:
 	printf("| comptime_ptr_check_can_null: "
 			"Cannot use null for Symbol: '%s'\n",
-			sym->name);
+			sym->name.s);
 	return 0;
 err_cannot_null:
 	printf("amc: comptime_ptr_check_can_null:\n"
 			"| ERROR: Cannot use null for symbol: '%s'!\n"
 			"| HINT:  Use 'if' to check symbol before use it.\n",
-			sym->name);
+			sym->name.s);
 	return 0;
 }
 
@@ -57,7 +57,7 @@ int comptime_ptr_check_can_ret(struct symbol *sym, struct symbol *fn)
 	printf("amc: comptime_ptr_check_can_ret:\n"
 			"| Pointer: '%s' must be checked is null.\n"
 			"| Function: '%s' must return a non null pointer.\n",
-			sym->name, fn->name);
+			sym->name.s, fn->name.s);
 	return 0;
 }
 
@@ -69,6 +69,6 @@ int comptime_ptr_check_can_use(struct symbol *sym)
 		return 1;
 	printf("amc: comptime_ptr_check_can_use:\n"
 			"| Pointer: '%s' must be checked is null.\n",
-			sym->name);
+			sym->name.s);
 	return 0;
 }

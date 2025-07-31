@@ -1,0 +1,4 @@
+enum Bool: i32 => true | false
+
+pub fn main: i32 =>
+	ret Bool.true

@@ -1,19 +1,20 @@
 #ifndef AMC_SYMBOL_H
 #define AMC_SYMBOL_H
+#include "backend/symbol.h"
+#include "type.h"
 #include "../utils/cint.h"
 #include "../utils/str/str.h"
-#include "backend/symbol.h"
-#include "comptime/hook.h"
-#include "type.h"
-#include "struct.h"
+#include <ctype.h>
 #include <limits.h>
+
+#define is_sym_chr(c) (isalpha(c) || isdigit(c) || (c) == '_' || (c) == '-')
 
 enum SYMG {
 	SYMG_SYM  = 0,
-	SYMG_FUNC = 1
-};
+	SYMG_FUNC = 1,
 
-#define SYM_GROUPS_SIZE 2
+	SYM_GROUPS_SIZE
+};
 
 enum SYM_TYPE {
 	SYM_FUNC,
@@ -37,9 +38,7 @@ struct symbol_flag {
 struct parser;
 struct scope;
 struct symbol {
-	char *name;
-	u32 name_len;
-	str path;
+	str name, path;
 	int (*parse_function)(struct parser *parser);
 	struct symbol_flag flags;
 	enum SYM_TYPE type;
@@ -60,11 +59,10 @@ struct symbol_group {
 
 int symbol_args_append(struct symbol *self, struct symbol *sym);
 int symbol_check_name(const char *name, int len);
-int symbol_find(str *token, struct symbol **result, struct scope *scope);
+int symbol_find(str *token, struct symbol **result,
+		struct scope *scope, enum SYMG group_type);
 int symbol_find_in_group(str *token, struct symbol_group *group,
 		struct symbol **result);
-int symbol_find_in_group_in_scope(str *token, struct symbol **result,
-		struct scope *scope, enum SYMG group_type);
 int symbol_register(struct symbol *symbol, struct symbol_group *group);
 
 void free_symbol(struct symbol *sym);

@@ -99,6 +99,12 @@ int block_parse_line(struct parser *parser)
 	return block_parse_expr(parser);
 }
 
+int block_check_start(struct file *f)
+{
+	str expect = {.len = 2, .s = "=>"};
+	return token_try_read(&expect, f);
+}
+
 int parse_block(struct parser *parser)
 {
 	int ret = 0;

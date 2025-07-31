@@ -44,7 +44,7 @@ CLIBS  = -L$(STRDIR) -lstr \
 	$(LIBGETARG) $(LIBSCTRIE)
 
 .PHONY: all clean debug debug_target
-.PHONY: $(BUILD) $(STRLIB)
+.PHONY: $(STRLIB)
 .PHONY: $(COREDIR) $(COMPTIME) $(PARSER) $(BACKEND) $(UTILSDIR)
 all: $(TARGET)
 debug: $(DEBUG_TARGET)
