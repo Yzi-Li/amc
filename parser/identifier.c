@@ -67,6 +67,7 @@ int identifier_read_enum(struct parser *parser, yz_val *val, str *name)
 	if ((item = yz_enum_item_find(&token, src)) == NULL)
 		return 1;
 	val->type = src->type;
+	val->l = item->u;
 	return 0;
 err_enum_not_found:
 	err_msg = str2chr(name->s, name->len);

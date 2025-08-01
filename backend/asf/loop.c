@@ -1,6 +1,7 @@
 #include "include/asf.h"
 #include "include/jmp.h"
 #include "include/label.h"
+#include "include/loop.h"
 #include "include/scope.h"
 #include "../../include/backend/object.h"
 #include <stdlib.h>
@@ -46,6 +47,7 @@ int asf_while_begin(backend_scope_status *raw_status)
 	if (status->type != ASF_SCOPE_STATUS_NO)
 		if (asf_scope_end(raw_status))
 			return 1;
+	status->type = ASF_SCOPE_STATUS_LOOP;
 	label = asf_label_alloc();
 	if (loop_append_label(label))
 		return 1;
@@ -54,11 +56,21 @@ int asf_while_begin(backend_scope_status *raw_status)
 	return 0;
 }
 
+int asf_while_cond(backend_scope_status *raw_status)
+{
+	struct asf_scope_status *status = raw_status;
+	status->loop.cond_end_label = asf_label_get_last();
+	return 0;
+}
+
 int asf_while_end(backend_scope_status *raw_status)
 {
-	if (asf_scope_end(raw_status))
-		return 1;
-	if (loop_append_label(asf_label_get_last()))
+	return asf_scope_end(raw_status);
+}
+
+int asf_loop_handle_end(struct asf_loop_handle *handle)
+{
+	if (loop_append_label(handle->cond_end_label))
 		return 1;
 	return 0;
 }

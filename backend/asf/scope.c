@@ -46,6 +46,12 @@ int asf_scope_end(backend_scope_status *raw_status)
 		if (scope_end_normal(status))
 			return 1;
 		break;
+	case ASF_SCOPE_STATUS_LOOP:
+		if (scope_end_normal(status))
+			return 1;
+		if (asf_loop_handle_end(&status->loop))
+			return 1;
+		break;
 	default:
 		goto err_unsupport_type;
 		break;

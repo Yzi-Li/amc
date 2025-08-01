@@ -47,6 +47,8 @@ int parse_while(struct parser *parser)
 		goto err_backend_failed;
 	if (loop_condition_parse(parser))
 		return 1;
+	if (backend_call(while_cond)(parser->scope->status))
+		goto err_backend_failed;
 	if (loop_body_parse(parser))
 		return 1;
 	if (backend_call(while_end)(parser->scope->status))

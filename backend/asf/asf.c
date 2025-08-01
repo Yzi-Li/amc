@@ -69,6 +69,7 @@ struct backend backend_asf = {
 	.var_set        = asf_var_set,
 
 	.while_begin = asf_while_begin,
+	.while_cond  = asf_while_cond,
 	.while_end   = asf_while_end
 };
 

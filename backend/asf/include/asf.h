@@ -66,6 +66,7 @@ int asf_var_immut_init(struct symbol *sym, yz_val *val);
 int asf_var_set(struct symbol *sym, enum OP_ID mode, yz_val *val);
 
 int asf_while_begin(backend_scope_status *raw_status);
+int asf_while_cond(backend_scope_status *raw_status);
 int asf_while_end(backend_scope_status *raw_status);
 
 #endif

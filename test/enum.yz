@@ -1,4 +1,19 @@
-enum Bool: i32 => true | false
+struct A =>
+	i: i32
+	a: i32
+	mut b: i32
+
+enum Bool: i32 => true
+| false
+; TODO: match
+;enum struct A =>
+;| default =>
+;	i = 0
+;	a = 0
+;	b = 0
+;| err =>
+;	i = 1
+;	b = 1
 
 pub fn main: i32 =>
-	ret Bool.true
+	ret Bool.false

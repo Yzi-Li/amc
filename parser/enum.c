@@ -14,7 +14,6 @@
 static int enum_def_multi_line(yz_enum *self, struct parser *parser);
 static int enum_def_multi_line_check_end(struct file *f);
 static int enum_def_read_item(yz_enum *self, struct file *f);
-static int enum_def_read_item_check_end(struct file *f);
 static int enum_def_reg(yz_enum *self, struct scope *scope);
 static int enum_def_reg_item(yz_enum *self, yz_enum_item *item);
 static int enum_def_single_line(yz_enum *self, struct parser *parser);
@@ -52,19 +51,9 @@ int enum_def_read_item(yz_enum *self, struct file *f)
 	item->u = self->count;
 	if (enum_def_reg_item(self, item))
 		return 1;
-	return enum_def_read_item_check_end(f);
-}
-
-int enum_def_read_item_check_end(struct file *f)
-{
-	if (try_next_line(f))
-		return -1;
-	if (f->src[f->pos] == '|') {
-		file_pos_next(f);
-		file_skip_space(f);
-		return 0;
-	}
-	return 1;
+	if (!try_next_line(f))
+		return 1;
+	return 0;
 }
 
 int enum_def_reg(yz_enum *self, struct scope *scope)
@@ -130,6 +119,8 @@ int parse_enum(struct parser *parser)
 	if (!block_check_start(parser->f))
 		goto err_block_not_start;
 	str_copy(&name, &self->name);
+	if (!YZ_IS_DIGIT(self->type.type))
+		goto err_not_digit;
 	if (enum_def_reg(self, parser->scope))
 		goto err_free_self;
 	if (try_next_line(parser->f)) {
@@ -140,6 +131,15 @@ int parse_enum(struct parser *parser)
 		return 0;
 	}
 	return enum_def_single_line(self, parser);
+err_not_digit:
+	printf("amc: parse_enum: %lld,%lld: "ERROR_STR": "
+			"Enum can only be based on digit: '%s'\n"
+			"| "HINT_STR": use 'i8' to 'i64', "
+			"'u8' to 'u64' or 'char'.\n",
+			parser->f->cur_line, parser->f->cur_column,
+			self->name.s);
+	backend_stop(BE_STOP_SIGNAL_ERR);
+	return 1;
 err_block_not_start:
 	printf("amc: parse_enum: %lld,%lld: Block not start!\n",
 			parser->f->cur_line, parser->f->cur_column);

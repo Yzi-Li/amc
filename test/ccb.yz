@@ -1,0 +1,31 @@
+; struct timespec =>
+; 	sec: i64
+; 	nsec: i64
+
+@syscall[1]
+fn write(fd: u32,
+	buf: [char],
+	count: u64): u64
+
+; Unsupport :(
+; @syscall[35]
+; fn nanosleep(req: *timespec, rem: *timespec): i32
+
+pub fn main: i32 =>
+	let mut i: i32 = 0
+	; let req: timespec = {1, 0}
+	; let rem: timespec = {0, 0}
+	[write 1, "\x1b[2J\x1b[?25l", 10]
+	while 0 == 0 =>
+		[write 1, "\x1b[2J\x1b[1;1H", 10]
+		[write 1, " @ \nOoO\n o ", 11]
+		while i != 250000000 =>
+			i += 1
+		i = 0
+		[write 1, "\x1b[2J\x1b[1;1H", 10]
+		[write 1, " @ \noOo\n O ", 11]
+		while i != 250000000 =>
+			i += 1
+		i = 0
+		; [nanosleep &req, &rem]
+	ret 0
