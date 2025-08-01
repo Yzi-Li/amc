@@ -23,7 +23,7 @@ err_start_by_digit:
 	return 1;
 err_invaild_chr:
 	printf("amc: symbol_read: %lld,%lld: "ERROR_STR":\n"
-			"| Invaild charactor: '%c'\n",
+			"| Invaild character: '%c'\n",
 			f->cur_line, f->cur_column, f->src[f->pos]);
 	return 1;
 }

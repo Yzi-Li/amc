@@ -3,8 +3,8 @@ struct A =>
 	a: i32
 	mut b: i32
 
-enum Bool: i32 => true
-| false
+enum Bool: i32 => true | false
+
 ; TODO: match
 ;enum struct A =>
 ;| default =>

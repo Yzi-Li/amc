@@ -14,6 +14,7 @@
 static int enum_def_multi_line(yz_enum *self, struct parser *parser);
 static int enum_def_multi_line_check_end(struct file *f);
 static int enum_def_read_item(yz_enum *self, struct file *f);
+static int enum_def_read_item_check_end(struct file *f);
 static int enum_def_reg(yz_enum *self, struct scope *scope);
 static int enum_def_reg_item(yz_enum *self, yz_enum_item *item);
 static int enum_def_single_line(yz_enum *self, struct parser *parser);
@@ -51,8 +52,17 @@ int enum_def_read_item(yz_enum *self, struct file *f)
 	item->u = self->count;
 	if (enum_def_reg_item(self, item))
 		return 1;
-	if (!try_next_line(f))
+	return enum_def_read_item_check_end(f);
+}
+
+int enum_def_read_item_check_end(struct file *f)
+{
+	if (try_next_line(f))
+		return -1;
+	if (f->src[f->pos] != '|')
 		return 1;
+	file_pos_next(f);
+	file_skip_space(f);
 	return 0;
 }
 
