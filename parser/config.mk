@@ -26,4 +26,3 @@ PARSER_SRC =\
 
 PARSER_BUILD = ../build/parser
 PARSER_OBJ = $(addprefix $(PARSER_BUILD)/, $(PARSER_SRC:.c=.o))
-PARSER_DEBUG_OBJ = $(addprefix $(PARSER_BUILD)/, $(PARSER_SRC:.c=.debug.o))

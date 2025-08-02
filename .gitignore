@@ -1,10 +1,11 @@
 *.o
 *.a
+*.d
 *.debug.o
 *.yz.s
+amc
+amc.debug
+build
+compile_commands.json
 test/build
 .cache
-compile_commands.json
-
-./amc
-amc.debug

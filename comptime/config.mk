@@ -7,4 +7,3 @@ COMPTIME_SRC =\
 
 COMPTIME_BUILD = ../build/comptime
 COMPTIME_OBJ = $(addprefix $(COMPTIME_BUILD)/, $(COMPTIME_SRC:.c=.o))
-COMPTIME_DEBUG_OBJ = $(addprefix $(COMPTIME_BUILD)/, $(COMPTIME_SRC:.c=.debug.o))

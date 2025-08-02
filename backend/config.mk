@@ -40,4 +40,3 @@ BACKEND_SRC += $(addprefix asf/, $(BE_ASF_SRC))
 
 BACKEND_BUILD = ../build/backend
 BACKEND_OBJ = $(addprefix $(BACKEND_BUILD)/, $(BACKEND_SRC:.c=.o))
-BACKEND_DEBUG_OBJ = $(addprefix $(BACKEND_BUILD)/, $(BACKEND_SRC:.c=.debug.o))

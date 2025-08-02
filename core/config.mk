@@ -14,4 +14,3 @@ CORE_SRC =\
 
 CORE_BUILD = ../build/core
 CORE_OBJ = $(addprefix $(CORE_BUILD)/, $(CORE_SRC:.c=.o))
-CORE_DEBUG_OBJ = $(addprefix $(CORE_BUILD)/, $(CORE_SRC:.c=.debug.o))

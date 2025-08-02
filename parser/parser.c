@@ -14,8 +14,14 @@
 
 #if defined(__unix__)
 #include <libgen.h>
+#include <unistd.h>
+#if defined(__linux__)
+#include <linux/limits.h>
+#else
+#define PATH_MAX 256
+#endif
 #elif defined(__WIN32)
-#include <direct.h>
+#error Unsupport platform!
 #endif
 
 struct global_parser global_parser = {
@@ -96,6 +102,7 @@ struct parser *parse_file(str *path, const char *real_path, struct file *f)
 {
 	struct parser *parser = parser_create(path, real_path, f);
 	int ret = 0;
+	printf("==> \x1b[32mCompiling\x1b[0m: %s\n", real_path);
 	if (file_init(real_path, f))
 		die("amc: file_init: no such file: %s\n", path);
 	if (backend_file_new(f))
@@ -166,22 +173,22 @@ int parser_get_target_from_mod_path(str *result, str *path)
 
 int parser_init(const char *path, struct file *f)
 {
-	str path_cpy = {
-		.len = strlen(path),
-		.s = malloc(path_cpy.len + 1)
+	str pwd = {
+		.len = PATH_MAX,
+		.s = calloc(PATH_MAX, sizeof(char))
 	};
 	char *root_dir_cpy;
-	strncpy(path_cpy.s, path, path_cpy.len);
 	if (global_parser.output.s == NULL) {
 		global_parser.output.s = "a.out";
 		global_parser.output.len = strlen(global_parser.output.s);
 	}
 	if (global_parser.root_dir.s == NULL) {
-		global_parser.root_dir.s = dirname(path_cpy.s);
+		global_parser.root_dir.s = getcwd(pwd.s, pwd.len);
 		global_parser.root_dir.len = strlen(global_parser.root_dir.s);
 	}
 	if (global_parser.root_mod.s == NULL) {
-		root_dir_cpy = malloc(global_parser.root_dir.len + 1);
+		root_dir_cpy = calloc(global_parser.root_dir.len + 1,
+				sizeof(char));
 		strncpy(root_dir_cpy, global_parser.root_dir.s,
 				global_parser.root_dir.len);
 		global_parser.root_mod.s = basename(root_dir_cpy);

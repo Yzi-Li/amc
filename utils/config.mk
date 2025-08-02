@@ -5,4 +5,3 @@ UTILS_SRC =\
 
 UTILS_BUILD = ../build/utils
 UTILS_OBJ = $(addprefix $(UTILS_BUILD)/, $(UTILS_SRC:.c=.o))
-UTILS_DEBUG_OBJ = $(addprefix $(UTILS_BUILD)/, $(UTILS_SRC:.c=.debug.o))
