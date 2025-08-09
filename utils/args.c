@@ -1,5 +1,7 @@
 #include "args.h"
 #include "die.h"
+#include <stddef.h>
+#include <string.h>
 
 static int args_long_option(struct option *opts, int index, int argc,
                             char *argv[]);
