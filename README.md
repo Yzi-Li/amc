@@ -27,3 +27,10 @@ make debug
 # Others
 ## Unsupport 32-bit!
 The file output by the compiler dosen't support 32-bit devices.
+
+# License
+See [LICENSE](LICENSE).
+But some module use different license, e.g.
+- [test](test/LICENSE)
+- [utils](utils/LICENSE).
+And the build system use MIT License!
