@@ -1,5 +1,7 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #include "../include/token.h"
-#include <stdlib.h>
 #include <string.h>
 
 int token_clean_head_space(str *token)

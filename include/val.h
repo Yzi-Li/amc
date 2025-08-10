@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #ifndef AMC_VAL_H
 #define AMC_VAL_H
 #include "type.h"
@@ -11,6 +14,9 @@ typedef struct yz_val {
 		i16 w;
 		i32 i;
 		i64 l;
+
+		struct expr *expr;
+		struct symbol *sym;
 	};
 
 	yz_type type;

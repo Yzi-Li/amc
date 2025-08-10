@@ -10,6 +10,9 @@
 #define free_cl(ptr)          free((ptr)); (ptr) = NULL
 #define free_safe(ptr)        if ((ptr) != NULL) { free_cl((ptr)); }
 
+#define ERROR_STR "\x1b[31merror\x1b[0m"
+#define HINT_STR "\x1b[34mhint\x1b[0m"
+
 /**
  * @param len: string len
  * @return:

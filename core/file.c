@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #include "../include/file.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,7 +27,7 @@ int file_init(const char *path, struct file *self)
 	self->path = path;
 	self->src = calloc(self->len + 1, sizeof(char));
 	fseek(stream, 0, SEEK_SET);
-	fread(self->src, self->len, 1, stream);
+	fread(self->src, self->len + 1, 1, stream);
 	fclose(stream);
 	return 0;
 }

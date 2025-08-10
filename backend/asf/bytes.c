@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #include "include/bytes.h"
 
 enum ASF_BYTES asf_bytes_get_size(enum ASF_BYTES bytes)

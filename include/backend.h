@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #ifndef AMC_BACKEND_H
 #define AMC_BACKEND_H
 #include "file.h"
@@ -7,6 +10,7 @@
 #include "backend/expr.h"
 #include "backend/func.h"
 #include "backend/loop.h"
+#include "backend/null.h"
 #include "backend/operator.h"
 #include "backend/scope.h"
 #include "backend/struct.h"
@@ -52,6 +56,8 @@ struct backend {
 	backend_func_call_f          func_call;
 	backend_func_def_f           func_def;
 	backend_func_ret_f           func_ret;
+	backend_null_handle_begin_f  null_handle_begin;
+	backend_null_handle_end_f    null_handle_end;
 	backend_op_cmd_f             ops[OP_LEN];
 	backend_scope_begin_f        scope_begin;
 	backend_scope_end_f          scope_end;
@@ -67,6 +73,8 @@ struct backend {
 	backend_while_end_f          while_end;
 };
 
+extern char *backend_assembler;
+extern char *backend_linker;
 extern struct backend *backends[];
 extern enum BACKENDS cur_backend;
 
@@ -77,26 +85,30 @@ extern enum BACKENDS cur_backend;
  * @important: All control functions must be implemented.
  */
 
-/**
- * Backend init.
- * @note: Arguments parse in selected backend.
- */
-int backend_init(int argc, char *argv[]);
-
-int backend_file_end(const char *target_path, int len);
-char *backend_file_get_suffix(int *result_len, int *need_free);
-int backend_file_new(struct file *f);
-
-/**
- * Notify the backend to stop compiling.
- * @important: All stop signals must be implemented.
- */
-int backend_stop(enum BE_STOP_SIGNAL bess);
+int backend_assemble_file(const char *path, int path_len);
 
 /**
  * Compiler completed, notify backend operation.
  * End backend normally.
  */
 int backend_end(str *output);
+
+int backend_file_end(const char *target_path, int len);
+char *backend_file_get_suffix(int *result_len, int *need_free);
+int backend_file_new(struct file *f);
+
+/**
+ * Backend init.
+ * @note: Arguments parse in selected backend.
+ */
+int backend_init(int argc, char *argv[]);
+
+int backend_link_files(str *output);
+
+/**
+ * Notify the backend to stop compiling.
+ * @important: All stop signals must be implemented.
+ */
+int backend_stop(enum BE_STOP_SIGNAL bess);
 
 #endif

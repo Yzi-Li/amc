@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #include "../include/backend/object.h"
 #include "../include/backend.h"
 #include <stdlib.h>

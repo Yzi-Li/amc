@@ -10,7 +10,7 @@ fn funcb(a: *i32?): i32 =>
 	ret b
 
 fn funcc(a: *i32?): *i32? =>
-	ret a
+	ret null
 
 fn funcd(a: *i32?): *i32? =>
 	ret a
@@ -18,10 +18,6 @@ fn funcd(a: *i32?): *i32? =>
 pub fn main: i32 =>
 	let mut a: i32 = 1
 	let mut b: *i32? = &a
-	let mut c: *i32 = &a
-	; |? ret 1
-	; ERROR
-	; a = [funca b]
-	; c = [funcd b]
-	; |? ret 1
-	ret a
+	let c: *i32 = [funcc b]
+	|? => ret 1
+	ret 0

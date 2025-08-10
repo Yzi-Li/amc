@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #include "include/asf.h"
 #include "include/file.h"
 #include "include/register.h"
@@ -26,6 +29,9 @@ struct backend backend_asf = {
 	.func_call = asf_func_call,
 	.func_def  = asf_func_def,
 	.func_ret  = asf_func_ret,
+
+	.null_handle_begin = asf_null_handle_begin,
+	.null_handle_end   = asf_null_handle_end,
 
 	.ops = {
 		[OP_ADD] = asf_op_add,

@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #ifndef AMC_BE_ASF_H
 #define AMC_BE_ASF_H
 #include "../../../include/backend.h"
@@ -31,6 +34,9 @@ int asf_const_def_str(backend_const *self, str *s);
 int asf_func_call(struct symbol *fn, yz_val **v, int vlen);
 int asf_func_def(struct symbol *fn, int pub, int main);
 int asf_func_ret(yz_val *v, int is_main);
+
+int asf_null_handle_begin(backend_null_handle **handle, yz_val *val);
+int asf_null_handle_end(backend_null_handle *handle);
 
 backend_scope_status *asf_scope_begin();
 int asf_scope_end(backend_scope_status *raw_status);

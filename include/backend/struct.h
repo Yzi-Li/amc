@@ -1,9 +1,12 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #ifndef AMC_BE_STRUCT_H
 #define AMC_BE_STRUCT_H
 #include "symbol.h"
 #include "../op.h"
 #include "../struct.h"
-#include "../type.h"
+#include "../val.h"
 
 typedef int (*backend_struct_def_f)(backend_symbol_status *raw_sym_stat,
 		yz_val **vs, int len);

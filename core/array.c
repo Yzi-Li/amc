@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #include "../include/array.h"
 
 yz_type *yz_type_max_arr(yz_type *l, yz_type *r)

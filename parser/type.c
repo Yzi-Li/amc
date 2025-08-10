@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #include "include/array.h"
 #include "include/ptr.h"
 #include "include/struct.h"

@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 //TODO: Mutable array
 #include "include/array.h"
 #include "include/constructor.h"
@@ -113,7 +116,7 @@ yz_val *array_read_offset(struct parser *parser)
 		goto err_read_offset_failed;
 	if (expr_apply(parser, expr) > 0)
 		goto err_read_offset_failed;
-	return identifier_expr_val_handle(&expr, &type);
+	return identifier_handle_expr_val(expr, &type);
 err_read_offset_failed:
 	printf("amc: array_read_offset: %lld,%lld: Read offset failed.\n",
 			orig_line, orig_column);
@@ -140,7 +143,7 @@ int constructor_array_elem(const char *se, struct file *f, void *data)
 		goto err_cannot_parse_expr;
 	if (expr_apply(handle->parser, expr) > 0)
 		goto err_cannot_apply_expr;
-	if ((val = identifier_expr_val_handle(&expr, &arr->type)) == NULL)
+	if ((val = identifier_handle_expr_val(expr, &arr->type)) == NULL)
 		goto err_cannot_apply_expr;
 	handle->vs[handle->index] = val;
 	handle->index += 1;

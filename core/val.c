@@ -1,4 +1,6 @@
-#include "../include/expr.h"
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #include "../include/struct.h"
 #include "../include/symbol.h"
 #include "../include/val.h"

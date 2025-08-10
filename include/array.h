@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #ifndef AMC_ARRAY_H
 #define AMC_ARRAY_H
 #include "type.h"

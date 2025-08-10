@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #ifndef AMC_TOKEN_H
 #define AMC_TOKEN_H
 #include "../utils/str/str.h"

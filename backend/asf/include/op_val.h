@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #ifndef AMC_BE_ASF_OP_VAL_H
 #define AMC_BE_ASF_OP_VAL_H
 #include "../../../include/expr.h"

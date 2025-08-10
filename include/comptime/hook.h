@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #ifndef AMC_COMPTIME_HOOK_H
 #define AMC_COMPTIME_HOOK_H
 #include "../val.h"

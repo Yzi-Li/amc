@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #include "include/block.h"
 #include "include/enum.h"
 #include "include/keywords.h"
@@ -7,6 +10,7 @@
 #include "../include/backend.h"
 #include "../include/parser.h"
 #include "../include/token.h"
+#include "../utils/utils.h"
 #include <sctrie.h>
 #include <stdio.h>
 #include <string.h>

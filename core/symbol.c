@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #include "../include/backend.h"
 #include "../include/comptime/hook.h"
 #include "../include/scope.h"
@@ -9,7 +12,7 @@
 int symbol_args_append(struct symbol *self, struct symbol *sym)
 {
 	self->argc += 1;
-	self->args = realloc(self->args, sizeof(yz_val*) * self->argc);
+	self->args = realloc(self->args, sizeof(*self->args) * self->argc);
 	self->args[self->argc - 1] = sym;
 	return 0;
 }

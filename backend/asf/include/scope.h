@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #ifndef AMC_BE_ASF_SCOPE_H
 #define AMC_BE_ASF_SCOPE_H
 #include "cond.h"

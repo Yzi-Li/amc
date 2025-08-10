@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #include "include/block.h"
 #include "include/expr.h"
 #include "include/identifier.h"
@@ -25,7 +28,6 @@ struct func_call_handle {
 };
 
 static yz_val *func_call_arg_handle(struct expr *expr, struct symbol *arg);
-static yz_val *func_call_arg_val_get(struct expr *expr);
 static int func_call_main(struct parser *parser);
 static int func_call_read_arg(const char *se, struct file *f, void *data);
 static yz_val **func_call_read_args(struct parser *parser);
@@ -42,38 +44,22 @@ static int func_def_read_arg(const char *se, struct file *f, void *data);
 static int func_def_read_args(struct parser *parser);
 static int func_def_read_name(struct parser *parser);
 static int func_def_read_type(struct parser *parser);
-static int func_ret_get_val(yz_val *val, struct symbol *fn, struct expr *expr);
+static yz_val *func_ret_get_val(struct symbol *fn, struct expr *expr);
 
 yz_val *func_call_arg_handle(struct expr *expr, struct symbol *arg)
 {
-	yz_type *type = NULL;
-	yz_val *val = func_call_arg_val_get(expr);
-	if (val->type.type == AMC_SYM && arg->result_type.type == YZ_PTR)
-		if (!comptime_ptr_check_can_null(val, arg))
-			return NULL;
-	if ((type = yz_type_max(&val->type, &arg->result_type)) == NULL)
-		goto err_wrong_arg_type;
-	return val;
-err_wrong_arg_type:
-	printf("amc: func_call_read_arg: Wrong argument type\n"
-			"| Val type: \"%s\"\n"
-			"| Arg type: \"%s\"\n",
-			yz_get_type_name(&val->type),
-			yz_get_type_name(&arg->result_type));
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return NULL;
-}
-
-yz_val *func_call_arg_val_get(struct expr *expr)
-{
-	yz_val *result = NULL;
-	if (expr->op == NULL && expr->valr == NULL)
-		return expr->vall;
-	result = malloc(sizeof(*result));
-	result->v = expr;
-	result->type.type = AMC_EXPR;
-	result->type.v = result->v;
+	yz_val *result = expr2yz_val(expr);
+	if ((result->type.type == AMC_SYM || result->type.type == YZ_NULL)
+			&& arg->result_type.type == YZ_PTR) {
+		if (!comptime_ptr_check_can_null(result, arg))
+			goto err_free_result;
+	}
+	if (identifier_handle_val_type(&result->type, &arg->result_type))
+		goto err_free_result;
 	return result;
+err_free_result:
+	free_yz_val(result);
+	return NULL;
 }
 
 int func_call_main(struct parser *parser)
@@ -93,12 +79,12 @@ int func_call_read_arg(const char *se, struct file *f, void *data)
 	if (handle->index > handle->fn->argc - 1)
 		goto err_too_many_args;
 	if ((expr = parse_expr(handle->parser, 1)) == NULL)
-		goto err_cannot_parse_arg;
+		goto err_print_pos;
 	if (expr_apply(handle->parser, expr) > 0)
-		goto err_cannot_parse_arg;
+		goto err_print_pos;
 	if ((result = func_call_arg_handle(expr,
 			handle->fn->args[handle->index])) == NULL)
-		goto err_cannot_handle_arg;
+		goto err_print_pos;
 	handle->vals[handle->index] = result;
 	handle->index += 1;
 	return token_list_elem_end(',', f);
@@ -107,16 +93,9 @@ err_too_many_args:
 			f->cur_line, f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
-err_cannot_parse_arg:
-	printf("| func_call_read_arg: %lld,%lld\n",
+err_print_pos:
+	return err_print_pos(__func__, NULL,
 			f->cur_line, f->cur_column);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
-err_cannot_handle_arg:
-	printf("| func_call_read_arg: %lld,%lld\n",
-			f->cur_line, f->cur_column);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
 }
 
 yz_val **func_call_read_args(struct parser *parser)
@@ -221,18 +200,14 @@ int func_call_read_token(struct file *f, str *token)
 
 int func_def_block_start(struct parser *parser)
 {
-	if (parser->f->src[parser->f->pos] == '\n'
-			|| parser->f->src[parser->f->pos] == ';') {
-		keyword_end(parser->f);
+	str block_start = {.len = 2, .s = "=>"};
+	if (try_next_line(parser->f)) {
 		parser->sym->flags.only_declaration = 1;
 		return -1;
 	}
-	if (parser->f->src[parser->f->pos] != '='
-			|| parser->f->src[parser->f->pos + 1] != '>')
+	if (!token_try_read(&block_start, parser->f))
 		goto err_not_func_def_start;
-	file_pos_nnext(2, parser->f);
-	file_skip_space(parser->f);
-	return keyword_end(parser->f);
+	return 0;
 err_not_func_def_start:
 	printf("amc: func_def_block_start: %lld,%lld: "
 			"Function: '%s' define start character not found\n",
@@ -278,7 +253,9 @@ int func_def_main(struct parser *parser)
 	fn->result_type.type = YZ_I8;
 	fn->result_type.v = NULL;
 	global_parser.has_main = 1;
-	file_line_next(parser->f);
+	while (parser->f->src[parser->f->pos] != '\n'
+			&& parser->f->src[parser->f->pos] != ';')
+		file_pos_next(parser->f);
 	if (backend_call(func_def)(fn, 1, 1))
 		goto err_free_fn;
 	fn->parse_function = func_call_main;
@@ -395,27 +372,21 @@ err_cannot_get_type:
 	return 1;
 }
 
-int func_ret_get_val(yz_val *val, struct symbol *fn, struct expr *expr)
+yz_val *func_ret_get_val(struct symbol *fn, struct expr *expr)
 {
-	yz_val *tmp = identifier_expr_val_handle(&expr, &fn->result_type);
-	if (tmp == NULL)
-		goto err_type;
-	val->type = tmp->type;
-	val->v = tmp->v;
-	if (tmp->type.type == AMC_SYM) {
+	yz_val *result = identifier_handle_expr_val(expr, &fn->result_type);
+	if (result == NULL)
+		return NULL;
+	if (result->type.type == AMC_SYM) {
 		if (fn->result_type.type == YZ_PTR)
-			return !comptime_ptr_check_can_ret(val->v, fn);
-		return 0;
+			if (!comptime_ptr_check_can_ret(result->v, fn))
+				goto err_free_result;
+		return result;
 	}
-	return 0;
-err_type:
-	printf("amc: func_ret_get_val:\n"
-			"| Value type: '%s'.\n"
-			"| Function type: '%s'.\n",
-			yz_get_type_name(&val->type),
-			yz_get_type_name(&fn->result_type));
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
+	return result;
+err_free_result:
+	free_yz_val(result);
+	return NULL;
 }
 
 int parse_func_call(struct parser *parser)
@@ -491,33 +462,31 @@ int parse_func_ret(struct parser *parser)
 	struct expr *expr = NULL;
 	i64 orig_column = parser->f->cur_column,
 	    orig_line = parser->f->cur_line;
-	yz_val val = {};
+	yz_val *val = {};
 	if ((expr = parse_expr(parser, 1)) == NULL)
 		return err_print_pos(__func__, "Cannot parse expr!",
 				orig_line, orig_column);
 	if (expr_apply(parser, expr) > 0)
 		goto err_cannot_apply_expr;
 	keyword_end(parser->f);
-	if (func_ret_get_val(&val, parser->scope->fn, expr))
+	if ((val = func_ret_get_val(parser->scope->fn, expr)) == NULL)
 		goto err_get_val_failed;
-	if (backend_call(func_ret)(&val, strncmp(parser->scope->fn->name.s,
+	if (backend_call(func_ret)(val, strncmp(parser->scope->fn->name.s,
 					"main", 4) == 0))
-		return err_print_pos(__func__, "Backend call failed!",
-				orig_line, orig_column);
-	free_expr(expr);
+		goto err_backend_failed;
+	free_yz_val(val);
 	return 0;
 err_cannot_apply_expr:
 	free_expr(expr);
 	return err_print_pos(__func__, "Cannot apply expr!",
 			orig_line, orig_column);
-err_free_expr:
-	free_expr(expr);
-	return 1;
 err_get_val_failed:
-	printf("| parse_func_ret: %lld,%lld: Get value failed!\n",
-			parser->f->cur_line, parser->f->cur_column);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	goto err_free_expr;
+	return err_print_pos(__func__, "Get value failed!",
+			orig_line, orig_column);
+err_backend_failed:
+	free_yz_val(val);
+	return err_print_pos(__func__, "Backend call failed!",
+			orig_line, orig_column);
 }
 
 int func_call_read(struct parser *parser, struct symbol **fn)

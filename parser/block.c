@@ -1,8 +1,12 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #include "include/block.h"
 #include "include/expr.h"
 #include "include/func.h"
 #include "include/indent.h"
 #include "include/keywords.h"
+#include "include/utils.h"
 #include "../include/backend.h"
 #include "../include/file.h"
 #include "../include/parser.h"
@@ -11,10 +15,27 @@
 #include "../utils/str/str.h"
 #include <stdio.h>
 
+static int block_parse_direct(struct parser *parser);
 static int block_parse_expr(struct parser *parser);
 static int block_parse_func(struct parser *parser);
 static int block_parse_keyword(struct parser *parser);
 static int block_parse_line(struct parser *parser);
+
+int block_parse_direct(struct parser *parser)
+{
+	int ret = 0;
+	if (try_next_line(parser->f))
+		return 0;
+	if (parser->f->src[parser->f->pos] == '(')
+		return block_parse_expr(parser);
+	if (parser->f->src[parser->f->pos] == '[')
+		return block_parse_func(parser);
+	if ((ret = block_parse_keyword(parser)) == 0)
+		return 0;
+	if (ret > 0)
+		return 1;
+	return block_parse_expr(parser);
+}
 
 int block_parse_expr(struct parser *parser)
 {
@@ -84,19 +105,9 @@ int block_parse_line(struct parser *parser)
 		return -1;
 	}
 	file_skip_space(parser->f);
-	if (parse_comment(parser->f))
-		return 0;
-	if (parser->f->src[parser->f->pos] == '\n')
-		return file_line_next(parser->f);
-	if (parser->f->src[parser->f->pos] == '(')
-		return block_parse_expr(parser);
-	if (parser->f->src[parser->f->pos] == '[')
-		return block_parse_func(parser);
-	if ((ret = block_parse_keyword(parser)) == 0)
-		return 0;
-	if (ret > 0)
-		return 1;
-	return block_parse_expr(parser);
+	if ((ret = block_parse_direct(parser)))
+		return ret;
+	return 0;
 }
 
 int block_check_start(struct file *f)
@@ -119,10 +130,16 @@ int parse_block(struct parser *parser)
 	if (scope_check_is_correct(&cur_scope))
 		return 1;
 	parser->scope = &cur_scope;
+	if (!try_next_line(parser->f)) {
+		if (block_parse_direct(parser))
+			return 1;
+		goto restore;
+	}
 	while ((ret = block_parse_line(parser)) != -1) {
 		if (ret > 0)
 			return 1;
 	}
+restore:
 	parser->scope = cur_scope.parent;
 	scope_end(&cur_scope);
 	return 0;

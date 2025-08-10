@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #include "../include/backend.h"
 #include "../include/scope.h"
 #include <sctrie.h>

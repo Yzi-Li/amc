@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #include "include/expr.h"
 #include "include/block.h"
 #include "include/keywords.h"
@@ -26,8 +29,6 @@ int loop_condition_parse(struct parser *parser)
 		goto err_parse_expr_failed;
 	if (expr_apply(parser, expr) > 0)
 		goto err_apply_expr_failed;
-	if (parser->f->src[parser->f->pos] == '\n')
-		return file_line_next(parser->f);
 	return 0;
 err_parse_expr_failed:
 	printf("amc: loop_condition_parse: %lld,%lld: "

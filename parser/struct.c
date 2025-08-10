@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #include "include/constructor.h"
 #include "include/expr.h"
 #include "include/identifier.h"
@@ -47,7 +50,7 @@ int constructor_struct_elem(const char *se, struct file *f, void *data)
 		goto err_cannot_parse_expr;
 	if (expr_apply(handle->parser, expr) > 0)
 		goto err_cannot_apply_expr;
-	if ((val = identifier_expr_val_handle(&expr,
+	if ((val = identifier_handle_expr_val(expr,
 					&src->elems[handle->index]
 					->result_type)) == NULL)
 		goto err_cannot_apply_expr;

@@ -1,47 +1,28 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #include "../../include/comptime/ptr.h"
+#include "../../utils/utils.h"
 #include <stdio.h>
-
-static int check_val_type(yz_type *val);
-
-int check_val_type(yz_type *val)
-{
-	struct symbol *sym = NULL;
-	if (val->type == YZ_NULL)
-		return 1;
-	if (val->type != AMC_SYM)
-		return 0;
-	sym = val->v;
-	if (sym->result_type.type == YZ_NULL)
-		return 1;
-	if (sym->result_type.type != YZ_PTR)
-		goto err_not_ptr;
-	if (sym->flags.can_null)
-		return 1;
-	return 0;
-err_not_ptr:
-	printf("amc[comptime:%s]: check_val_type:\n"
-			"| Value(symbol): '%s' isn't pointer.\n",
-			__FILE__, sym->name.s);
-	return 0;
-}
 
 int comptime_ptr_check_can_null(yz_val *val, struct symbol *sym)
 {
-	if (!check_val_type(&val->type))
-		goto err;
-	if (!sym->flags.can_null && !((struct symbol*)val->v)
-			->flags.checked_null)
-		goto err_cannot_null;
-	return 1;
-err:
-	printf("| comptime_ptr_check_can_null: "
-			"Cannot use null for Symbol: '%s'\n",
-			sym->name.s);
-	return 0;
-err_cannot_null:
-	printf("amc: comptime_ptr_check_can_null:\n"
-			"| ERROR: Cannot use null for symbol: '%s'!\n"
-			"| HINT:  Use 'if' to check symbol before use it.\n",
+	struct symbol *val_sym = NULL;
+	if (val->type.type == AMC_SYM) {
+		val_sym = val->v;
+		if (!val_sym->flags.can_null)
+			return 1;
+		if (val_sym->flags.checked_null)
+			return 1;
+	} else if (val->type.type != YZ_NULL) {
+		return 0;
+	}
+	if (sym->flags.can_null)
+		return 1;
+	printf("amc: comptime_ptr_check_can_null: "ERROR_STR":\n"
+			"| Cannot use null for symbol: '%s'!\n"
+			"| "HINT_STR": "
+			"Use 'if' to check symbol before use it.\n",
 			sym->name.s);
 	return 0;
 }

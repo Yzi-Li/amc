@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #include "include/mov.h"
 #include "include/bytes.h"
 #include "include/imm.h"

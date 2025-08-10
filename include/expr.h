@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #ifndef AMC_EXPR_H
 #define AMC_EXPR_H
 #include "op.h"
@@ -26,6 +29,13 @@ struct expr {
 	yz_type *sum_type;
 	yz_val *vall, *valr;
 };
+
+/**
+ * @important: Won't create a new yz_val to contain the expression's val.
+ *             But will create a new 'yz_val' to contain the expression.
+ *             So you need free the result.
+ */
+yz_val *expr2yz_val(struct expr *expr);
 
 void free_expr(struct expr *e);
 

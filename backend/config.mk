@@ -20,6 +20,7 @@ BE_ASF_SRC =\
 	label.c\
 	loop.c\
 	mov.c\
+	null.c\
 	op.c\
 	op_add.c\
 	op_cmp.c\

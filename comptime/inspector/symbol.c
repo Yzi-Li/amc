@@ -1,3 +1,6 @@
+/* This file is part of amc.
+   SPDX-License-Identifier: GPL-3.0-or-later
+*/
 #include "../../include/comptime/ptr.h"
 #include "../../include/comptime/symbol.h"
 #include <stdio.h>
@@ -15,7 +18,7 @@ err_sym_is_immut:
 
 int comptime_check_sym_can_assign_val(struct symbol *sym, yz_val *val)
 {
-	if (sym->result_type.type == YZ_PTR && val->type.type == YZ_NULL) {
+	if (sym->result_type.type != YZ_PTR && val->type.type == YZ_NULL) {
 		if (!comptime_ptr_check_can_null(val, sym))
 			return 0;
 		return 1;
