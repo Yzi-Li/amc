@@ -13,7 +13,8 @@ enum HOOK_TIME {
 };
 
 struct hook_callee;
-typedef int (*hook_parser)(struct hook_callee *hook);
+struct parser;
+typedef int (*hook_parser)(struct parser *parser, struct hook_callee *hook);
 struct hook_callee {
 	int argc;
 	yz_val **args;
@@ -30,7 +31,7 @@ struct hooks {
 };
 
 int hook_append(struct hook *hook, struct hook_callee *callee);
-int hook_apply(struct hook *hook);
+int hook_apply(struct parser *parser, struct hook *hook);
 struct hooks *hooks_inherit(struct hooks **src);
 
 void free_hook(struct hook *hook);

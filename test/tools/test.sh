@@ -7,20 +7,11 @@ fi
 
 items=$(find .. -maxdepth 1 -name '*.yz')
 
-COMPILER_BIN="../../amc"
-COMPILER_BIN_DEBUG="../../amc.debug"
+COMPILER="../../amc"
 
 BUILD_DIR="../.cache/amc"
 UNITS_DIR="test-units"
 
-if [ -f "$COMPILER_BIN_DEBUG" ]; then
-	COMPILER="$COMPILER_BIN_DEBUG"
-elif [ -f "$COMPILER_BIN" ]; then
-	COMPILER="$COMPILER_BIN"
-else
-	echo -e "\x1b[31mERROR\x1b[0m: Compiler not found!"
-	exit 1
-fi
 
 mkdir -p ../build
 
@@ -39,11 +30,7 @@ compile() {
 		echo -en "  > \x1b[34mHINT\x1b[0m: debug compiler? [y/n] "
 		read ans
 		if [ "$ans" = "y" ]; then
-			if [ ! -f $COMPILER_BIN_DEBUG ]; then
-				echo -e "\x1b[31m  > ERROR\x1b[0m: Compiler(debug) not found!"
-				test_failed
-			fi
-			gdb -args "$COMPILER_BIN_DEBUG" $arg
+			gdb -args "$COMPILER" $arg
 			exit 0
 		else
 			test_failed

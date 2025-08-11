@@ -5,15 +5,18 @@
 #include "include/token.h"
 #include "../include/backend.h"
 #include "../include/comptime/hook.h"
+#include "../include/parser.h"
 #include "../include/token.h"
 #include "../utils/converter.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static int dec_syscall(struct hook_callee *callee);
+static int dec_c_fn(struct parser *parser, struct hook_callee *callee);
+static int dec_syscall(struct parser *parser, struct hook_callee *callee);
 
 static struct decorator decorators[] = {
+	{ "c.fn", dec_c_fn, HOOK_FUNC_CALL_BEFORE },
 	{ "syscall", dec_syscall, HOOK_FUNC_CALL_AFTER }
 };
 
@@ -21,13 +24,18 @@ static int decorator_arg_get_val(str *token, yz_val *arg);
 static int parse_decorator_arg(const char *se, struct file *f, void *data);
 static int parse_decorator_args(struct file *f, struct hook_callee *callee);
 
-int dec_syscall(struct hook_callee *callee)
+int dec_c_fn(struct parser *parser, struct hook_callee *callee)
+{
+	return 0;
+}
+
+int dec_syscall(struct parser *parser, struct hook_callee *callee)
 {
 	if (callee->argc != 1)
 		goto err_arg_failed;
 	if (!YZ_IS_DIGIT(callee->args[0]->type.type))
 		goto err_arg_failed;
-	if (backend_call(syscall)(callee->args[0]->i))
+	if (backend_call(syscall)(callee->args[0]->i, parser->sym->argc))
 		goto err_backend_failed;
 	return 0;
 err_arg_failed:

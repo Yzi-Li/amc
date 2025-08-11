@@ -400,12 +400,14 @@ int parse_func_call(struct parser *parser)
 		if (args == NULL)
 			return 1;
 	}
-	if (hook_apply(&parser->sym->hooks->times[HOOK_FUNC_CALL_BEFORE]))
+	if (hook_apply(parser, &parser->sym
+				->hooks->times[HOOK_FUNC_CALL_BEFORE]))
 		return 1;
 	if (backend_call(func_call)(parser->sym,
 				args, parser->sym->argc))
 		return 1;
-	if (hook_apply(&parser->sym->hooks->times[HOOK_FUNC_CALL_AFTER]))
+	if (hook_apply(parser, &parser->sym
+				->hooks->times[HOOK_FUNC_CALL_AFTER]))
 		return 1;
 	return 0;
 }

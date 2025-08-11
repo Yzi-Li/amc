@@ -3,6 +3,7 @@
 *.d
 *.debug.o
 *.yz.s
+a.out
 amc
 amc.debug
 build

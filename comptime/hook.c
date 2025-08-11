@@ -15,12 +15,12 @@ int hook_append(struct hook *hook, struct hook_callee *callee)
 	return 0;
 }
 
-int hook_apply(struct hook *hook)
+int hook_apply(struct parser *parser, struct hook *hook)
 {
 	if (hook == NULL)
 		return 1;
 	for (int i = 0; i < hook->count; i++) {
-		if (hook->s[i]->apply(hook->s[i]))
+		if (hook->s[i]->apply(parser, hook->s[i]))
 			return 1;
 	}
 	return 0;

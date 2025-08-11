@@ -127,6 +127,8 @@ int asf_func_call(struct symbol *fn, yz_val **vs, int vlen)
 		goto err_free_node;
 	if (asf_stack_top != NULL && func_call_set_stack_top(1))
 		goto err_free_node;
+	if (asf_call_restore_regs(vlen, vs))
+		goto err_free_node;
 	node->s = str_new();
 	str_expand(node->s, strlen(temp) - 1 + strlen(fn->path.s));
 	snprintf(node->s->s, node->s->len, temp, fn->path.s);
@@ -205,26 +207,23 @@ err_free_node:
 	return 1;
 }
 
-int asf_syscall(int code)
+int asf_syscall(int code, int argc)
 {
 	const char *temp = "movq $%d, %%rax\nsyscall\n";
-	struct object_node *tmp = NULL, *prev = NULL,
-	                   *node = malloc(sizeof(*node));
-	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
+	struct object_node *inst = cur_obj->sections[ASF_OBJ_TEXT].last,
+	                   *node = NULL;
+	for (int i = 0; i < argc; i++)
+		inst = inst->prev;
+	if (asf_stack_top != NULL)
+		inst = inst->prev;
+	node = malloc(sizeof(*node));
+	if (object_insert(node, inst->prev, inst->next))
 		goto err_free_node;
 	node->s = str_new();
 	str_expand(node->s, strlen(temp) - 2 + ullen(code));
 	snprintf(node->s->s, node->s->len, temp, code);
-	prev = asf_stack_top != NULL
-		? node->prev->prev->prev
-		: node->prev->prev;
-	tmp = prev->next;
-	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], tmp->next))
-		goto err_free_node;
-	prev->next = node;
-	node->prev = prev;
-	str_free(tmp->s);
-	free(tmp);
+	str_free(inst->s);
+	free(inst);
 	return 0;
 err_free_node:
 	free(node);

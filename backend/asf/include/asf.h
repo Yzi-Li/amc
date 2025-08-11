@@ -47,7 +47,7 @@ int asf_struct_set_elem(struct symbol *sym, int index, yz_val *val,
 
 int asf_symbol_get_path(str *result, str *mod, const char *name, int name_len);
 void asf_symbol_status_free(backend_symbol_status *raw_stat);
-int asf_syscall(int code);
+int asf_syscall(int code, int argc);
 
 int asf_op_add(struct expr *e);
 int asf_op_div(struct expr *e);

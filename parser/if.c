@@ -6,6 +6,7 @@
 #include "include/keywords.h"
 #include "../include/backend.h"
 #include "../include/parser.h"
+#include "../include/token.h"
 #include <stdio.h>
 
 static int if_block_parse(struct parser *parser);
@@ -90,12 +91,11 @@ err_backend_failed:
 
 int parse_else(struct parser *parser)
 {
+	str block_start = {.len = 2, .s = "=>"};
 	if (parser->scope->status_type != SCOPE_AFTER_IF)
 		goto err_if_block_not_found;
-	if (parser->f->src[parser->f->pos] != '='
-			|| parser->f->src[parser->f->pos + 1] != '>')
+	if (!token_try_read(&block_start, parser->f))
 		goto err_block_start_not_found;
-	file_line_next(parser->f);
 	if (parse_block(parser))
 		goto err_parse_block_failed;
 	if (backend_call(cond_else)(parser->scope->status))
