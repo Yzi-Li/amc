@@ -7,6 +7,7 @@
 #include "backend/array.h"
 #include "backend/cond.h"
 #include "backend/const.h"
+#include "backend/decorator.h"
 #include "backend/expr.h"
 #include "backend/func.h"
 #include "backend/loop.h"
@@ -53,6 +54,8 @@ struct backend {
 	backend_cond_if_f            cond_if;
 	backend_cond_if_begin_f      cond_if_begin;
 	backend_const_def_str_f      const_def_str;
+	backend_dec_c_fn_f           dec_c_fn;
+	backend_dec_syscall_f        dec_syscall;
 	backend_func_call_f          func_call;
 	backend_func_def_f           func_def;
 	backend_func_ret_f           func_ret;
@@ -65,7 +68,6 @@ struct backend {
 	backend_struct_set_elem_f    struct_set_elem;
 	backend_symbol_get_path_f    symbol_get_path;
 	backend_symbol_status_free_f symbol_status_free;
-	backend_syscall_f            syscall;
 	backend_var_set_f            var_set;
 	backend_var_immut_init_f     var_immut_init;
 	backend_while_begin_f        while_begin;
@@ -77,6 +79,9 @@ extern char *backend_assembler;
 extern char *backend_linker;
 extern struct backend *backends[];
 extern enum BACKENDS cur_backend;
+
+int backend_append_lib(char *path);
+int backend_append_linker_flags(char *arg);
 
 /**
  * Backend control functions.

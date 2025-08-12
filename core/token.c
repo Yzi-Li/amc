@@ -27,60 +27,6 @@ int token_clean_tail_space(str *token)
 	return 0;
 }
 
-int token_get_before(char c, str *token, str *result)
-{
-	int i = 0;
-	result->s = token->s;
-	while (token->s[i] != c) {
-		if (i >= token->len)
-			return 1;
-		result->len += 1;
-		i++;
-	}
-	token_clean_tail_space(result);
-	token->s = &token->s[i];
-	token->len -= result->len;
-	return 0;
-}
-
-int token_get_list(const char *se, void *data, str *token,
-		int (*func)(str *token, void *data))
-{
-	int ret = 0;
-	str tmp = TOKEN_NEW;
-	while (token->s[0] != se[1]) {
-		if (token_get_before(se[0], token, &tmp))
-			return 1;
-		token_clean_head_space(&tmp);
-		token_clean_tail_space(&tmp);
-		ret = func(&tmp, data);
-		if (ret)
-			return ret + 1;
-		token->s = &token->s[1];
-		token->len -= 1;
-	}
-	return 0;
-}
-
-int token_get_token(str *token, str *result)
-{
-	result->s = token->s;
-	for (int i = 0; i < token->len; i++) {
-		if (token->s[i] != ' '
-				&& token->s[i] != '\n'
-				&& token->s[i] != '\t') {
-			continue;
-		}
-		result->len = i;
-		token->s = &token->s[i];
-		token->len -= i;
-		token_clean_head_space(token);
-		return 0;
-	}
-	result->len = token->len;
-	return 1;
-}
-
 int token_jump_to(char c, struct file *f)
 {
 	for (int i = 0; f->src[f->pos] != '\0'; i++) {

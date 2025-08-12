@@ -14,6 +14,7 @@
 #include <string.h>
 
 static int func_call_set_stack_top(int reverse);
+static int func_def_start();
 static str *func_ret_imm(struct asf_imm *src);
 static int func_ret_main(yz_val *v);
 static str *func_ret_mem(struct asf_stack_element *src);
@@ -33,6 +34,23 @@ int func_call_set_stack_top(int reverse)
 			+ ullen(asf_stack_top->addr));
 	snprintf(node->s->s, node->s->len, temp, asf_stack_top->addr);
 	return 0;
+}
+
+int func_def_start()
+{
+	struct object_node *node = malloc(sizeof(*node));
+	const char *temp =
+		".weak _start\n"
+		"_start:\n";
+	node->s = str_new();
+	str_append(node->s, strlen(temp), temp);
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
+		goto err_free_node_and_str;
+	return 0;
+err_free_node_and_str:
+	str_free(node->s);
+	free(node);
+	return 1;
 }
 
 str *func_ret_imm(struct asf_imm *src)
@@ -144,11 +162,6 @@ err_free_node:
 
 int asf_func_def(struct symbol *fn, int pub, int main)
 {
-	const char *temp_main =
-		".globl _start\n"
-		"_start:\n"
-		"pushq %rbp\n"
-		"movq %rsp, %rbp\n";
 	const char *temp_private =
 		"%s:\n"
 		"pushq %%rbp\n"
@@ -162,23 +175,26 @@ int asf_func_def(struct symbol *fn, int pub, int main)
 	if (fn == NULL)
 		return 1;
 	node->s = str_new();
-	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
-		goto err_free_node;
-	if (main) {
-		str_append(node->s, strlen(temp_main), temp_main);
-		return 0;
-	}
-	if (pub) {
+	if (pub && main) {
+		if (func_def_start())
+			goto err_free_node_and_str;
+		str_expand(node->s, strlen(temp_pub) - 6
+				+ fn->name.len + fn->name.len);
+		snprintf(node->s->s, node->s->len, temp_pub,
+				fn->name.s, fn->name.s);
+	} else if (pub) {
 		str_expand(node->s, strlen(temp_pub) - 7 + fn->path.len
 				+ fn->path.len);
 		snprintf(node->s->s, node->s->len, temp_pub,
 				fn->path.s, fn->path.s);
-		return 0;
+	} else {
+		str_expand(node->s, strlen(temp_private) - 5 + fn->path.len);
+		snprintf(node->s->s, node->s->len, temp_private, fn->path.s);
 	}
-	str_expand(node->s, strlen(temp_private) - 5 + fn->path.len);
-	snprintf(node->s->s, node->s->len, temp_private, fn->path.s);
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
+		goto err_free_node_and_str;
 	return 0;
-err_free_node:
+err_free_node_and_str:
 	str_free(node->s);
 	free(node);
 	return 1;
@@ -207,25 +223,40 @@ err_free_node:
 	return 1;
 }
 
-int asf_syscall(int code, int argc)
+int asf_dec_c_fn(str *name, int argc)
 {
-	const char *temp = "movq $%d, %%rax\nsyscall\n";
-	struct object_node *inst = cur_obj->sections[ASF_OBJ_TEXT].last,
-	                   *node = NULL;
+	const char *temp = "call %s\n";
+	struct object_node *inst = cur_obj->sections[ASF_OBJ_TEXT].last;
+	int inst_len;
 	for (int i = 0; i < argc; i++)
 		inst = inst->prev;
 	if (asf_stack_top != NULL)
 		inst = inst->prev;
-	node = malloc(sizeof(*node));
-	if (object_insert(node, inst->prev, inst->next))
-		goto err_free_node;
-	node->s = str_new();
-	str_expand(node->s, strlen(temp) - 2 + ullen(code));
-	snprintf(node->s->s, node->s->len, temp, code);
-	str_free(inst->s);
-	free(inst);
+	inst_len = strlen(temp) + name->len - 1;
+	if (inst->s->len < inst_len) {
+		inst->s->len = 0;
+		str_expand(inst->s, inst_len);
+	}
+	str_expand(inst->s, inst_len);
+	snprintf(inst->s->s, inst->s->len, temp, name->s);
 	return 0;
-err_free_node:
-	free(node);
-	return 1;
+}
+
+int asf_dec_syscall(int code, int argc)
+{
+	const char *temp = "movq $%d, %%rax\nsyscall\n";
+	struct object_node *inst = cur_obj->sections[ASF_OBJ_TEXT].last;
+	int inst_len;
+	for (int i = 0; i < argc; i++)
+		inst = inst->prev;
+	if (asf_stack_top != NULL)
+		inst = inst->prev;
+	inst_len = strlen(temp) + ullen(code) - 2;
+	if (inst->s->len < inst_len) {
+		inst->s->len = 0;
+		str_expand(inst->s, inst_len);
+	}
+	str_expand(inst->s, inst_len);
+	snprintf(inst->s->s, inst->s->len, temp, code);
+	return 0;
 }

@@ -2,7 +2,6 @@
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 #include "include/decorator.h"
-#include "include/token.h"
 #include "../include/backend.h"
 #include "../include/comptime/hook.h"
 #include "../include/parser.h"
@@ -16,7 +15,7 @@ static int dec_c_fn(struct parser *parser, struct hook_callee *callee);
 static int dec_syscall(struct parser *parser, struct hook_callee *callee);
 
 static struct decorator decorators[] = {
-	{ "c.fn", dec_c_fn, HOOK_FUNC_CALL_BEFORE },
+	{ "c.fn", dec_c_fn, HOOK_FUNC_CALL_AFTER },
 	{ "syscall", dec_syscall, HOOK_FUNC_CALL_AFTER }
 };
 
@@ -26,7 +25,17 @@ static int parse_decorator_args(struct file *f, struct hook_callee *callee);
 
 int dec_c_fn(struct parser *parser, struct hook_callee *callee)
 {
+	if (callee->argc != 1)
+		goto err_arg_failed;
+	if (backend_call(dec_c_fn)(&parser->sym->name, parser->sym->argc))
+		goto err_backend_failed;
 	return 0;
+err_arg_failed:
+	printf("amc: dec_c_fn: Argument failed\n");
+	return 1;
+err_backend_failed:
+	printf("amc: dec_c_fn: Backend call failed!\n");
+	return 1;
 }
 
 int dec_syscall(struct parser *parser, struct hook_callee *callee)
@@ -35,7 +44,7 @@ int dec_syscall(struct parser *parser, struct hook_callee *callee)
 		goto err_arg_failed;
 	if (!YZ_IS_DIGIT(callee->args[0]->type.type))
 		goto err_arg_failed;
-	if (backend_call(syscall)(callee->args[0]->i, parser->sym->argc))
+	if (backend_call(dec_syscall)(callee->args[0]->i, parser->sym->argc))
 		goto err_backend_failed;
 	return 0;
 err_arg_failed:
@@ -106,15 +115,16 @@ int parse_decorator(struct decorators *self, struct file *f)
 {
 	struct hook_callee *callee = NULL;
 	struct decorator *dec = NULL;
+	char *err_msg;
 	str token = TOKEN_NEW;
 	if (f->src[f->pos] != '@')
 		return 1;
 	file_pos_next(f);
 	file_skip_space(f);
-	if (token_read_before(SPECIAL_TOKEN_END, &token, f) == NULL)
+	if (token_read_before(" [\t\n", &token, f) == NULL)
 		return 1;
 	if ((dec = get_decorator(&token)) == NULL)
-		return 1;
+		goto err_dec_not_found;
 	callee = calloc(1, sizeof(*callee));
 	callee->apply = dec->apply;
 	if (parse_decorator_args(f, callee))
@@ -123,6 +133,14 @@ int parse_decorator(struct decorators *self, struct file *f)
 		return 1;
 	self->has = 1;
 	return 0;
+err_dec_not_found:
+	err_msg = str2chr(token.s, token.len);
+	printf("amc: parse_decorator: %lld,%lld: "ERROR_STR":\n"
+			"| Decorator: '%s' not found!\n",
+			f->cur_line, f->cur_column,
+			err_msg);
+	free(err_msg);
+	return 1;
 }
 
 void free_decorators_noself(struct decorators *self)

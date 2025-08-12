@@ -26,6 +26,9 @@ struct backend backend_asf = {
 
 	.const_def_str = asf_const_def_str,
 
+	.dec_c_fn    = asf_dec_c_fn,
+	.dec_syscall = asf_dec_syscall,
+
 	.func_call = asf_func_call,
 	.func_def  = asf_func_def,
 	.func_ret  = asf_func_ret,
@@ -68,8 +71,6 @@ struct backend backend_asf = {
 
 	.symbol_get_path    = asf_symbol_get_path,
 	.symbol_status_free = asf_symbol_status_free,
-
-	.syscall = asf_syscall,
 
 	.var_immut_init = asf_var_immut_init,
 	.var_set        = asf_var_set,

@@ -12,24 +12,6 @@ int token_clean_head_space(str *token);
 int token_clean_tail_space(str *token);
 
 /**
- * Get a token before 'c'.
- * @note: It won't include ending character.
- */
-int token_get_before(char c, str *token, str *result);
-
-/**
- * Parse a list from token.
- * @param se: separator and end.
- */
-int token_get_list(const char *se, void *data, str *token,
-		int (*func)(str *token, void *data));
-
-/**
- * Get a token from token.
- */
-int token_get_token(str *token, str *result);
-
-/**
  * Jump to specified character.
  * @return:
  *   Number of characters passed through.

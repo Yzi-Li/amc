@@ -59,6 +59,7 @@ test_failed() {
 test_src() {
 	local input="$1"
 	local unit="$(get_unit $input)"
+	rm -f "../build/$(basename $input .yz).out"
 	compile "$input"
 	if [ -f "$unit" ]; then
 		test_unit "$unit" "$input" "../build/$(basename $input .yz).out"

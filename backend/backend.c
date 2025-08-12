@@ -27,8 +27,32 @@ int backend_assembled_files_count = 0;
 char *backend_assembler = "as";
 char *backend_linker = "ld";
 
+static char **libs_list = NULL;
+static int libs_count = 0;
+static char **linker_flags = NULL;
+static int linker_flags_count = 0;
+
+static int append_linker_flag(char **arg);
 static int assemble_file_call_as(const char *path, int path_len, char *output);
 static int link_files_call_linker(str *output);
+
+int append_linker_flag(char **arg)
+{
+	int end = 0, len;
+	char *tok = *arg;
+	for (len = 0; tok[len] != ' '; len++) {
+		if (tok[len] == '\0') {
+			end = 1;
+			break;
+		}
+	}
+	*arg = &tok[len + 1];
+	linker_flags_count += 1;
+	linker_flags = realloc(linker_flags,
+			sizeof(*linker_flags) * linker_flags_count);
+	linker_flags[linker_flags_count - 1] = str2chr(tok, len);
+	return end ? -1 : 0;
+}
 
 int assemble_file_call_as(const char *path, int path_len, char *output)
 {
@@ -46,15 +70,43 @@ int assemble_file_call_as(const char *path, int path_len, char *output)
 int link_files_call_linker(str *output)
 {
 	int argv_offset = 3;
-	char *argv[1 + argv_offset + backend_assembled_files_count];
+	char **argv;
+	argv = calloc(1 + argv_offset
+			+ backend_assembled_files_count
+			+ libs_count * 2,
+			sizeof(*argv));
 	argv[0] = backend_linker;
 	argv[1] = "-o";
 	argv[2] = output->s;
 	for (int i = 0; i < backend_assembled_files_count; i++, argv_offset++)
 		argv[argv_offset] = backend_assembled_files[i];
+	for (int i = 0; i < linker_flags_count; i++, argv_offset++)
+		argv[argv_offset] = linker_flags[i];
+	for (int i = 0; i < libs_count; i++, argv_offset += 2) {
+		argv[argv_offset] = "-l";
+		argv[argv_offset + 1] = libs_list[i];
+	}
 	argv[argv_offset] = NULL;
 	execvp(backend_linker, argv);
 	die("amc[\x1b[30;41mDIE\x1b[0m]: Linker stopped!\n");
+	return 0;
+}
+
+int backend_append_lib(char *path)
+{
+	libs_count += 1;
+	libs_list = realloc(libs_list, sizeof(*libs_list) * libs_count);
+	libs_list[libs_count - 1] = path;
+	return 0;
+}
+
+int backend_append_linker_flags(char *arg)
+{
+	int ret = 0;
+	while ((ret = append_linker_flag(&arg)) != -1) {
+		if (ret > 0)
+			return 1;
+	}
 	return 0;
 }
 
