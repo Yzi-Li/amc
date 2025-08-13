@@ -9,4 +9,5 @@ amc.debug
 build
 compile_commands.json
 test/build
+test/complexc/main
 .cache
