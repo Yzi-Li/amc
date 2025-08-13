@@ -126,6 +126,7 @@ int asf_stack_align(struct object_node *start_node)
 	if (start_node == NULL)
 		return 1;
 	align = (asf_stack_addr + 15) & -16;
+	asf_stack_addr = 0;
 	node = malloc(sizeof(*node));
 	node->s = str_new();
 	str_expand(node->s, strlen(temp) + ullen(align) - 4);
@@ -143,10 +144,7 @@ int asf_stack_end_frame(struct object_node *start_node,
 		struct asf_stack_element *start_stack)
 {
 	struct asf_stack_element *cur = NULL, *next = NULL;
-	if (asf_stack_align(start_node))
-		return 1;
 	if (start_stack == NULL) {
-		asf_stack_addr = 0;
 		stack_element_remove();
 		return 0;
 	}
@@ -155,7 +153,6 @@ int asf_stack_end_frame(struct object_node *start_node,
 		asf_stack_addr = 0;
 		return 0;
 	}
-	asf_stack_addr = cur->addr;
 	while (cur != NULL) {
 		next = cur->next;
 		cur->used = 0;

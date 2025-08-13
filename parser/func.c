@@ -36,7 +36,8 @@ static int func_call_read_callee(struct parser *parser,
 static int func_call_read_token(struct file *f, str *token);
 static int func_def_block_start(struct parser *parser);
 static int func_def_check_main(const char *name, int len);
-static int func_def_end_scope(struct parser *parser);
+static int func_def_end_scope(struct parser *parser,
+		backend_func_def_handle *handle);
 static int func_def_inherit_decorators(struct decorators *src,
 		struct symbol *dest);
 static int func_def_main(struct parser *parser);
@@ -226,11 +227,14 @@ int func_def_check_main(const char *name, int len)
 	return 0;
 }
 
-int func_def_end_scope(struct parser *parser)
+int func_def_end_scope(struct parser *parser, backend_func_def_handle *handle)
 {
 	struct scope *parent = parser->scope->parent;
 	for (int i = 0; i < parser->scope->fn->argc; i++)
 		parser->scope->sym_groups[SYMG_SYM].symbols[i] = NULL;
+	if (handle != NULL)
+		if (backend_call(func_def_end)(handle))
+			return 1;
 	scope_end(parser->scope);
 	parser->scope = parent;
 	return 0;
@@ -248,6 +252,7 @@ int func_def_inherit_decorators(struct decorators *src,
 int func_def_main(struct parser *parser)
 {
 	struct symbol *fn = parser->scope->fn;
+	backend_func_def_handle *handle = NULL;
 	if (!parser->stat.has_pub)
 		goto err_not_pub;
 	fn->result_type.type = YZ_I8;
@@ -256,12 +261,16 @@ int func_def_main(struct parser *parser)
 	while (parser->f->src[parser->f->pos] != '\n'
 			&& parser->f->src[parser->f->pos] != ';')
 		file_pos_next(parser->f);
-	if (backend_call(func_def)(fn, 1, 1))
+	if ((handle = backend_call(func_def)(fn, 1, 1)) == NULL)
 		goto err_free_fn;
 	fn->parse_function = func_call_main;
 	if (symbol_register(fn, &parser->scope_pub->sym_groups[SYMG_FUNC]))
 		goto err_free_fn;
-	return parse_block(parser);
+	if (parse_block(parser))
+		goto err_free_fn;
+	if (backend_call(func_def_end)(handle))
+		goto err_free_fn;
+	return 0;
 err_not_pub:
 	printf("amc: func_def_main: "ERROR_STR":\n"
 			"| Function: 'main' must be declared as 'pub'.\n");
@@ -426,6 +435,7 @@ int parse_func_def(struct parser *parser)
 		.status_type = SCOPE_IN_BLOCK,
 		.sym_groups = {}
 	};
+	backend_func_def_handle *handle = NULL;
 	parser->scope = &fn_scope;
 	if (scope_check_is_correct(&fn_scope))
 		return 1;
@@ -448,12 +458,13 @@ int parse_func_def(struct parser *parser)
 	if (symbol_register(result, &dest_scope->sym_groups[SYMG_FUNC]))
 		goto err_free_result;
 	if (ret == -1)
-		return func_def_end_scope(parser);
-	if (backend_call(func_def)(result, parser->stat.has_pub, 0))
+		return func_def_end_scope(parser, NULL);
+	if ((handle = backend_call(func_def)(result, parser->stat.has_pub, 0))
+			== NULL)
 		goto err_free_result;
 	if (parse_block(parser))
 		goto err_free_result;
-	return func_def_end_scope(parser);
+	return func_def_end_scope(parser, handle);
 err_free_result:
 	free_symbol(result);
 	return 1;

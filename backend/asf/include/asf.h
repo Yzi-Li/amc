@@ -35,7 +35,8 @@ int asf_dec_c_fn(str *name, int argc);
 int asf_dec_syscall(int code, int argc);
 
 int asf_func_call(struct symbol *fn, yz_val **v, int vlen);
-int asf_func_def(struct symbol *fn, int pub, int main);
+backend_func_def_handle *asf_func_def(struct symbol *fn, int pub, int main);
+int asf_func_def_end(backend_func_def_handle *handle);
 int asf_func_ret(yz_val *v, int is_main);
 
 int asf_null_handle_begin(backend_null_handle **handle, yz_val *val);

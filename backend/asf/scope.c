@@ -38,9 +38,6 @@ int asf_scope_end(backend_scope_status *raw_status)
 	struct asf_scope_status *status = raw_status;
 	switch (status->type) {
 	case ASF_SCOPE_STATUS_NO:
-		if (asf_stack_end_frame(status->start_node, status->stack_start))
-			return 1;
-		return 0;
 		break;
 	case ASF_SCOPE_STATUS_NORMAL:
 		if (scope_end_normal(status))

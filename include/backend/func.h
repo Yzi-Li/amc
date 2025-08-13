@@ -6,8 +6,11 @@
 #include "../symbol.h"
 #include "../val.h"
 
+typedef void backend_func_def_handle;
+
 typedef int (*backend_func_call_f)(struct symbol *fn, yz_val **vs, int vlen);
-typedef int (*backend_func_def_f)(struct symbol *fn, int pub, int main);
+typedef backend_func_def_handle *(*backend_func_def_f)(struct symbol *fn, int pub, int main);
+typedef int (*backend_func_def_end_f)(backend_func_def_handle *raw_stat);
 typedef int (*backend_func_ret_f)(yz_val *v, int is_main);
 
 #endif

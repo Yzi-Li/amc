@@ -29,9 +29,10 @@ struct backend backend_asf = {
 	.dec_c_fn    = asf_dec_c_fn,
 	.dec_syscall = asf_dec_syscall,
 
-	.func_call = asf_func_call,
-	.func_def  = asf_func_def,
-	.func_ret  = asf_func_ret,
+	.func_call    = asf_func_call,
+	.func_def     = asf_func_def,
+	.func_def_end = asf_func_def_end,
+	.func_ret     = asf_func_ret,
 
 	.null_handle_begin = asf_null_handle_begin,
 	.null_handle_end   = asf_null_handle_end,

@@ -58,6 +58,7 @@ struct backend {
 	backend_dec_syscall_f        dec_syscall;
 	backend_func_call_f          func_call;
 	backend_func_def_f           func_def;
+	backend_func_def_end_f       func_def_end;
 	backend_func_ret_f           func_ret;
 	backend_null_handle_begin_f  null_handle_begin;
 	backend_null_handle_end_f    null_handle_end;

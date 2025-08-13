@@ -142,7 +142,7 @@ err_free_node:
 	return 1;
 }
 
-int asf_func_def(struct symbol *fn, int pub, int main)
+backend_func_def_handle *asf_func_def(struct symbol *fn, int pub, int main)
 {
 	const char *temp_private =
 		"%s:\n"
@@ -155,7 +155,7 @@ int asf_func_def(struct symbol *fn, int pub, int main)
 		"movq %%rsp, %%rbp\n";
 	struct object_node *node;
 	if (fn == NULL)
-		return 1;
+		return NULL;
 	node = malloc(sizeof(*node));
 	node->s = str_new();
 	if (pub && main) {
@@ -176,11 +176,19 @@ int asf_func_def(struct symbol *fn, int pub, int main)
 	}
 	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node_and_str;
-	return 0;
+	return node;
 err_free_node_and_str:
 	str_free(node->s);
 	free(node);
-	return 1;
+	return NULL;
+}
+
+int asf_func_def_end(backend_func_def_handle *handle)
+{
+	struct object_node *start_node = handle;
+	if (asf_stack_align(start_node))
+		return 1;
+	return 0;
 }
 
 int asf_func_ret(yz_val *v, int is_main)
