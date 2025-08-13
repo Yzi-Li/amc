@@ -6,10 +6,12 @@
 #include "include/register.h"
 #include "include/stack.h"
 #include "include/val.h"
+#include "../../include/backend/object.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+static unsigned int asf_stack_addr = 0;
 struct asf_stack_element *asf_stack_top = NULL;
 
 static int stack_element_append(enum ASF_BYTES bytes);
@@ -17,36 +19,44 @@ static void stack_element_remove();
 
 int stack_element_append(enum ASF_BYTES bytes)
 {
-	struct asf_stack_element *element = malloc(sizeof(*asf_stack_top));
-	if (element == NULL)
-		return 1;
 	if (asf_stack_top == NULL) {
-		asf_stack_top = element;
-		asf_stack_top->next = NULL;
-		asf_stack_top->prev = NULL;
+		asf_stack_top = calloc(1, sizeof(*asf_stack_top));
 		asf_stack_top->addr = asf_bytes_get_size(bytes);
 		asf_stack_top->bytes = bytes;
+		asf_stack_top->used = 1;
+		asf_stack_addr = asf_stack_top->addr;
 		return 0;
 	}
-	element->next = NULL;
-	element->prev = asf_stack_top;
-	element->addr = element->prev->addr + asf_bytes_get_size(bytes);
-	element->bytes = bytes;
-	asf_stack_top->next = element;
-	asf_stack_top = element;
+	if (!asf_stack_top->used) {
+		asf_stack_top->addr = asf_bytes_get_size(bytes);
+		asf_stack_top->bytes = bytes;
+		asf_stack_top->used = 1;
+		if (asf_stack_addr < asf_stack_top->addr)
+			asf_stack_addr = asf_stack_top->addr;
+		return 0;
+	}
+	if (asf_stack_top->next == NULL) {
+		asf_stack_top->next = calloc(1, sizeof(*asf_stack_top));
+		asf_stack_top->next->prev = asf_stack_top;
+	}
+	asf_stack_top = asf_stack_top->next;
+	asf_stack_top->addr = asf_stack_top->prev->addr
+		+ asf_bytes_get_size(bytes);
+	asf_stack_top->bytes = bytes;
+	asf_stack_top->used = 1;
+	if (asf_stack_addr < asf_stack_top->addr)
+		asf_stack_addr = asf_stack_top->addr;
 	return 0;
 }
 
 void stack_element_remove()
 {
-	struct asf_stack_element *element = asf_stack_top;
-	if (asf_stack_top->prev == NULL) {
-		free_cl(asf_stack_top);
+	if (asf_stack_top == NULL)
 		return;
-	}
-	asf_stack_top->prev->next = NULL;
+	asf_stack_top->used = 0;
+	if (asf_stack_top->prev == NULL)
+		return;
 	asf_stack_top = asf_stack_top->prev;
-	free(element);
 }
 
 str *asf_inst_pop(enum ASF_REGS dest)
@@ -106,25 +116,52 @@ str *asf_inst_push_reg(enum ASF_REGS src)
 	return asf_inst_mov(ASF_MOV_R2M, &src, asf_stack_top);
 }
 
-void asf_stack_end_frame(struct asf_stack_element *start)
+int asf_stack_align(struct object_node *start_node)
+{
+	int align;
+	const char *temp = "subq $%lld, %%rsp\n";
+	struct object_node *node;
+	if (asf_stack_addr == 0)
+		return 0;
+	if (start_node == NULL)
+		return 1;
+	align = (asf_stack_addr + 15) & -16;
+	node = malloc(sizeof(*node));
+	node->s = str_new();
+	str_expand(node->s, strlen(temp) + ullen(align) - 4);
+	snprintf(node->s->s, node->s->len, temp, align);
+	if (object_insert(node, start_node, start_node->next))
+		goto err_free_node_and_str;
+	return 0;
+err_free_node_and_str:
+	str_free(node->s);
+	free(node);
+	return 1;
+}
+
+int asf_stack_end_frame(struct object_node *start_node,
+		struct asf_stack_element *start_stack)
 {
 	struct asf_stack_element *cur = NULL, *next = NULL;
-	if (start == NULL) {
-		cur = asf_stack_top;
-	} else {
-		cur = start->next;
-		if (start->prev != NULL)
-			start->prev->next = NULL;
+	if (asf_stack_align(start_node))
+		return 1;
+	if (start_stack == NULL) {
+		asf_stack_addr = 0;
+		stack_element_remove();
+		return 0;
 	}
-	if ((asf_stack_top = start) == NULL)
-		return;
-	asf_stack_top->next = NULL;
+	asf_stack_top = start_stack;
+	if ((cur = start_stack->next) == NULL) {
+		asf_stack_addr = 0;
+		return 0;
+	}
+	asf_stack_addr = cur->addr;
 	while (cur != NULL) {
 		next = cur->next;
-		free(cur);
+		cur->used = 0;
 		cur = next;
 	}
-	return;
+	return 0;
 }
 
 str *asf_stack_get_element(struct asf_stack_element *element, int pop)

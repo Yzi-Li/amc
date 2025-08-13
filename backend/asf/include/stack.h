@@ -5,10 +5,11 @@
 #define AMC_BE_ASF_STACK_H
 #include "imm.h"
 #include "register.h"
+#include "../../../include/backend/object.h"
 #include "../../../include/val.h"
 
 struct asf_stack_element {
-	int addr;
+	int addr, used;
 	enum ASF_BYTES bytes;
 	struct asf_stack_element *next, *prev;
 };
@@ -21,7 +22,9 @@ str *asf_inst_push_const(int src);
 str *asf_inst_push_imm(struct asf_imm *src);
 str *asf_inst_push_mem(struct asf_stack_element *src);
 str *asf_inst_push_reg(enum ASF_REGS src);
-void asf_stack_end_frame(struct asf_stack_element *start);
+int asf_stack_align(struct object_node *start_node);
+int asf_stack_end_frame(struct object_node *start_node,
+		struct asf_stack_element *start_stack);
 str *asf_stack_get_element(struct asf_stack_element *element, int pop);
 
 #endif

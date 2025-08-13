@@ -4,7 +4,9 @@ src="$1"
 bin="$2"
 
 $bin
+ret=$?
+echo $ret
 
-if [ $? -ne 5 ]; then
+if [ $ret -ne 5 ]; then
 	exit 5
 fi

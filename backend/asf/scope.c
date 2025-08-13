@@ -3,14 +3,14 @@
 */
 #include "include/asf.h"
 #include "include/scope.h"
-#include "../../include/backend/object.h"
 #include <stdlib.h>
 
 static int scope_end_normal(struct asf_scope_status *status);
 
 int scope_end_normal(struct asf_scope_status *status)
 {
-	asf_stack_end_frame(status->stack_start);
+	if (asf_stack_end_frame(status->start_node, status->stack_start))
+		return 1;
 	if (status->end_node == NULL)
 		return 0;
 	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], status->end_node))
@@ -27,6 +27,7 @@ err_free_node:
 backend_scope_status *asf_scope_begin()
 {
 	struct asf_scope_status *status = calloc(1, sizeof(*status));
+	status->start_node = cur_obj->sections[ASF_OBJ_TEXT].last;
 	status->stack_start = asf_stack_top;
 	status->type = ASF_SCOPE_STATUS_NO;
 	return status;
@@ -37,6 +38,8 @@ int asf_scope_end(backend_scope_status *raw_status)
 	struct asf_scope_status *status = raw_status;
 	switch (status->type) {
 	case ASF_SCOPE_STATUS_NO:
+		if (asf_stack_end_frame(status->start_node, status->stack_start))
+			return 1;
 		return 0;
 		break;
 	case ASF_SCOPE_STATUS_NORMAL:

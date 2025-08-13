@@ -18,7 +18,7 @@ struct asf_scope_status {
 		struct asf_cond_handle cond;
 		struct asf_loop_handle loop;
 	};
-	struct object_node *end_node;
+	struct object_node *end_node, *start_node;
 	int identifier_count;
 	struct asf_stack_element *stack_start;
 };
