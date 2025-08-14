@@ -19,11 +19,6 @@ Like `Install 'libgetarg'` but see [libsctrie.mk](lib/libsctrie.mk).
 make
 ```
 
-### Debug version
-```sh
-make debug
-```
-
 # Others
 ## Unsupport 32-bit!
 The file output by the compiler dosen't support 32-bit devices.

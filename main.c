@@ -16,6 +16,7 @@ static const char *src = NULL;
 
 static int err_no_input();
 static int opt_as(int argc, char *argv[], struct option *opt);
+static int opt_as_flags(int argc, char *argv[], struct option *opt);
 static int opt_ld(int argc, char *argv[], struct option *opt);
 static int opt_ld_flags(int argc, char *argv[], struct option *opt);
 static int opt_link(int argc, char *argv[], struct option *opt);
@@ -31,6 +32,14 @@ static struct option options[] = {
 		opt_as,
 		"select assembler",
 		NULL
+	},
+	{
+		"as-flags", '\0',
+		GETARG_SINGLE_ARG, 0,
+		opt_as_flags,
+		"assembler options",
+		"Use '-f elf64 -p gas' and set assembler"
+			" to 'yasm' for assembler"
 	},
 	{
 		"help", 'h',
@@ -51,7 +60,7 @@ static struct option options[] = {
 		GETARG_SINGLE_ARG, 0,
 		opt_ld_flags,
 		"linker options",
-		"Use 'rcs' and use 'ar' for linker"
+		"Use 'rcs' and set linker to 'ar' for linker"
 			" to generate a static library"
 	},
 	{
@@ -94,6 +103,11 @@ int opt_as(int argc, char *argv[], struct option *opt)
 {
 	backend_assembler = argv[0];
 	return 0;
+}
+
+int opt_as_flags(int argc, char *argv[], struct option *opt)
+{
+	return backend_append_assembler_flags(argv[0]);
 }
 
 int opt_ld(int argc, char *argv[], struct option *opt)

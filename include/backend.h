@@ -81,6 +81,7 @@ extern char *backend_linker;
 extern struct backend *backends[];
 extern enum BACKENDS cur_backend;
 
+int backend_append_assembler_flags(char *arg);
 int backend_append_lib(char *path);
 int backend_append_linker_flags(char *arg);
 
