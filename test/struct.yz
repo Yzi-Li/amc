@@ -5,10 +5,15 @@ struct Str =>
 	mut siz: i32
 	mut s: *i32
 
+fn a(s: *Str): i32 =>
+	let a: i32 = s.siz
+	ret a
+
 pub fn main: i32 =>
-	let mut test: Str = { 0, 1, null }
+	let mut test: Str = { 3, 2, null }
 	let a: i32 = test.siz
 	test.siz += 1
 	test.s = &test.siz
 	let b: *i32 = &a
-	ret *test.s
+	let c: i32 = [a &test]
+	ret c

@@ -16,18 +16,12 @@
 #include "../include/comptime/type.h"
 #include "../include/expr.h"
 #include "../include/parser.h"
+#include "../include/ptr.h"
 #include "../include/symbol.h"
 #include "../include/token.h"
 #include "../utils/str/str.h"
 #include <stdio.h>
 #include <stdlib.h>
-
-typedef enum {
-	HANDLED,
-
-	CANNOT_ASSIGN_VAL,
-	USE_PIPELINE_CHECK_NULL,
-} result_t;
 
 static int identifier_assign_backend_call(struct symbol *sym, yz_val *val,
 		enum OP_ID mode);
@@ -221,6 +215,10 @@ int identifier_read(struct parser *parser, yz_val *val)
 	if (parser->f->src[parser->f->pos] == '[')
 		return array_get_elem(parser, val);
 	if (parser->f->src[parser->f->pos] == '.') {
+		if (sym->result_type.type == YZ_PTR
+				&& ((yz_ptr_type*)sym->result_type.v)
+				->ref.type == YZ_STRUCT)
+			return struct_get_elem_from_ptr(parser, val);
 		if (sym->result_type.type != YZ_STRUCT)
 			goto err_syntax_err;
 		return struct_get_elem(parser, val);

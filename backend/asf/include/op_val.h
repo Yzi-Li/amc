@@ -10,5 +10,6 @@ struct asf_stack_element *asf_op_extract_get_mem(yz_extract_val *val);
 int asf_op_extract_ptr_val(struct symbol *sym);
 int asf_op_extract_ptr_val_from_expr(struct expr *expr);
 int asf_op_extract_struct_elem(yz_extract_val *val);
+int asf_op_extract_struct_elem_from_ptr(yz_extract_val *val);
 
 #endif

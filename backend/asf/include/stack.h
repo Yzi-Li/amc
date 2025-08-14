@@ -23,8 +23,7 @@ str *asf_inst_push_imm(struct asf_imm *src);
 str *asf_inst_push_mem(struct asf_stack_element *src);
 str *asf_inst_push_reg(enum ASF_REGS src);
 int asf_stack_align(struct object_node *start_node);
-int asf_stack_end_frame(struct object_node *start_node,
-		struct asf_stack_element *start_stack);
+int asf_stack_end_frame(struct asf_stack_element *start_stack);
 str *asf_stack_get_element(struct asf_stack_element *element, int pop);
 
 #endif

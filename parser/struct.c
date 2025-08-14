@@ -15,6 +15,7 @@
 #include "../include/comptime/struct.h"
 #include "../include/comptime/symbol.h"
 #include "../include/parser.h"
+#include "../include/ptr.h"
 #include "../include/token.h"
 #include <sctrie.h>
 #include <stdio.h>
@@ -28,6 +29,8 @@ static int struct_def_read_name(struct file *f, str *name);
 static int struct_def_read_start(struct file *f, const char *name);
 static int struct_def_reg(yz_struct *src, struct scope *scope);
 static int struct_def_reg_elem(yz_struct *src, struct symbol *elem);
+static int struct_get_elem_from_ptr_handle_val(yz_val *val, int index,
+		struct symbol *elem);
 static int struct_get_elem_handle_val(yz_val *val, int index,
 		struct symbol *elem);
 static int struct_get_elem_read_name(struct file *f, str *name);
@@ -174,6 +177,22 @@ int struct_def_reg_elem(yz_struct *src, struct symbol *elem)
 	return 0;
 }
 
+int struct_get_elem_from_ptr_handle_val(yz_val *val, int index,
+		struct symbol *elem)
+{
+	yz_extract_val *v = malloc(sizeof(*v));
+	v->index = index;
+	v->sym = val->sym;
+	v->elem = elem;
+	v->type = YZ_EXTRACT_STRUCT_FROM_PTR;
+	if ((val->v = op_extract_val_expr_create(&elem->result_type, v))
+			== NULL)
+		return 1;
+	val->type.type = AMC_EXPR;
+	val->type.v = val->v;
+	return 0;
+}
+
 int struct_get_elem_handle_val(yz_val *val, int index, struct symbol *elem)
 {
 	yz_extract_val *v = malloc(sizeof(*v));
@@ -309,6 +328,22 @@ int struct_get_elem(struct parser *parser, yz_val *val)
 	if ((ret = struct_get_elem_read_elem(&token, src)) == -1)
 		goto err_print_pos;
 	return struct_get_elem_handle_val(val, ret, src->elems[ret]);
+err_print_pos:
+	return err_print_pos(__func__, NULL, parser->f->cur_line,
+			parser->f->cur_column);
+}
+
+int struct_get_elem_from_ptr(struct parser *parser, yz_val *val)
+{
+	int ret = 0;
+	struct symbol *sym = val->v;
+	yz_struct *src = ((yz_ptr_type*)sym->result_type.v)->ref.v;
+	str token = TOKEN_NEW;
+	if (struct_get_elem_read_name(parser->f, &token))
+		goto err_print_pos;
+	if ((ret = struct_get_elem_read_elem(&token, src)) == -1)
+		goto err_print_pos;
+	return struct_get_elem_from_ptr_handle_val(val, ret, src->elems[ret]);
 err_print_pos:
 	return err_print_pos(__func__, NULL, parser->f->cur_line,
 			parser->f->cur_column);

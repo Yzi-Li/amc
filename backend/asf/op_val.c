@@ -21,6 +21,9 @@ int asf_op_extract_val(struct expr *e)
 	case YZ_EXTRACT_STRUCT:
 		return asf_op_extract_struct_elem(val);
 		break;
+	case YZ_EXTRACT_STRUCT_FROM_PTR:
+		return asf_op_extract_struct_elem_from_ptr(val);
+		break;
 	default:
 		break;
 		return 1;

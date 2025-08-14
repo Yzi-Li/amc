@@ -2,13 +2,17 @@
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 #include "include/asf.h"
+#include "include/call.h"
 #include "include/identifier.h"
 #include "include/mov.h"
 #include "include/op_val.h"
 #include "include/stack.h"
 #include "include/struct.h"
+#include "include/suffix.h"
 #include "../../include/backend/object.h"
+#include "../../include/ptr.h"
 #include <stdlib.h>
+#include <string.h>
 
 static int struct_elem_push(yz_val *val);
 static int struct_elem_push_empty(yz_val *val);
@@ -56,14 +60,12 @@ err_free_node:
 
 int asf_struct_def(backend_symbol_status *raw_sym_stat, yz_val **vs, int len)
 {
-	if (struct_elem_push(vs[0]))
-		return 1;
-	if (asf_identifier_reg(raw_sym_stat, asf_stack_top))
-		goto err_identifier_reg_failed;
-	for (int i = 1; i < len; i++) {
+	for (int i = len - 1; i >= 0; i--) {
 		if (struct_elem_push(vs[i]))
 			return 1;
 	}
+	if (asf_identifier_reg(raw_sym_stat, asf_stack_top))
+		goto err_identifier_reg_failed;
 	return 0;
 err_identifier_reg_failed:
 	printf("amc[backend.asf]: asf_struct_def: "
@@ -71,11 +73,12 @@ err_identifier_reg_failed:
 	return 1;
 }
 
-struct asf_stack_element *asf_struct_get_elem(struct asf_stack_element *base, int index)
+struct asf_stack_element *asf_struct_get_elem(struct asf_stack_element *base,
+		int index)
 {
 	struct asf_stack_element *result = base;
 	for (int i = 0; i < index; i++) {
-		if ((result = result->next) == NULL)
+		if ((result = result->prev) == NULL)
 			return NULL;
 	}
 	return result;
@@ -122,6 +125,47 @@ err_inst_failed:
 	printf("amc[backend.asf]: asf_struct_get_elem: "
 			"Get instruction failed!\n");
 err_free_node:
+	free(node);
+	return 1;
+}
+
+int asf_op_extract_struct_elem_from_ptr(yz_extract_val *val)
+{
+	enum ASF_REGS dest = ASF_REG_RAX, src = ASF_REG_RAX;
+	struct object_node *node = NULL;
+	int offset = 0;
+	const char *temp = "mov%c (%%%s), %%%s\n";
+	const char *temp_offset = "mov%c %d(%%%s), %%%s\n";
+	struct yz_struct *s = ((yz_ptr_type*)val->sym->result_type.v)->ref.v;
+	if (val->sym->type == SYM_FUNC_ARG) {
+		if (val->sym->argc > asf_call_arg_regs_len)
+			return 1;
+		src = asf_call_arg_regs[val->sym->argc];
+	}
+	dest = asf_reg_get(asf_yz_type2bytes(&val->elem->result_type));
+	node = malloc(sizeof(*node));
+	node->s = str_new();
+	if (val->index == 0) {
+		str_expand(node->s, strlen(temp));
+		snprintf(node->s->s, node->s->len, temp,
+				asf_suffix_get(asf_regs[dest].bytes),
+				asf_regs[src].name,
+				asf_regs[dest].name);
+	} else {
+		for (int i = 0; i < val->index; i++)
+			offset += asf_yz_type2bytes(&s->elems[i]->result_type);
+		str_expand(node->s, strlen(temp_offset) + ullen(offset) - 2);
+		snprintf(node->s->s, node->s->len, temp_offset,
+				asf_suffix_get(asf_regs[dest].bytes),
+				offset,
+				asf_regs[src].name,
+				asf_regs[dest].name);
+	}
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
+		goto err_free_node_and_str;
+	return 0;
+err_free_node_and_str:
+	str_free(node->s);
 	free(node);
 	return 1;
 }

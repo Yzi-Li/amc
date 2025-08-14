@@ -140,8 +140,7 @@ err_free_node_and_str:
 	return 1;
 }
 
-int asf_stack_end_frame(struct object_node *start_node,
-		struct asf_stack_element *start_stack)
+int asf_stack_end_frame(struct asf_stack_element *start_stack)
 {
 	struct asf_stack_element *cur = NULL, *next = NULL;
 	if (start_stack == NULL) {

@@ -30,7 +30,8 @@ typedef struct yz_extract_val {
 	};
 	enum {
 		YZ_EXTRACT_ARRAY,
-		YZ_EXTRACT_STRUCT
+		YZ_EXTRACT_STRUCT,
+		YZ_EXTRACT_STRUCT_FROM_PTR
 	} type;
 } yz_extract_val;
 

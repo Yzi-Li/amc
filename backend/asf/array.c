@@ -202,7 +202,7 @@ err_free_node:
 
 int asf_array_def(backend_symbol_status **raw_sym_stat, yz_val **vs, int len)
 {
-	for (int i = len - 1; i != -1; i--) {
+	for (int i = len - 1; i >= 0; i--) {
 		if (array_elem_push(vs[i]))
 			return 1;
 	}
