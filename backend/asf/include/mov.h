@@ -16,6 +16,11 @@ enum ASF_MOV_TYPE {
 	ASF_MOV_R2R
 };
 
+enum ASF_MOV_MEM_TYPE {
+	ASF_MOV_MEM_INREG_2_REG
+};
+
 str *asf_inst_mov(enum ASF_MOV_TYPE mt, void *l, void *r);
+str *asf_inst_mov_mem(enum ASF_MOV_MEM_TYPE type, int offset, void *l, void *r);
 
 #endif

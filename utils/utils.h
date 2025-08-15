@@ -1,5 +1,6 @@
 #ifndef AMC_UTILS_H
 #define AMC_UTILS_H
+#include <stdint.h>
 #include <stdlib.h>
 
 #define CHR_IS_NUM(x)         (REGION_INT((x), '0', '9'))
@@ -21,9 +22,7 @@
  */
 int checkint(const char *str, int len);
 int rmkdir(const char *path);
-int ublen(unsigned char src);
-int uslen(unsigned short src);
-int uilen(unsigned int src);
-int ullen(unsigned long long src);
+uint64_t ullen(uint64_t src);
+int64_t sllen(int64_t src);
 
 #endif

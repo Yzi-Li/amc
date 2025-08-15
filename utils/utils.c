@@ -13,13 +13,6 @@
 
 #define AMC_INT_LEN_FUNC(NAME, TYPE) \
 	int NAME(TYPE src) { \
-		if (src == 0)\
-			return 1;\
-		int len = 0; \
-		for (TYPE i = src; i != 0; len++) { \
-			i /= 10; \
-		} \
-		return len; \
 	}
 
 int checkint(const char *str, int len)
@@ -56,7 +49,21 @@ int rmkdir(const char *path)
 	return 0;
 }
 
-AMC_INT_LEN_FUNC(ublen, unsigned char)
-AMC_INT_LEN_FUNC(uslen, unsigned short)
-AMC_INT_LEN_FUNC(uilen, unsigned int)
-AMC_INT_LEN_FUNC(ullen, unsigned long long)
+uint64_t ullen(uint64_t src)
+{
+	int len = 0;
+	if (src == 0)
+		return 1;
+	for (uint64_t i = src; i != 0; len++)
+		i /= 10;
+	return len;
+}
+
+int64_t sllen(int64_t src)
+{
+	if (src == 0)
+		return 1;
+	if (src > 0)
+		return ullen(src);
+	return 0;
+}

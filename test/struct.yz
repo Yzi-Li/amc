@@ -11,9 +11,11 @@ fn a(s: *Str): i32 =>
 
 pub fn main: i32 =>
 	let mut test: Str = { 3, 2, null }
+	let test_: *Str = &test
 	let a: i32 = test.siz
 	test.siz += 1
 	test.s = &test.siz
 	let b: *i32 = &a
-	let c: i32 = [a &test]
+	; let c: i32 = [a &test]
+	let c: i32 = test_.siz
 	ret c

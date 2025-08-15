@@ -8,7 +8,6 @@
 #include "include/op_val.h"
 #include "include/stack.h"
 #include "include/struct.h"
-#include "include/suffix.h"
 #include "../../include/backend/object.h"
 #include "../../include/ptr.h"
 #include <stdlib.h>
@@ -132,40 +131,46 @@ err_free_node:
 int asf_op_extract_struct_elem_from_ptr(yz_extract_val *val)
 {
 	enum ASF_REGS dest = ASF_REG_RAX, src = ASF_REG_RAX;
+	str *inst = NULL, *tmp = NULL;
 	struct object_node *node = NULL;
 	int offset = 0;
-	const char *temp = "mov%c (%%%s), %%%s\n";
-	const char *temp_offset = "mov%c %d(%%%s), %%%s\n";
 	struct yz_struct *s = ((yz_ptr_type*)val->sym->result_type.v)->ref.v;
 	if (val->sym->type == SYM_FUNC_ARG) {
 		if (val->sym->argc > asf_call_arg_regs_len)
 			return 1;
 		src = asf_call_arg_regs[val->sym->argc];
+	} else if (val->sym->type == SYM_IDENTIFIER) {
+		if ((tmp = asf_inst_mov(ASF_MOV_M2R,
+						val->sym->backend_status,
+						&src)) == NULL)
+			return 1;
+	} else {
+		return 1;
 	}
 	dest = asf_reg_get(asf_yz_type2bytes(&val->elem->result_type));
 	node = malloc(sizeof(*node));
-	node->s = str_new();
-	if (val->index == 0) {
-		str_expand(node->s, strlen(temp));
-		snprintf(node->s->s, node->s->len, temp,
-				asf_suffix_get(asf_regs[dest].bytes),
-				asf_regs[src].name,
-				asf_regs[dest].name);
+	for (int i = 0; i < val->index; i++)
+		offset += asf_yz_type2bytes(&s->elems[i]->result_type);
+	if ((inst = asf_inst_mov_mem(ASF_MOV_MEM_INREG_2_REG, offset,
+					&src, &dest)) == NULL)
+		goto err_inst_failed;
+	if (val->sym->type == SYM_IDENTIFIER) {
+		node->s = tmp;
+		str_append(node->s, inst->len, inst->s);
+		str_free(inst);
 	} else {
-		for (int i = 0; i < val->index; i++)
-			offset += asf_yz_type2bytes(&s->elems[i]->result_type);
-		str_expand(node->s, strlen(temp_offset) + ullen(offset) - 2);
-		snprintf(node->s->s, node->s->len, temp_offset,
-				asf_suffix_get(asf_regs[dest].bytes),
-				offset,
-				asf_regs[src].name,
-				asf_regs[dest].name);
+		node->s = inst;
 	}
 	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node_and_str;
 	return 0;
 err_free_node_and_str:
 	str_free(node->s);
+	free(node);
+	return 1;
+err_inst_failed:
+	if (val->sym->type == SYM_IDENTIFIER)
+		str_free(tmp);
 	free(node);
 	return 1;
 }
