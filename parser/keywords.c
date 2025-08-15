@@ -12,7 +12,6 @@
 		.name           = {.len = NAME_LEN, .s =NAME}, \
 		.parse_function = PARSE_FUNC,         \
 		.flags = {                            \
-			.can_null         = 0,        \
 			.only_declaration = 0,        \
 			.rec              = REC,      \
 			.toplevel         = TOPLEVEL, \

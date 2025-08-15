@@ -38,8 +38,6 @@ static int struct_get_elem_read_name(struct file *f, str *name);
  * @return: elem index.
  */
 static int struct_get_elem_read_elem(str *name, yz_struct *src);
-static int struct_set_elem_backend_call(struct symbol *sym, int index,
-		yz_val *val, enum OP_ID mode);
 
 int constructor_struct_elem(const char *se, struct file *f, void *data)
 {
@@ -82,7 +80,7 @@ err_cannot_apply_expr:
 
 int struct_def_read_elem(struct parser *parser, yz_struct *src)
 {
-	int indent = 0, ret = 0;
+	int indent = 0;
 	i64 orig_column = parser->f->cur_column,
 	    orig_line = parser->f->cur_line,
 	    orig_pos = parser->f->pos;
@@ -98,11 +96,8 @@ int struct_def_read_elem(struct parser *parser, yz_struct *src)
 	elem = calloc(1, sizeof(*elem));
 	elem->type = SYM_STRUCT_ELEM;
 	elem->flags.mut = identifier_check_mut(parser->f);
-	if ((ret = parse_type_name_pair(parser, &elem->name,
-					&elem->result_type)) > 0)
+	if (parse_type_name_pair(parser, &elem->name, &elem->result_type))
 		goto err_free_elem;
-	if (ret == -1)
-		elem->flags.can_null = 1;
 	if (struct_def_reg_elem(src, elem))
 		goto err_free_elem;
 	return keyword_end(parser->f);
@@ -235,14 +230,6 @@ int struct_get_elem_read_elem(str *name, yz_struct *src)
 	return -1;
 }
 
-int struct_set_elem_backend_call(struct symbol *sym, int index, yz_val *val,
-		enum OP_ID mode)
-{
-	if (backend_call(struct_set_elem)(sym, index, val, mode))
-		return 1;
-	return 0;
-}
-
 int constructor_struct(struct parser *parser, struct symbol *sym)
 {
 	struct constructor_handle *handle = malloc(sizeof(*handle));
@@ -356,14 +343,37 @@ int struct_set_elem(struct parser *parser, struct symbol *sym, int index,
 	    orig_line = parser->f->cur_line;
 	yz_val *val = NULL;
 	struct symbol *elem = ((yz_struct*)sym->result_type.v)->elems[index];
-	elem->flags.checked_null = 0;
+	if (elem->result_type.type == YZ_PTR)
+		((yz_ptr_type*)elem->result_type.v)->flag_checked_null = 0;
 	if (!comptime_check_struct_elem_can_assign(sym, elem))
 		return err_print_pos(__func__, NULL, orig_line, orig_column);
 	if (identifier_assign_get_val(parser, &elem->result_type, &val))
 		return 1;
 	if (!comptime_check_sym_can_assign_val(elem, val))
 		return err_print_pos(__func__, NULL, orig_line, orig_column);
-	if (struct_set_elem_backend_call(sym, index, val, mode))
+	if (backend_call(struct_set_elem)(sym, index, val, mode))
+		return err_print_pos(__func__, "Backend call failed!",
+				orig_line, orig_column);
+	free_yz_val(val);
+	return 0;
+}
+
+int struct_set_elem_from_ptr(struct parser *parser, struct symbol *sym,
+		int index, enum OP_ID mode)
+{
+	i64 orig_column = parser->f->cur_column,
+	    orig_line = parser->f->cur_line;
+	yz_val *val = NULL;
+	struct symbol *elem = ((yz_struct*)sym->result_type.v)->elems[index];
+	if (elem->result_type.type == YZ_PTR)
+		((yz_ptr_type*)elem->result_type.v)->flag_checked_null = 0;
+	if (!comptime_check_struct_elem_can_assign(sym, elem))
+		return err_print_pos(__func__, NULL, orig_line, orig_column);
+	if (identifier_assign_get_val(parser, &elem->result_type, &val))
+		return 1;
+	if (!comptime_check_sym_can_assign_val(elem, val))
+		return err_print_pos(__func__, NULL, orig_line, orig_column);
+	if (backend_call(struct_set_elem_from_ptr)(sym, index, val, mode))
 		return err_print_pos(__func__, "Backend call failed!",
 				orig_line, orig_column);
 	free_yz_val(val);

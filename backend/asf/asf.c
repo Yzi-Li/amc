@@ -67,8 +67,9 @@ struct backend backend_asf = {
 	.scope_begin = asf_scope_begin,
 	.scope_end   = asf_scope_end,
 
-	.struct_def      = asf_struct_def,
-	.struct_set_elem = asf_struct_set_elem,
+	.struct_def               = asf_struct_def,
+	.struct_set_elem          = asf_struct_set_elem,
+	.struct_set_elem_from_ptr = asf_struct_set_elem_from_ptr,
 
 	.symbol_get_path    = asf_symbol_get_path,
 	.symbol_status_free = asf_symbol_status_free,

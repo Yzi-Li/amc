@@ -2,22 +2,25 @@
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 #include "../../include/comptime/ptr.h"
+#include "../../include/ptr.h"
 #include "../../utils/utils.h"
 #include <stdio.h>
 
 int comptime_ptr_check_can_null(yz_val *val, struct symbol *sym)
 {
 	struct symbol *val_sym = NULL;
+	yz_ptr_type *ptr;
 	if (val->type.type == AMC_SYM) {
 		val_sym = val->v;
-		if (!val_sym->flags.can_null)
+		ptr = val_sym->result_type.v;
+		if (!ptr->flag_can_null)
 			return 1;
-		if (val_sym->flags.checked_null)
+		if (ptr->flag_checked_null)
 			return 1;
 	} else if (val->type.type != YZ_NULL) {
 		return 0;
 	}
-	if (sym->flags.can_null)
+	if (((yz_ptr_type*)sym->result_type.v)->flag_can_null)
 		return 1;
 	printf("amc: comptime_ptr_check_can_null: "ERROR_STR":\n"
 			"| Cannot use null for symbol: '%s'!\n"
@@ -29,11 +32,12 @@ int comptime_ptr_check_can_null(yz_val *val, struct symbol *sym)
 
 int comptime_ptr_check_can_ret(struct symbol *sym, struct symbol *fn)
 {
-	if (!sym->flags.can_null)
+	yz_ptr_type *ptr = sym->result_type.v;
+	if (!ptr->flag_can_null)
 		return 1;
-	if (fn->flags.can_null)
+	if (((yz_ptr_type*)fn->result_type.v)->flag_can_null)
 		return 1;
-	if (sym->flags.checked_null)
+	if (ptr->flag_checked_null)
 		return 1;
 	printf("amc: comptime_ptr_check_can_ret:\n"
 			"| Pointer: '%s' must be checked is null.\n"
@@ -44,9 +48,10 @@ int comptime_ptr_check_can_ret(struct symbol *sym, struct symbol *fn)
 
 int comptime_ptr_check_can_use(struct symbol *sym)
 {
-	if (!sym->flags.can_null)
+	yz_ptr_type *ptr = sym->result_type.v;
+	if (!ptr->flag_can_null)
 		return 1;
-	if (sym->flags.checked_null)
+	if (ptr->flag_checked_null)
 		return 1;
 	printf("amc: comptime_ptr_check_can_use:\n"
 			"| Pointer: '%s' must be checked is null.\n",

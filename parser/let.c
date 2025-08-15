@@ -60,14 +60,10 @@ err_cannot_register_sym:
 int parse_let(struct parser *parser)
 {
 	struct symbol *result = calloc(1, sizeof(*result));
-	int ret=  0;
 	result->type = SYM_IDENTIFIER;
 	result->flags.mut = identifier_check_mut(parser->f);
-	if ((ret = parse_type_name_pair(parser, &result->name,
-					&result->result_type)) > 0)
+	if (parse_type_name_pair(parser, &result->name, &result->result_type))
 		goto err_free_result;
-	if (ret == -1)
-		result->flags.can_null = 1;
 	if (let_reg_sym(parser, result))
 		goto err_free_result;
 	if (parser->f->src[parser->f->pos] == '\n')

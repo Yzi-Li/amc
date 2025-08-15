@@ -48,6 +48,8 @@ int asf_scope_end(backend_scope_status *raw_status);
 int asf_struct_def(backend_symbol_status *raw_sym_stat, yz_val **vs, int len);
 int asf_struct_set_elem(struct symbol *sym, int index, yz_val *val,
 		enum OP_ID mode);
+int asf_struct_set_elem_from_ptr(struct symbol *sym, int index, yz_val *val,
+		enum OP_ID mode);
 
 int asf_symbol_get_path(str *result, str *mod, const char *name, int name_len);
 void asf_symbol_status_free(backend_symbol_status *raw_stat);

@@ -233,14 +233,22 @@ int op_assign_extracted_val(struct parser *parser, struct expr *e)
 	if (src_expr->valr->type.type != AMC_EXTRACT_VAL)
 		return 1;
 	src = src_expr->valr->v;
-	if (src->type == YZ_EXTRACT_STRUCT) {
-		if (struct_set_elem(parser, src->sym, src->index, e->op->id))
-			return 1;
-	} else if (src->type == YZ_EXTRACT_ARRAY) {
+	switch (src->type) {
+	case YZ_EXTRACT_ARRAY:
 		if (array_set_elem(parser, src->sym, src->offset, e->op->id))
 			return 1;
-	} else {
-		return 1;
+		break;
+	case YZ_EXTRACT_STRUCT:
+		if (struct_set_elem(parser, src->sym, src->index, e->op->id))
+			return 1;
+		break;
+	case YZ_EXTRACT_STRUCT_FROM_PTR:
+		if (struct_set_elem_from_ptr(parser, src->sym, src->index,
+					e->op->id))
+			return 1;
+		break;
+	default:
+		break;
 	}
 	free_expr(src_expr);
 	e->vall->type.type = AMC_ERR_TYPE;
@@ -283,7 +291,7 @@ int op_cmp_ptr_and_null(struct expr *e)
 	sym = e->vall->v;
 	if (sym->result_type.type != YZ_PTR)
 		return 1;
-	sym->flags.checked_null = 1;
+	((yz_ptr_type*)sym->result_type.v)->flag_checked_null = 1;
 	return 0;
 }
 

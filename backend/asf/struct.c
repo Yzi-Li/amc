@@ -105,6 +105,12 @@ err_free_node:
 	return 1;
 }
 
+int asf_struct_set_elem_from_ptr(struct symbol *sym, int index, yz_val *val,
+		enum OP_ID mode)
+{
+	return 0;
+}
+
 int asf_op_extract_struct_elem(yz_extract_val *val)
 {
 	struct asf_stack_element *cur =

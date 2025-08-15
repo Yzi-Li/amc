@@ -7,6 +7,7 @@ struct Str =>
 
 fn a(s: *Str): i32 =>
 	let a: i32 = s.siz
+	; s.siz = 1
 	ret a
 
 pub fn main: i32 =>

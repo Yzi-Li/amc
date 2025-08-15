@@ -103,7 +103,8 @@ int identifier_assign_val(struct parser *parser, struct symbol *sym,
 	    orig_line = parser->f->cur_line;
 	int ret = 0;
 	yz_val *val = NULL;
-	sym->flags.checked_null = 0;
+	if (sym->result_type.type == YZ_PTR)
+		((yz_ptr_type*)sym->result_type.v)->flag_checked_null = 0;
 	if (!comptime_check_sym_can_assign(sym))
 		return err_print_pos(__func__, NULL, orig_line, orig_column);
 	if (identifier_assign_get_val(parser, &sym->result_type, &val))
@@ -128,12 +129,14 @@ int identifier_check_can_assign_val(struct parser *parser,
 	i64 orig_line = parser->f->cur_line,
 	    orig_column = parser->f->cur_column,
 	    orig_pos = parser->f->pos;
-	if (ident->result_type.type != YZ_PTR || ident->flags.can_null)
+	yz_ptr_type *ptr = ident->result_type.v;
+	if (ident->result_type.type != YZ_PTR || ptr->flag_can_null)
 		return 1;
 	if (val->type.type == YZ_NULL)
 		return 0;
+	ptr = val->sym->result_type.v;
 	if (val->type.type != AMC_SYM || val->sym->type != SYM_FUNC
-			|| !val->sym->flags.can_null)
+			|| !ptr->flag_can_null)
 		return 1;
 	if (!try_next_line(parser->f))
 		return 0;
@@ -143,7 +146,8 @@ int identifier_check_can_assign_val(struct parser *parser,
 		goto err_maybe_null;
 	if (!block_check_start(parser->f))
 		return 0;
-	ident->flags.checked_null = 1;
+	ptr = ident->result_type.v;
+	ptr->flag_checked_null = 1;
 	if (backend_call(null_handle_begin)(&handle, val))
 		return 0;
 	if (parse_block(parser))

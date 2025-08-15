@@ -12,6 +12,9 @@ typedef struct yz_ptr {
 typedef struct yz_ptr_type {
 	yz_type ref;
 	int level;
+	unsigned int flag_can_null:1,
+	             flag_checked_null:1,
+	             flag_mut:1;
 } yz_ptr_type;
 
 yz_type *yz_type_max_ptr(yz_type *lraw, yz_type *rraw, yz_type *l, yz_type *r);

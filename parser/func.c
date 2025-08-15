@@ -283,14 +283,10 @@ err_free_fn:
 int func_def_read_arg(const char *se, struct file *f, void *data)
 {
 	struct parser *parser = data;
-	int ret = 0;
 	struct symbol *sym = NULL;
 	sym = calloc(1, sizeof(*sym));
-	if ((ret = parse_type_name_pair(parser, &sym->name,
-					&sym->result_type)) > 0)
+	if (parse_type_name_pair(parser, &sym->name, &sym->result_type))
 		goto err_free_sym;
-	if (ret == -1)
-		sym->flags.can_null = 1;
 	sym->argc = parser->scope->fn->argc;
 	sym->args = NULL;
 	sym->parse_function = NULL;
@@ -362,17 +358,14 @@ err_get_path_failed:
 
 int func_def_read_type(struct parser *parser)
 {
-	int ret = 0;
 	i64 orig_column = parser->f->cur_column,
 	    orig_line = parser->f->cur_line;
 	if (parser->f->src[parser->f->pos] != ':')
 		goto err_cannot_get_type;
 	file_pos_next(parser->f);
 	file_skip_space(parser->f);
-	if ((ret = parse_type(parser, &parser->scope->fn->result_type)) > 0)
+	if (parse_type(parser, &parser->scope->fn->result_type))
 		goto err_cannot_get_type;
-	if (ret == -1)
-		parser->scope->fn->flags.can_null = 1;
 	return 0;
 err_cannot_get_type:
 	printf("amc: func_def_read_type: %lld,%lld: Cannot get type!\n",
