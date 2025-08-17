@@ -21,7 +21,7 @@ int asf_init(int argc, char *argv[]);
 int asf_stop(enum BE_STOP_SIGNAL bess);
 
 int asf_array_def(backend_symbol_status **raw_sym_stat, yz_val **vs, int len);
-int asf_array_set_elem(struct symbol *sym, yz_val *offset, yz_val *val,
+int asf_array_set_elem(struct symbol *ident, yz_val *offset, yz_val *val,
 		enum OP_ID mode);
 
 int asf_cond_elif(backend_scope_status *raw_status);
@@ -46,9 +46,9 @@ backend_scope_status *asf_scope_begin();
 int asf_scope_end(backend_scope_status *raw_status);
 
 int asf_struct_def(backend_symbol_status *raw_sym_stat, yz_val **vs, int len);
-int asf_struct_set_elem(struct symbol *sym, int index, yz_val *val,
+int asf_struct_set_elem(struct symbol *ident, int index, yz_val *val,
 		enum OP_ID mode);
-int asf_struct_set_elem_from_ptr(struct symbol *sym, int index, yz_val *val,
+int asf_struct_set_elem_from_ptr(struct symbol *ident, int index, yz_val *val,
 		enum OP_ID mode);
 
 int asf_symbol_get_path(str *result, str *mod, const char *name, int name_len);
@@ -73,8 +73,10 @@ int asf_op_not(struct expr *e);
 int asf_op_extract_val(struct expr *e);
 int asf_op_get_addr(struct expr *e);
 
-int asf_var_immut_init(struct symbol *sym, yz_val *val);
-int asf_var_set(struct symbol *sym, enum OP_ID mode, yz_val *val);
+int asf_ptr_set_val(struct symbol *ident, yz_val *val, enum OP_ID mode);
+
+int asf_var_immut_init(struct symbol *ident, yz_val *val);
+int asf_var_set(struct symbol *ident, yz_val *val, enum OP_ID mode);
 
 int asf_while_begin(backend_scope_status *raw_status);
 int asf_while_cond(backend_scope_status *raw_status);

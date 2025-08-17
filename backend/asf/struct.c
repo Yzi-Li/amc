@@ -83,18 +83,20 @@ struct asf_stack_element *asf_struct_get_elem(struct asf_stack_element *base,
 	return result;
 }
 
-int asf_struct_set_elem(struct symbol *sym, int index, yz_val *val,
+int asf_struct_set_elem(struct symbol *ident, int index, yz_val *val,
 		enum OP_ID mode)
 {
 	struct asf_stack_element *dest =
-		asf_struct_get_elem(sym->backend_status, index);
+		asf_struct_get_elem(ident->backend_status, index);
+	struct asf_mem mem = {};
 	struct object_node *node = NULL;
 	if (dest == NULL)
 		return 1;
 	node = malloc(sizeof(*node));
 	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node;
-	if ((node->s = asf_identifier_set(dest, mode, val)) == NULL)
+	if ((node->s = asf_identifier_set(asf_stack_element2mem(dest, &mem),
+					mode, val)) == NULL)
 		goto err_inst_failed;
 	return 0;
 err_inst_failed:
@@ -105,7 +107,7 @@ err_free_node:
 	return 1;
 }
 
-int asf_struct_set_elem_from_ptr(struct symbol *sym, int index, yz_val *val,
+int asf_struct_set_elem_from_ptr(struct symbol *ident, int index, yz_val *val,
 		enum OP_ID mode)
 {
 	return 0;
@@ -116,6 +118,7 @@ int asf_op_extract_struct_elem(yz_extract_val *val)
 	struct asf_stack_element *cur =
 		asf_struct_get_elem(val->sym->backend_status, val->index);
 	enum ASF_REGS dest = ASF_REG_RAX;
+	struct asf_mem mem = {};
 	struct object_node *node = NULL;
 	if (cur == NULL)
 		return 1;
@@ -123,7 +126,8 @@ int asf_op_extract_struct_elem(yz_extract_val *val)
 	node = malloc(sizeof(*node));
 	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node;
-	if ((node->s = asf_inst_mov(ASF_MOV_M2R, cur, &dest)) == NULL)
+	if ((node->s = asf_inst_mov_m2r(asf_stack_element2mem(cur, &mem),
+					dest)) == NULL)
 		goto err_inst_failed;
 	return 0;
 err_inst_failed:
@@ -141,14 +145,14 @@ int asf_op_extract_struct_elem_from_ptr(yz_extract_val *val)
 	struct object_node *node = NULL;
 	int offset = 0;
 	struct yz_struct *s = ((yz_ptr_type*)val->sym->result_type.v)->ref.v;
+	struct asf_mem src_operand = {};
 	if (val->sym->type == SYM_FUNC_ARG) {
 		if (val->sym->argc > asf_call_arg_regs_len)
 			return 1;
 		src = asf_call_arg_regs[val->sym->argc];
 	} else if (val->sym->type == SYM_IDENTIFIER) {
-		if ((tmp = asf_inst_mov(ASF_MOV_M2R,
-						val->sym->backend_status,
-						&src)) == NULL)
+		asf_stack_element2mem(val->sym->backend_status, &src_operand);
+		if ((tmp = asf_inst_mov_m2r(&src_operand, src)) == NULL)
 			return 1;
 	} else {
 		return 1;
@@ -157,8 +161,10 @@ int asf_op_extract_struct_elem_from_ptr(yz_extract_val *val)
 	node = malloc(sizeof(*node));
 	for (int i = 0; i < val->index; i++)
 		offset += asf_yz_type2bytes(&s->elems[i]->result_type);
-	if ((inst = asf_inst_mov_mem(ASF_MOV_MEM_INREG_2_REG, offset,
-					&src, &dest)) == NULL)
+	src_operand.addr = src;
+	src_operand.bytes = asf_regs[dest].bytes;
+	src_operand.offset = offset;
+	if ((inst = asf_inst_mov_m2r(&src_operand, dest)) == NULL)
 		goto err_inst_failed;
 	if (val->sym->type == SYM_IDENTIFIER) {
 		node->s = tmp;

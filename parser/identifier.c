@@ -31,7 +31,7 @@ int identifier_assign_backend_call(struct symbol *sym, yz_val *val,
 		enum OP_ID mode)
 {
 	if (sym->flags.mut) {
-		if (backend_call(var_set)(sym, mode, val))
+		if (backend_call(var_set)(sym, val, mode))
 			return 1;
 	} else {
 		if (mode != OP_ASSIGN)

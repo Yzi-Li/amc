@@ -11,14 +11,14 @@
 #include <stdio.h>
 #include <string.h>
 
-static int call_push_arg(yz_val *v, int reg);
-static str *call_push_arg_const(int src, int reg);
-static str *call_push_arg_imm(struct asf_imm *src, int reg);
-static str *call_push_arg_mem(struct asf_stack_element *src, int reg);
-static str *call_push_arg_reg(enum ASF_REGS src, int reg);
-static int call_restore_reg(yz_val *arg, int reg);
+static int call_push_arg(yz_val *v, enum ASF_REGS reg);
+static str *call_push_arg_const(int src, enum ASF_REGS dest);
+static str *call_push_arg_imm(struct asf_imm *src, enum ASF_REGS dest);
+static str *call_push_arg_mem(struct asf_mem *src, enum ASF_REGS dest);
+static str *call_push_arg_reg(enum ASF_REGS src, enum ASF_REGS dest);
+static int call_restore_reg(yz_val *arg, enum ASF_REGS reg);
 
-int call_push_arg(yz_val *v, int reg)
+int call_push_arg(yz_val *v, enum ASF_REGS reg)
 {
 	struct object_node *node = NULL, *save = NULL;
 	struct asf_val val = {};
@@ -38,7 +38,7 @@ int call_push_arg(yz_val *v, int reg)
 		if ((node->s = call_push_arg_imm(&val.imm, reg)) == NULL)
 			goto err_inst_failed;
 	} else if (val.type == ASF_VAL_MEM) {
-		if ((node->s = call_push_arg_mem(val.mem, reg)) == NULL)
+		if ((node->s = call_push_arg_mem(&val.mem, reg)) == NULL)
 			goto err_inst_failed;
 	} else if (val.type == ASF_VAL_REG) {
 		if ((node->s = call_push_arg_reg(val.reg, reg)) == NULL)
@@ -74,31 +74,31 @@ err_free_all:
 	return 1;
 }
 
-str *call_push_arg_const(int src, int reg)
+str *call_push_arg_const(int src, enum ASF_REGS dest)
 {
-	enum ASF_REGS dest = reg + asf_reg_get(ASF_BYTES_U64);
-	return asf_inst_mov(ASF_MOV_C2R, &src, &dest);
+	dest += asf_reg_get(ASF_BYTES_U64);
+	return asf_inst_mov_c2r(src, dest);
 }
 
-str *call_push_arg_imm(struct asf_imm *src, int reg)
+str *call_push_arg_imm(struct asf_imm *src, enum ASF_REGS dest)
 {
-	enum ASF_REGS dest = reg + asf_reg_get(src->type);
-	return asf_inst_mov(ASF_MOV_I2R, src, &dest);
+	dest += asf_reg_get(src->type);
+	return asf_inst_mov_i2r(src, dest);
 }
 
-str *call_push_arg_mem(struct asf_stack_element *src, int reg)
+str *call_push_arg_mem(struct asf_mem *src, enum ASF_REGS dest)
 {
-	enum ASF_REGS dest = reg + asf_reg_get(src->bytes);
-	return asf_inst_mov(ASF_MOV_M2R, src, &dest);
+	dest += asf_reg_get(src->bytes);
+	return asf_inst_mov_m2r(src, dest);
 }
 
-str *call_push_arg_reg(enum ASF_REGS src, int reg)
+str *call_push_arg_reg(enum ASF_REGS src, enum ASF_REGS dest)
 {
-	enum ASF_REGS dest = reg + asf_reg_get(asf_regs[src].bytes);
-	return asf_inst_mov(ASF_MOV_R2R, &src, &dest);
+	dest += asf_reg_get(asf_regs[src].bytes);
+	return asf_inst_mov_r2r(src, dest);
 }
 
-int call_restore_reg(yz_val *arg, int reg)
+int call_restore_reg(yz_val *arg, enum ASF_REGS reg)
 {
 	struct object_node *node = NULL;
 	node = malloc(sizeof(*node));

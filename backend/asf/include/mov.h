@@ -3,24 +3,25 @@
 */
 #ifndef AMC_BE_ASF_MOV_H
 #define AMC_BE_ASF_MOV_H
+#include "imm.h"
+#include "mem.h"
+#include "register.h"
 #include "../../../utils/str/str.h"
 
-enum ASF_MOV_TYPE {
-	ASF_MOV_C2M,
-	ASF_MOV_C2R,
-	ASF_MOV_I2M,
-	ASF_MOV_I2R,
-	ASF_MOV_M2M,
-	ASF_MOV_M2R,
-	ASF_MOV_R2M,
-	ASF_MOV_R2R
+union asf_mov_operand {
+	int i;
+	enum ASF_REGS reg;
+	struct asf_imm *imm;
+	void *v;
 };
 
-enum ASF_MOV_MEM_TYPE {
-	ASF_MOV_MEM_INREG_2_REG
-};
-
-str *asf_inst_mov(enum ASF_MOV_TYPE mt, void *l, void *r);
-str *asf_inst_mov_mem(enum ASF_MOV_MEM_TYPE type, int offset, void *l, void *r);
+str *asf_inst_mov_c2m(int src, struct asf_mem *dest);
+str *asf_inst_mov_c2r(int src, enum ASF_REGS dest);
+str *asf_inst_mov_i2m(struct asf_imm *src, struct asf_mem *dest);
+str *asf_inst_mov_i2r(struct asf_imm *src, enum ASF_REGS dest);
+str *asf_inst_mov_m2m(struct asf_mem *src, struct asf_mem *dest);
+str *asf_inst_mov_m2r(struct asf_mem *src, enum ASF_REGS dest);
+str *asf_inst_mov_r2m(enum ASF_REGS src, struct asf_mem *dest);
+str *asf_inst_mov_r2r(enum ASF_REGS src, enum ASF_REGS dest);
 
 #endif

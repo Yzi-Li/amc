@@ -42,7 +42,7 @@ str *asf_reg_clean(enum ASF_REGS reg)
 {
 	struct asf_imm zero = {.iq = 0, .type = asf_regs[reg].bytes};
 	*asf_regs[reg].purpose = ASF_REG_PURPOSE_NULL;
-	return asf_inst_mov(ASF_MOV_I2R, &zero, &reg);
+	return asf_inst_mov_i2r(&zero, reg);
 }
 
 str *asf_reg_get_str(struct asf_reg *reg)

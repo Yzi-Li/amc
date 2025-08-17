@@ -3,9 +3,10 @@ struct A =>
 
 pub fn main: i32 =>
 	let a: i32 = 1
-	let b: *i32 = &a
+	let b: *mut i32 = &a
 	let c: i32 = *b
 	let d: *i32? = null
 	let mut e: A = { null }
 	e.a = null
+	; *b = 0
 	ret *b

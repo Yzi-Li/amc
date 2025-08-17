@@ -5,6 +5,7 @@
 #include "include/expr.h"
 #include "include/identifier.h"
 #include "include/op.h"
+#include "include/ptr.h"
 #include "include/struct.h"
 #include "../include/backend.h"
 #include "../include/comptime/ptr.h"
@@ -40,14 +41,13 @@ int op_unary_extract_val(struct parser *parser, struct expr *e)
 {
 	if (!EXPR_IS_UNARY(e))
 		return 1;
-	if (e->op->sym == NULL) {
-		if (e->valr->type.type != AMC_EXTRACT_VAL)
-			return 1;
-	} else {
+	if (e->valr->type.type == AMC_SYM) {
 		if (op_extract_val_check(parser, e->valr))
 			goto err_check_failed;
 		if (op_extract_val_handle_expr(e))
 			return 1;
+	} else if (e->valr->type.type != AMC_EXTRACT_VAL) {
+		return 1;
 	}
 	if (backend_call(ops[e->op->id])(e))
 		goto err_backend_failed;
@@ -228,9 +228,12 @@ int op_assign_extracted_val(struct parser *parser, struct expr *e)
 {
 	yz_extract_val *src = NULL;
 	struct expr *src_expr = e->vall->v;
+	yz_val *val = src_expr->valr;
 	if (e->vall->type.type != AMC_EXPR)
 		return 1;
-	if (src_expr->valr->type.type != AMC_EXTRACT_VAL)
+	if (val->type.type == AMC_SYM)
+		return ptr_set_val(parser, val->v, e->op->id);
+	if (val->type.type != AMC_EXTRACT_VAL)
 		return 1;
 	src = src_expr->valr->v;
 	switch (src->type) {
@@ -268,8 +271,13 @@ int op_assign_get_vall(struct expr *e, struct symbol **result)
 
 int op_assign_get_vall_expr(struct expr *e, struct symbol **result)
 {
+	struct symbol *sym = e->valr->sym;
 	if (e->op->id != OP_EXTRACT_VAL)
 		return 1;
+	if (e->valr->type.type == AMC_SYM
+			&& sym->result_type.type == YZ_PTR
+			&& ((yz_ptr_type*)sym->result_type.v)->flag_mut)
+		return -1;
 	if (e->valr->type.type != AMC_EXTRACT_VAL)
 		return 1;
 	return -1;

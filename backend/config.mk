@@ -19,6 +19,7 @@ BE_ASF_SRC =\
 	jmp.c\
 	label.c\
 	loop.c\
+	mem.c\
 	mov.c\
 	null.c\
 	op.c\
@@ -29,6 +30,7 @@ BE_ASF_SRC =\
 	op_ptr.c\
 	op_sub.c\
 	op_val.c\
+	ptr.c\
 	register.c\
 	scope.c\
 	stack.c\

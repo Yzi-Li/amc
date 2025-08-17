@@ -16,7 +16,7 @@
 static int func_def_start();
 static str *func_ret_imm(struct asf_imm *src);
 static int func_ret_main(yz_val *v);
-static str *func_ret_mem(struct asf_stack_element *src);
+static str *func_ret_mem(struct asf_mem *src);
 static str *func_ret_reg(enum ASF_REGS src);
 static int func_ret_val(yz_val *v);
 
@@ -42,7 +42,7 @@ err_free_node_and_str:
 str *func_ret_imm(struct asf_imm *src)
 {
 	enum ASF_REGS dest = asf_reg_get(src->type);
-	return asf_inst_mov(ASF_MOV_I2R, src, &dest);
+	return asf_inst_mov_i2r(src, dest);
 }
 
 int func_ret_main(yz_val *v)
@@ -63,10 +63,10 @@ err_free_node_and_str:
 	return 1;
 }
 
-str *func_ret_mem(struct asf_stack_element *src)
+str *func_ret_mem(struct asf_mem *src)
 {
 	enum ASF_REGS dest = asf_reg_get(src->bytes);
-	return asf_inst_mov(ASF_MOV_M2R, src, &dest);
+	return asf_inst_mov_m2r(src, dest);
 }
 
 str *func_ret_reg(enum ASF_REGS src)
@@ -76,7 +76,7 @@ str *func_ret_reg(enum ASF_REGS src)
 	*asf_regs[src].purpose = ASF_REG_PURPOSE_NULL;
 	if (src == dest)
 		return str_new();
-	return asf_inst_mov(ASF_MOV_R2R, &src, &dest);
+	return asf_inst_mov_r2r(src, dest);
 }
 
 int func_ret_val(yz_val *v)
@@ -90,7 +90,7 @@ int func_ret_val(yz_val *v)
 		if ((node->s = func_ret_imm(&val.imm)) == NULL)
 			goto err_inst_failed;
 	} else if (val.type == ASF_VAL_MEM) {
-		if ((node->s = func_ret_mem(val.mem)) == NULL)
+		if ((node->s = func_ret_mem(&val.mem)) == NULL)
 			goto err_inst_failed;
 	} else if (val.type == ASF_VAL_REG) {
 		if ((node->s = func_ret_reg(val.reg)) == NULL)

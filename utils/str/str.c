@@ -53,18 +53,18 @@ void str_free(str *src)
 {
 	if (src == NULL)
 		return;
+	str_free_noself(src);
+	free(src);
+}
+
+void str_free_noself(str *src)
+{
+	if (src == NULL)
+		return;
 	if (src->s != NULL)
 		free(src->s);
 	src->s = NULL;
 	src->len = 0;
-}
-
-void str_free_self(str *src)
-{
-	if (src == NULL)
-		return;
-	str_free(src);
-	free(src);
 }
 
 str *str_new()

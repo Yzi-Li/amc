@@ -4,6 +4,7 @@
 #ifndef AMC_BE_ASF_STACK_H
 #define AMC_BE_ASF_STACK_H
 #include "imm.h"
+#include "mem.h"
 #include "register.h"
 #include "../../../include/backend/object.h"
 #include "../../../include/val.h"
@@ -20,10 +21,12 @@ str *asf_inst_pop(enum ASF_REGS dest);
 str *asf_inst_push(yz_val *val);
 str *asf_inst_push_const(int src);
 str *asf_inst_push_imm(struct asf_imm *src);
-str *asf_inst_push_mem(struct asf_stack_element *src);
+str *asf_inst_push_mem(struct asf_mem *src);
 str *asf_inst_push_reg(enum ASF_REGS src);
 int asf_stack_align(struct object_node *start_node);
+struct asf_mem *asf_stack_element2mem(struct asf_stack_element *src,
+		struct asf_mem *dest);
 int asf_stack_end_frame(struct asf_stack_element *start_stack);
-str *asf_stack_get_element(struct asf_stack_element *element, int pop);
+str *asf_stack_get_element(struct asf_mem *mem, int pop);
 
 #endif

@@ -3,8 +3,10 @@
 */
 #ifndef AMC_BE_PTR_H
 #define AMC_BE_PTR_H
+#include "../op.h"
+#include "../symbol.h"
+#include "../val.h"
 
-typedef int (*backend_ptr_get_addr)();
-typedef int (*backend_ptr_load_addr)();
+typedef int (*backend_ptr_set_val_f)(struct symbol *ident, yz_val *val, enum OP_ID mode);
 
 #endif

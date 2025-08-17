@@ -17,13 +17,13 @@ static int array_elem_push_empty(yz_val *type);
 static str *array_get_elem_from_imm(struct asf_stack_element *base,
 		struct asf_imm *src);
 static str *array_get_elem_from_mem(struct asf_stack_element *base,
-		struct asf_stack_element *src);
+		struct asf_mem *src);
 static str *array_get_elem_from_reg(struct asf_stack_element *base,
 		enum ASF_REGS src);
 static str *array_set_elem_from_imm(struct asf_stack_element *base,
 		struct asf_imm *offset, str *src);
 static str *array_set_elem_from_mem(struct asf_stack_element *base,
-		struct asf_stack_element *mem, str *src);
+		struct asf_mem *mem, str *src);
 static str *array_set_elem_from_reg(struct asf_stack_element *base,
 		enum ASF_REGS reg, str *src);
 static str *array_set_elem_get_val(yz_val *src);
@@ -87,14 +87,14 @@ str *array_get_elem_from_imm(struct asf_stack_element *base,
 }
 
 str *array_get_elem_from_mem(struct asf_stack_element *base,
-		struct asf_stack_element *src)
+		struct asf_mem *src)
 {
 	enum ASF_REGS dest = ASF_REG_RAX;
 	struct object_node *node = NULL;
 	node = malloc(sizeof(*node));
 	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node;
-	if ((node->s = asf_inst_mov(ASF_MOV_M2R, src, &dest)) == NULL)
+	if ((node->s = asf_inst_mov_m2r(src, dest)) == NULL)
 		goto err_free_node;
 	return array_get_elem_from_reg(base, dest);
 err_free_node:
@@ -133,13 +133,14 @@ str *array_set_elem_from_imm(struct asf_stack_element *base,
 }
 
 str *array_set_elem_from_mem(struct asf_stack_element *base,
-		struct asf_stack_element *mem, str *src)
+		struct asf_mem *mem, str *src)
 {
 	enum ASF_REGS dest = ASF_REG_RAX;
 	struct object_node *node = malloc(sizeof(*node));
 	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node;
-	if ((node->s = asf_inst_mov(ASF_MOV_M2R, mem, &dest)) == NULL)
+	;
+	if ((node->s = asf_inst_mov_m2r(mem, dest)) == NULL)
 		goto err_free_node;
 	return array_set_elem_from_reg(base, dest, src);
 err_free_node:
@@ -174,7 +175,7 @@ str *array_set_elem_get_val(yz_val *src)
 	} else if (val.type == ASF_VAL_REG) {
 		return array_set_elem_get_val_reg(val.reg);
 	} else if (val.type == ASF_VAL_MEM) {
-		return asf_stack_get_element(val.mem, 0);
+		return asf_stack_get_element(&val.mem, 0);
 	}
 	return NULL;
 }
@@ -189,7 +190,7 @@ str *array_set_elem_get_val_reg(enum ASF_REGS reg)
 	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	dest += asf_reg_get(asf_regs[reg].bytes);
-	if ((node->s = asf_inst_mov(ASF_MOV_R2R, &reg, &dest)) == NULL)
+	if ((node->s = asf_inst_mov_r2r(reg, dest)) == NULL)
 		goto err_inst_failed;
 	return asf_reg_get_str(&asf_regs[dest]);
 err_inst_failed:
@@ -215,7 +216,7 @@ err_identifier_reg_failed:
 	return 1;
 }
 
-int asf_array_set_elem(struct symbol *sym, yz_val *offset, yz_val *val,
+int asf_array_set_elem(struct symbol *ident, yz_val *offset, yz_val *val,
 		enum OP_ID mode)
 {
 	struct asf_val dest = {};
@@ -229,15 +230,15 @@ int asf_array_set_elem(struct symbol *sym, yz_val *offset, yz_val *val,
 		str_append(src, 1, "\0");
 	node = malloc(sizeof(*node));
 	if (dest.type == ASF_VAL_IMM) {
-		if ((node->s = array_set_elem_from_imm(sym->backend_status,
+		if ((node->s = array_set_elem_from_imm(ident->backend_status,
 						&dest.imm, src)) == NULL)
 			goto err_inst_failed;
 	} else if (dest.type == ASF_VAL_MEM) {
-		if ((node->s = array_set_elem_from_mem(sym->backend_status,
-						dest.mem, src)) == NULL)
+		if ((node->s = array_set_elem_from_mem(ident->backend_status,
+						&dest.mem, src)) == NULL)
 			goto err_inst_failed;
 	} else if (dest.type == ASF_VAL_REG) {
-		if ((node->s = array_set_elem_from_reg(sym->backend_status,
+		if ((node->s = array_set_elem_from_reg(ident->backend_status,
 						dest.reg, src)) == NULL)
 			goto err_inst_failed;
 	}
@@ -270,7 +271,7 @@ int asf_op_extract_array_elem(yz_extract_val *val)
 				== NULL)
 			goto err_inst_failed;
 	} else if (dest.type == ASF_VAL_MEM) {
-		if ((node->s = array_get_elem_from_mem(base, dest.mem)) == NULL)
+		if ((node->s = array_get_elem_from_mem(base, &dest.mem)) == NULL)
 			goto err_inst_failed;
 	} else if (dest.type == ASF_VAL_REG) {
 		if ((node->s = array_get_elem_from_reg(base, dest.reg)) == NULL)

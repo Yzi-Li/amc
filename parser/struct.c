@@ -285,7 +285,7 @@ int parse_struct(struct parser *parser)
 		goto err_free_result;
 	return 0;
 err_free_result:
-	str_free(&result->name);
+	str_free_noself(&result->name);
 	free(result);
 	return 1;
 }

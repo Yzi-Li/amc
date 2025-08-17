@@ -25,8 +25,6 @@ static int array_get_len_check_mut(struct file *f);
 static int array_get_len_end(struct file *f, int len);
 static int array_get_len_from_num(struct file *f, int *len);
 static yz_val *array_read_offset(struct parser *f);
-static int array_set_elem_backend_call(struct symbol *sym, yz_val *offset,
-		yz_val *val, enum OP_ID mode);
 static int constructor_array_elem(const char *se, struct file *f, void *data);
 
 int array_get_elem_handle_val(yz_val *val, yz_val *offset, struct symbol *sym)
@@ -123,14 +121,6 @@ err_read_offset_failed:
 	return NULL;
 }
 
-int array_set_elem_backend_call(struct symbol *sym, yz_val *offset,
-		yz_val *val, enum OP_ID mode)
-{
-	if (backend_call(array_set_elem)(sym, offset, val, mode))
-		return 1;
-	return 0;
-}
-
 int constructor_array_elem(const char *se, struct file *f, void *data)
 {
 	struct constructor_handle *handle = data;
@@ -207,7 +197,7 @@ int array_set_elem(struct parser *parser, struct symbol *sym, yz_val *offset,
 				parser->f->cur_line, parser->f->cur_column);
 	if (identifier_assign_get_val(parser, &arr->type, &val))
 		return 1;
-	if (array_set_elem_backend_call(sym, offset, val, mode))
+	if (backend_call(array_set_elem)(sym, offset, val, mode))
 		return err_print_pos(__func__, "Backend call failed!",
 				orig_line, orig_column);
 	free_yz_val(val);

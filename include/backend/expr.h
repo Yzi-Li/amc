@@ -7,8 +7,8 @@
 #include "../symbol.h"
 #include "../val.h"
 
-typedef int (*backend_var_immut_init_f)(struct symbol *sym, yz_val *val);
-typedef int (*backend_var_set_f)(struct symbol *sym, enum OP_ID mode,
-		yz_val *val);
+typedef int (*backend_var_immut_init_f)(struct symbol *ident, yz_val *val);
+typedef int (*backend_var_set_f)(struct symbol *ident, yz_val *val,
+		enum OP_ID mode);
 
 #endif

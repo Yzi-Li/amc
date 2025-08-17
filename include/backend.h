@@ -13,6 +13,7 @@
 #include "backend/loop.h"
 #include "backend/null.h"
 #include "backend/operator.h"
+#include "backend/ptr.h"
 #include "backend/scope.h"
 #include "backend/struct.h"
 #include "backend/symbol.h"
@@ -63,6 +64,7 @@ struct backend {
 	backend_null_handle_begin_f        null_handle_begin;
 	backend_null_handle_end_f          null_handle_end;
 	backend_op_cmd_f                   ops[OP_LEN];
+	backend_ptr_set_val_f              ptr_set_val;
 	backend_scope_begin_f              scope_begin;
 	backend_scope_end_f                scope_end;
 	backend_struct_def_f               struct_def;

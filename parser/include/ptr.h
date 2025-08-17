@@ -3,9 +3,18 @@
 */
 #ifndef AMC_PARSER_PTR_H
 #define AMC_PARSER_PTR_H
+#include "../../include/op.h"
 #include "../../include/symbol.h"
 #include "../../include/type.h"
 
 int parse_type_ptr(struct parser *parser, yz_type *result);
+
+/**
+ * @param expr:
+ *   .op = OP_EXTRACT_VAL
+ *   .vall = NULL
+ *   .valr = sym
+ */
+int ptr_set_val(struct parser *parser, struct symbol *ident, enum OP_ID mode);
 
 #endif

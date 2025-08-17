@@ -8,6 +8,6 @@
 void free_yz_struct(yz_struct *src)
 {
 	free_symbol_group(src->elems, src->elem_count);
-	str_free(&src->name);
+	str_free_noself(&src->name);
 	free_safe(src);
 }

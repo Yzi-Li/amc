@@ -41,9 +41,11 @@ static int op_init_obj_node(struct object_node *parent,
 
 str *op_get_val_from_mem(struct object_node *parent, enum ASF_REGS dest)
 {
+	struct asf_mem mem = {};
 	struct object_node *node = NULL;
 	if (dest == -1)
-		return asf_stack_get_element(asf_stack_top, 1);
+		return asf_stack_get_element(
+				asf_stack_element2mem(asf_stack_top, &mem), 1);
 	node = malloc(sizeof(*node));
 	if (op_init_obj_node(parent, node))
 		goto err_free_node;
@@ -70,7 +72,7 @@ str *op_get_val_from_reg(struct object_node *parent, enum ASF_REGS src,
 	node = malloc(sizeof(*node));
 	if (op_init_obj_node(parent, node))
 		goto err_free_node;
-	if ((node->s = asf_inst_mov(ASF_MOV_R2R, &src, &dest)) == NULL)
+	if ((node->s = asf_inst_mov_r2r(src, dest)) == NULL)
 		goto err_inst_failed;
 	return asf_reg_get_str(&asf_regs[dest]);
 err_free_node:
@@ -95,7 +97,7 @@ str *op_get_val_imm(struct object_node *parent, yz_val *src,
 	node = malloc(sizeof(*node));
 	if (op_init_obj_node(parent, node))
 		goto err_free_node;
-	if ((node->s = asf_inst_mov(ASF_MOV_I2R, &imm, &dest)) == NULL)
+	if ((node->s = asf_inst_mov_i2r(&imm, dest)) == NULL)
 		goto err_inst_failed;
 	return asf_reg_get_str(&asf_regs[dest]);
 err_free_node:
@@ -121,13 +123,15 @@ str *op_get_vall_identifier(struct object_node *parent, struct symbol *src,
 		enum ASF_REGS dest)
 {
 	struct asf_stack_element *identifier = src->backend_status;
+	struct asf_mem mem = {};
 	struct object_node *node = NULL;
 	if (identifier == NULL)
 		goto err_identifier_not_found;
 	node = malloc(sizeof(*node));
 	if (op_init_obj_node(parent, node))
 		goto err_free_node;
-	if ((node->s = asf_inst_mov(ASF_MOV_M2R, identifier, &dest)) == NULL)
+	if ((node->s = asf_inst_mov_m2r(asf_stack_element2mem( identifier,
+						&mem), dest)) == NULL)
 		goto err_inst_failed;
 	return asf_reg_get_str(&asf_regs[dest]);
 err_identifier_not_found:
@@ -194,9 +198,11 @@ str *op_get_valr_expr(struct object_node *parent, struct expr *src,
 str *op_get_valr_identifier(struct object_node *parent, struct symbol *src)
 {
 	struct asf_stack_element *identifier = src->backend_status;
+	struct asf_mem mem = {};
 	if (identifier == NULL)
 		goto err_identifier_not_found;
-	return asf_stack_get_element(identifier, 0);
+	return asf_stack_get_element(asf_stack_element2mem(identifier, &mem),
+			0);
 err_identifier_not_found:
 	printf("amc[backend.asf:%s]: op_get_valr_identifier: "
 			"Identifier not found: \"%s\"!\n", __FILE__,

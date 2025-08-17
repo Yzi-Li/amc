@@ -2,6 +2,7 @@
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 #include "include/bytes.h"
+#include "include/mem.h"
 #include "include/mov.h"
 #include "include/register.h"
 #include "include/stack.h"
@@ -61,8 +62,9 @@ void stack_element_remove()
 
 str *asf_inst_pop(enum ASF_REGS dest)
 {
+	struct asf_mem mem = {};
 	str *s = NULL;
-	s = asf_inst_mov(ASF_MOV_M2R, asf_stack_top, &dest);
+	s = asf_inst_mov_m2r(asf_stack_element2mem(asf_stack_top, &mem), dest);
 	stack_element_remove();
 	return s;
 }
@@ -77,7 +79,7 @@ str *asf_inst_push(yz_val *val)
 	} else if (v.type == ASF_VAL_IMM) {
 		return asf_inst_push_imm(&v.imm);
 	} else if (v.type == ASF_VAL_MEM) {
-		return asf_inst_push_mem(v.mem);
+		return asf_inst_push_mem(&v.mem);
 	} else if (v.type == ASF_VAL_REG) {
 		return asf_inst_push_reg(v.reg);
 	}
@@ -89,31 +91,39 @@ err_unsupport_type:
 
 str *asf_inst_push_const(int src)
 {
+	struct asf_mem mem = {};
 	if (stack_element_append(ASF_BYTES_U64))
 		return NULL;
-	return asf_inst_mov(ASF_MOV_C2M, &src, asf_stack_top);
+	return asf_inst_mov_c2m(src,
+			asf_stack_element2mem(asf_stack_top, &mem));
 }
 
 str *asf_inst_push_imm(struct asf_imm *src)
 {
+	struct asf_mem mem = {};
 	if (stack_element_append(src->type))
 		return NULL;
-	return asf_inst_mov(ASF_MOV_I2M, src, asf_stack_top);
+	return asf_inst_mov_i2m(src,
+			asf_stack_element2mem(asf_stack_top, &mem));
 }
 
-str *asf_inst_push_mem(struct asf_stack_element *src)
+str *asf_inst_push_mem(struct asf_mem *src)
 {
+	struct asf_mem right_operand = {};
 	if (stack_element_append(src->bytes))
 		return NULL;
-	return asf_inst_mov(ASF_MOV_M2M, src, asf_stack_top);
+	return asf_inst_mov_m2m(src, asf_stack_element2mem(asf_stack_top,
+				&right_operand));
 }
 
 str *asf_inst_push_reg(enum ASF_REGS src)
 {
+	struct asf_mem mem = {};
 	if (stack_element_append(asf_regs[src].bytes))
 		return NULL;
 	*asf_regs[src].purpose = ASF_REG_PURPOSE_NULL;
-	return asf_inst_mov(ASF_MOV_R2M, &src, asf_stack_top);
+	return asf_inst_mov_r2m(src,
+			asf_stack_element2mem(asf_stack_top, &mem));
 }
 
 int asf_stack_align(struct object_node *start_node)
@@ -140,6 +150,15 @@ err_free_node_and_str:
 	return 1;
 }
 
+struct asf_mem *asf_stack_element2mem(struct asf_stack_element *src,
+		struct asf_mem *dest)
+{
+	dest->addr = ASF_REG_RBP;
+	dest->bytes = src->bytes;
+	dest->offset = -(src->addr);
+	return dest;
+}
+
 int asf_stack_end_frame(struct asf_stack_element *start_stack)
 {
 	struct asf_stack_element *cur = NULL, *next = NULL;
@@ -160,12 +179,9 @@ int asf_stack_end_frame(struct asf_stack_element *start_stack)
 	return 0;
 }
 
-str *asf_stack_get_element(struct asf_stack_element *element, int pop)
+str *asf_stack_get_element(struct asf_mem *mem, int pop)
 {
-	str *s = str_new();
-	const char *temp = "-%d(%%rbp)";
-	str_expand(s, strlen(temp) - 2 + ullen(element->addr));
-	snprintf(s->s, s->len, temp, element->addr);
+	str *s = asf_mem_get_str(mem);
 	if (pop)
 		stack_element_remove();
 	return s;

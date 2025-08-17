@@ -65,5 +65,5 @@ int64_t sllen(int64_t src)
 		return 1;
 	if (src > 0)
 		return ullen(src);
-	return 0;
+	return 1 + ullen(-(src));
 }

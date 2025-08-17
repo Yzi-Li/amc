@@ -5,7 +5,8 @@
 #define AMC_BE_ASF_VAL_H
 #include "imm.h"
 #include "register.h"
-#include "stack.h"
+#include "mem.h"
+#include "../../../include/val.h"
 
 enum ASF_VAL_TYPE {
 	ASF_VAL_CONST,
@@ -19,7 +20,7 @@ struct asf_val {
 	union {
 		int const_id;
 		struct asf_imm imm;
-		struct asf_stack_element *mem;
+		struct asf_mem mem;
 		enum ASF_REGS reg;
 	};
 };

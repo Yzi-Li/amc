@@ -44,6 +44,7 @@ err_free_node:
 
 int op_ptr_extract_get_addr(enum ASF_REGS *dest, struct symbol *sym)
 {
+	struct asf_mem mem = {};
 	struct object_node *node = NULL;
 	struct asf_stack_element *src = NULL;
 	if (sym->type == SYM_FUNC)
@@ -58,7 +59,8 @@ int op_ptr_extract_get_addr(enum ASF_REGS *dest, struct symbol *sym)
 	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node;
 	src = sym->backend_status;
-	if ((node->s = asf_inst_mov(ASF_MOV_M2R, src, dest)) == NULL)
+	if ((node->s = asf_inst_mov_m2r(asf_stack_element2mem(src, &mem),
+					*dest)) == NULL)
 		goto err_inst_failed;
 	return 0;
 err_free_node:
@@ -72,6 +74,7 @@ err_inst_failed:
 
 str *op_ptr_get_addr_get_src(yz_ptr *ptr)
 {
+	struct asf_mem mem = {};
 	str *result = NULL;
 	struct asf_stack_element *src = NULL;
 	if (ptr->ref.type.type == AMC_SYM)
@@ -80,7 +83,8 @@ str *op_ptr_get_addr_get_src(yz_ptr *ptr)
 		goto err_not_expr;
 	if ((src = asf_op_extract_get_mem(ptr->ref.v)) == NULL)
 		return NULL;
-	if ((result = asf_stack_get_element(src, 0)) == NULL)
+	if ((result = asf_stack_get_element(asf_stack_element2mem(src, &mem),
+					0)) == NULL)
 		return NULL;
 	if (result->s[result->len - 1] != '\0')
 		str_append(result, 1, "\0");
@@ -93,9 +97,10 @@ err_not_expr:
 
 str *op_ptr_get_addr_get_src_from_sym(yz_ptr *ptr)
 {
+	struct asf_mem mem = {};
 	struct symbol *sym = ptr->ref.v;
-	struct asf_stack_element *stack = sym->backend_status;
-	str *result = asf_stack_get_element(stack, 0);
+	str *result = asf_stack_get_element(asf_stack_element2mem(
+				sym->backend_status, &mem), 0);
 	if (result->s[result->len - 1] != '\0')
 		str_append(result, 1, "\0");
 	return result;

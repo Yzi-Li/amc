@@ -89,7 +89,7 @@ void free_symbol(struct symbol *sym)
 	backend_call(symbol_status_free)(sym->backend_status);
 	free_yz_type_noself(&sym->result_type);
 	free_hooks_noself(sym->hooks);
-	str_free(&sym->name);
+	str_free_noself(&sym->name);
 	free_safe(sym);
 }
 

@@ -1,8 +1,9 @@
 /* This file is part of amc.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-#include "include/val.h"
 #include "include/call.h"
+#include "include/stack.h"
+#include "include/val.h"
 #include "../../include/array.h"
 #include "../../include/const.h"
 #include "../../include/expr.h"
@@ -45,7 +46,7 @@ int val_get_extracted_val(yz_extract_val *src, struct asf_val *result)
 int val_get_identifier(struct symbol *src, struct asf_val *result)
 {
 	result->type = ASF_VAL_MEM;
-	if ((result->mem = src->backend_status) == NULL)
+	if (asf_stack_element2mem(src->backend_status, &result->mem) == NULL)
 		goto err_identifier_not_found;
 	return 0;
 err_identifier_not_found:
