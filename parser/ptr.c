@@ -65,3 +65,10 @@ int ptr_set_val(struct parser *parser, struct symbol *ident, enum OP_ID mode)
 	free_yz_val(val);
 	return 0;
 }
+
+int ptr_set_val_handle_expr(struct expr *expr)
+{
+	free_yz_val(expr->vall);
+	expr->vall = NULL;
+	return 0;
+}

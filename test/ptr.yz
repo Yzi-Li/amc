@@ -8,5 +8,5 @@ pub fn main: i32 =>
 	let d: *i32? = null
 	let mut e: A = { null }
 	e.a = null
-	; *b = 0
+	*b = 0
 	ret *b

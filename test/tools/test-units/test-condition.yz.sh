@@ -4,6 +4,7 @@ src="$1"
 bin="$2"
 
 $bin
+
 ret=$?
 echo $ret
 

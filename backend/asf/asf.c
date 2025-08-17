@@ -64,6 +64,8 @@ struct backend backend_asf = {
 		[OP_GET_ADDR] = asf_op_get_addr
 	},
 
+	.ptr_set_val = asf_ptr_set_val,
+
 	.scope_begin = asf_scope_begin,
 	.scope_end   = asf_scope_end,
 

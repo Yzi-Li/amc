@@ -510,7 +510,7 @@ int expr_apply(struct parser *parser, struct expr *e)
 	}
 	if (e->op->id >= OP_SPECIAL_START)
 		return op_apply_special(parser, e);
-	if (REGION_INT(e->op->id, OP_EQ, OP_GT))
+	if (OP_IS_CMP(e->op->id))
 		return op_apply_cmp(e);
 	if (backend_call(ops[e->op->id])(e))
 		goto err_backend_call;

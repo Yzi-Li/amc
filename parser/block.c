@@ -41,22 +41,14 @@ int block_parse_expr(struct parser *parser)
 {
 	struct expr *expr = NULL;
 	if ((expr = parse_expr(parser, 1)) == NULL)
-		goto err_cannot_parse_expr;
+		return err_print_pos(__func__, "Cannot parse expression!",
+				parser->f->cur_line, parser->f->cur_column);
 	if (expr_apply(parser, expr) > 0)
-		goto err_cannot_apply_expr;
+		return err_print_pos(__func__, "Cannot apply expression!",
+				parser->f->cur_line, parser->f->cur_column);
 	free_expr(expr);
 	file_pos_next(parser->f);
 	return 0;
-err_cannot_parse_expr:
-	printf("| block_parse_expr: %lld,%lld: Cannot parse expression!\n",
-			parser->f->cur_line, parser->f->cur_column);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
-err_cannot_apply_expr:
-	printf("| block_parse_expr: %lld,%lld: Cannot apply expression!\n",
-			parser->f->cur_line, parser->f->cur_column);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
 }
 
 int block_parse_func(struct parser *parser)

@@ -133,11 +133,17 @@ str *asf_inst_mov_m2m(struct asf_mem *src, struct asf_mem *dest)
 	enum ASF_REGS tmp_reg = ASF_REG_RDX;
 	if (*asf_regs[tmp_reg].purpose != ASF_REG_PURPOSE_NULL) {
 		reg_pushed = 1;
-		asf_inst_push_reg(tmp_reg);
+		result = asf_inst_push_reg(tmp_reg);
 	}
 	tmp_reg += asf_reg_get(src->bytes);
-	if ((result = asf_inst_mov_m2r(src, tmp_reg)) == NULL)
+	if ((tmp_str = asf_inst_mov_m2r(src, tmp_reg)) == NULL)
 		return NULL;
+	if (reg_pushed) {
+		str_append(result, tmp_str->len, tmp_str->s);
+		str_free(tmp_str);
+	} else {
+		result = tmp_str;
+	}
 	if ((tmp_str = asf_inst_mov_r2m(tmp_reg, dest)) == NULL)
 		goto err_free_result;
 	str_append(result, tmp_str->len, tmp_str->s);

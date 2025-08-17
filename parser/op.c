@@ -231,8 +231,11 @@ int op_assign_extracted_val(struct parser *parser, struct expr *e)
 	yz_val *val = src_expr->valr;
 	if (e->vall->type.type != AMC_EXPR)
 		return 1;
-	if (val->type.type == AMC_SYM)
-		return ptr_set_val(parser, val->v, e->op->id);
+	if (val->type.type == AMC_SYM) {
+		if (ptr_set_val(parser, val->v, e->op->id))
+			return 1;
+		return ptr_set_val_handle_expr(e);
+	}
 	if (val->type.type != AMC_EXTRACT_VAL)
 		return 1;
 	src = src_expr->valr->v;
@@ -320,6 +323,8 @@ err_backend_failed:
 int op_apply_special(struct parser *parser, struct expr *e)
 {
 	int func_id = 0;
+	if (REGION_INT(e->op->id, OP_ASSIGN, OP_ASSIGN_SUB))
+		return 0;
 	func_id = e->op->id - OP_SPECIAL_START - 5;
 	if (func_id < LENGTH(op_special_f))
 		return op_special_f[func_id](parser, e);
