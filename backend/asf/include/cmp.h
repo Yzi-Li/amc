@@ -3,8 +3,8 @@
 */
 #ifndef AMC_BE_ASF_CMP_H
 #define AMC_BE_ASF_CMP_H
-#include "../../../include/expr.h"
+#include "val.h"
 
-int asf_inst_cmp(struct expr *e);
+str *asf_inst_cmp(struct asf_val *src, struct asf_val *dest);
 
 #endif

@@ -268,9 +268,7 @@ int func_def_main(struct parser *parser)
 		goto err_free_fn;
 	if (parse_block(parser))
 		goto err_free_fn;
-	if (backend_call(func_def_end)(handle))
-		goto err_free_fn;
-	return 0;
+	return func_def_end_scope(parser, handle);
 err_not_pub:
 	printf("amc: func_def_main: "ERROR_STR":\n"
 			"| Function: 'main' must be declared as 'pub'.\n");
@@ -424,14 +422,14 @@ int parse_func_def(struct parser *parser)
 		.fn = result,
 		.indent = parser->scope->indent,
 		.parent = parser->scope,
-		.status = backend_call(scope_begin)(),
+		.status = backend_call(scope_begin)(), // TODO: free
 		.status_type = SCOPE_IN_BLOCK,
 		.sym_groups = {}
 	};
 	backend_func_def_handle *handle = NULL;
 	parser->scope = &fn_scope;
 	if (scope_check_is_correct(&fn_scope))
-		return 1;
+		goto err_free_result;
 	if (func_def_read_name(parser))
 		goto err_free_result;
 	if (func_def_check_main(result->name.s, result->name.len))

@@ -34,27 +34,28 @@ static str *identifier_set_reg(struct asf_mem *dest, enum OP_ID mode,
 int identifier_change_get_op_inst(struct object_node *parent,
 		enum ASF_REGS src, int is_unsigned, enum OP_ID mode)
 {
-	enum ASF_REGS dest = ASF_REG_RAX;
+	struct asf_val dest = {.type = ASF_VAL_REG, .reg = ASF_REG_RAX},
+	               src_wrap  = {.type = ASF_VAL_REG, .reg = src};
 	struct object_node *node = NULL;
 	node = malloc(sizeof(*node));
 	if (object_insert(node, parent->prev, parent))
 		goto err_free_node;
-	dest = asf_reg_get(asf_regs[src].bytes);
+	dest.reg += asf_reg_get(asf_regs[src].bytes);
 	switch (mode) {
 	case OP_ASSIGN_ADD:
-		if ((node->s = asf_inst_op_add(src, dest)) == NULL)
+		if ((node->s = asf_inst_op_add(&src_wrap, &dest)) == NULL)
 			goto err_inst_failed;
 		break;
 	case OP_ASSIGN_DIV:
-		if ((node->s = asf_inst_op_div(src, is_unsigned)) == NULL)
+		if ((node->s = asf_inst_op_div(&src_wrap, is_unsigned)) == NULL)
 			goto err_inst_failed;
 		break;
 	case OP_ASSIGN_MUL:
-		if ((node->s = asf_inst_op_mul(src, is_unsigned)) == NULL)
+		if ((node->s = asf_inst_op_mul(&src_wrap, is_unsigned)) == NULL)
 			goto err_inst_failed;
 		break;
 	case OP_ASSIGN_SUB:
-		if ((node->s = asf_inst_op_sub(src, dest)) == NULL)
+		if ((node->s = asf_inst_op_sub(&src_wrap, &dest)) == NULL)
 			goto err_inst_failed;
 		break;
 	default:

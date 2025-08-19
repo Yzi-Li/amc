@@ -26,5 +26,6 @@ struct asf_val {
 };
 
 int asf_val_get(yz_val *src, struct asf_val *result);
+int asf_val_is_unsigned(struct asf_val *val);
 
 #endif

@@ -104,3 +104,22 @@ int asf_val_get(yz_val *src, struct asf_val *result)
 		return val_get_imm(src, result);
 	return 1;
 }
+
+int asf_val_is_unsigned(struct asf_val *val)
+{
+	switch (val->type) {
+	case ASF_VAL_IMM:
+		if (REGION_INT(val->imm.type, ASF_BYTES_U8, ASF_BYTES_U64))
+			return 1;
+		return 0;
+		break;
+	case ASF_VAL_MEM:
+		if (REGION_INT(val->imm.type, ASF_BYTES_U8, ASF_BYTES_U64))
+			return 1;
+		return 0;
+		break;
+	case ASF_VAL_REG: return 0; break;
+	default: break;
+	}
+	return 0;
+}

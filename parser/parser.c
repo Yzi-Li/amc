@@ -121,8 +121,10 @@ struct parser *parse_file(str *path, const char *real_path, struct file *f)
 	}
 	if (backend_file_end(parser->target.s, parser->target.len))
 		goto err_free_parser;
+	free_parser(parser);
 	return parser;
 err_free_parser:
+	free_parser(parser);
 	return NULL;
 }
 
@@ -202,7 +204,10 @@ int parser_init(const char *path, struct file *f)
 			return 0;
 	if (parse_file(&global_parser.root_mod, path, f) == NULL)
 		return 1;
-	return backend_end(&global_parser.output);
+	if (backend_end(&global_parser.output))
+		return 1;
+	str_free_noself(&pwd);
+	return 0;
 }
 
 int parser_imported_append(struct parser_imported *imported, yz_module *mod)
@@ -254,6 +259,7 @@ void free_parser(struct parser *self)
 	free_parser_imported(&self->imported);
 	free(self->path.s);
 	free_scope(self->scope);
+	free_scope(self->scope_pub);
 	free(self->target.s);
 }
 

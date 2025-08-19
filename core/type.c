@@ -185,10 +185,7 @@ void free_yz_user_type(void *self)
 	switch (type->type) {
 	case YZ_ENUM:   free_yz_enum(type->enum_);     break;
 	case YZ_STRUCT: free_yz_struct(type->struct_); break;
-	default:
-		die("amc: free_yz_user_type: Unknown type: '%s'!\n",
-				yz_get_raw_type_name(type->type));
-		break;
+	default: break;
 	}
 	free(self);
 }

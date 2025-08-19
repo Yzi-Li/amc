@@ -7,7 +7,6 @@ BE_ASF_SRC =\
 	array.c\
 	asf.c\
 	bytes.c\
-	cmp.c\
 	call.c\
 	cond.c\
 	const.c\

@@ -2,270 +2,17 @@
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 #include "include/asf.h"
-#include "include/call.h"
-#include "include/imm.h"
+#include "include/bytes.h"
 #include "include/mov.h"
 #include "include/op.h"
+#include "include/register.h"
 #include "include/stack.h"
-#include "include/suffix.h"
 #include "../../include/expr.h"
-#include "../../include/symbol.h"
 #include <stdlib.h>
 #include <string.h>
 
-static str *op_get_val_from_mem(struct object_node *parent,
-		enum ASF_REGS dest);
-static str *op_get_val_from_reg(struct object_node *parent, enum ASF_REGS src,
-		enum ASF_REGS dest);
-static str *op_get_val_imm(struct object_node *parent, yz_val *src,
-		enum ASF_REGS dest);
-static str *op_get_vall_from_mem_or_reg(struct object_node *parent,
-		struct expr *e, enum ASF_REGS dest);
-static str *op_get_vall_identifier(struct object_node *parent,
-		struct symbol *src, enum ASF_REGS dest);
-static str *op_get_vall_imm(struct object_node *parent, struct expr *e,
-		enum ASF_REGS dest);
-static str *op_get_vall_sym(struct object_node *parent, struct expr *e,
-		enum ASF_REGS dest);
-static str *op_get_valr_expr(struct object_node *parent, struct expr *src,
-		enum ASF_REGS dest);
-static str *op_get_valr_identifier(struct object_node *parent,
-		struct symbol *src);
-static str *op_get_valr_imm(struct object_node *parent, yz_val *src,
-		enum ASF_REGS dest);
-static str *op_get_valr_null(struct object_node *parent, enum ASF_REGS dest);
-static str *op_get_valr_sym(struct object_node *parent, struct expr *e,
-		enum ASF_REGS dest);
 static int op_init_obj_node(struct object_node *parent,
 		struct object_node *node);
-
-str *op_get_val_from_mem(struct object_node *parent, enum ASF_REGS dest)
-{
-	struct asf_mem mem = {};
-	struct object_node *node = NULL;
-	if (dest == -1)
-		return asf_stack_get_element(
-				asf_stack_element2mem(asf_stack_top, &mem), 1);
-	node = malloc(sizeof(*node));
-	if (op_init_obj_node(parent, node))
-		goto err_free_node;
-	if ((node->s = asf_inst_pop(dest)) == NULL)
-		goto err_inst_failed;
-	return asf_reg_get_str(&asf_regs[dest]);
-err_free_node:
-	free(node);
-	return NULL;
-err_inst_failed:
-	printf("amc[backend.asf:%s]: op_get_val_from_mem: "
-			"Get instruction failed!\n", __FILE__);
-	goto err_free_node;
-}
-
-str *op_get_val_from_reg(struct object_node *parent, enum ASF_REGS src,
-		enum ASF_REGS dest)
-{
-	struct object_node *node = NULL;
-	if (dest == -1)
-		return asf_reg_get_str(&asf_regs[src]);
-	if (src == dest)
-		return asf_reg_get_str(&asf_regs[dest]);
-	node = malloc(sizeof(*node));
-	if (op_init_obj_node(parent, node))
-		goto err_free_node;
-	if ((node->s = asf_inst_mov_r2r(src, dest)) == NULL)
-		goto err_inst_failed;
-	return asf_reg_get_str(&asf_regs[dest]);
-err_free_node:
-	free(node);
-	return NULL;
-err_inst_failed:
-	printf("amc[backend.asf:%s]: op_get_val_from_reg: "
-			"Get instruction failed!\n", __FILE__);
-	goto err_free_node;
-}
-
-str *op_get_val_imm(struct object_node *parent, yz_val *src,
-		enum ASF_REGS dest)
-{
-	struct asf_imm imm = {
-		.type = asf_yz_type2bytes(&src->type),
-		.iq = src->l
-	};
-	struct object_node *node = NULL;
-	if (dest == -1)
-		return asf_imm_str_new(&imm);
-	node = malloc(sizeof(*node));
-	if (op_init_obj_node(parent, node))
-		goto err_free_node;
-	if ((node->s = asf_inst_mov_i2r(&imm, dest)) == NULL)
-		goto err_inst_failed;
-	return asf_reg_get_str(&asf_regs[dest]);
-err_free_node:
-	free(node);
-	return NULL;
-err_inst_failed:
-	printf("amc[backend.asf:%s]: op_get_val_imm: "
-			"Get instruction failed!\n", __FILE__);
-	goto err_free_node;
-}
-
-str *op_get_vall_from_mem_or_reg(struct object_node *parent, struct expr *e,
-		enum ASF_REGS dest)
-{
-	enum ASF_REGS src = ASF_REG_RAX;
-	if (e->valr->type.type == AMC_EXPR)
-		return op_get_val_from_mem(parent, dest);
-	src = asf_reg_get(asf_yz_type2bytes(e->sum_type));
-	return op_get_val_from_reg(parent, src, dest);
-}
-
-str *op_get_vall_identifier(struct object_node *parent, struct symbol *src,
-		enum ASF_REGS dest)
-{
-	struct asf_stack_element *identifier = src->backend_status;
-	struct asf_mem mem = {};
-	struct object_node *node = NULL;
-	if (identifier == NULL)
-		goto err_identifier_not_found;
-	node = malloc(sizeof(*node));
-	if (op_init_obj_node(parent, node))
-		goto err_free_node;
-	if ((node->s = asf_inst_mov_m2r(asf_stack_element2mem( identifier,
-						&mem), dest)) == NULL)
-		goto err_inst_failed;
-	return asf_reg_get_str(&asf_regs[dest]);
-err_identifier_not_found:
-	printf("amc[backend.asf:%s]: op_get_vall_identifier: "
-			"Identifier not found: \"%s\"!\n", __FILE__,
-			src->name.s);
-	return NULL;
-err_free_node:
-	free(node);
-	return NULL;
-err_inst_failed:
-	printf("amc[backend.asf:%s]: op_get_vall_identifier: "
-			"Get instruction failed!\n", __FILE__);
-	goto err_free_node;
-}
-
-str *op_get_vall_imm(struct object_node *parent, struct expr *e,
-		enum ASF_REGS dest)
-{
-	if (*asf_regs[dest].purpose != ASF_REG_PURPOSE_NULL
-			&& !(e->valr->type.type == AMC_EXPR
-				|| e->valr->type.type == AMC_SYM)) {
-		if (asf_op_save_reg(parent, dest))
-			return NULL;
-	}
-	*asf_regs[dest].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
-	return op_get_val_imm(parent, e->vall, dest);
-}
-
-str *op_get_vall_sym(struct object_node *parent, struct expr *e,
-		enum ASF_REGS dest)
-{
-	enum ASF_REGS reg = ASF_REG_RAX;
-	struct symbol *src = e->vall->v;
-	if (src->type != SYM_FUNC
-			&& *asf_regs[dest].purpose != ASF_REG_PURPOSE_NULL
-			&& e->valr->type.type != AMC_EXPR
-			&& e->valr->type.type != AMC_SYM) {
-		if (asf_op_save_reg(parent, dest))
-			return NULL;
-	}
-	*asf_regs[dest].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
-	if (src->type == SYM_IDENTIFIER)
-		return op_get_vall_identifier(parent, e->vall->v, dest);
-	if (src->type == SYM_FUNC_ARG) {
-		if (src->argc > asf_call_arg_regs_len)
-			return NULL;
-		reg = asf_call_arg_regs[src->argc]
-			+ asf_reg_get(asf_yz_type2bytes(e->sum_type));
-		return op_get_val_from_reg(parent, reg, dest);
-	}
-	return op_get_vall_from_mem_or_reg(parent, e, dest);
-}
-
-str *op_get_valr_expr(struct object_node *parent, struct expr *src,
-		enum ASF_REGS dest)
-{
-	enum ASF_REGS reg = asf_reg_get(asf_yz_type2bytes(src->sum_type));
-	if (dest == -1)
-		dest = ASF_REG_RCX + reg;
-	return op_get_val_from_reg(parent, reg, dest);
-}
-
-str *op_get_valr_identifier(struct object_node *parent, struct symbol *src)
-{
-	struct asf_stack_element *identifier = src->backend_status;
-	struct asf_mem mem = {};
-	if (identifier == NULL)
-		goto err_identifier_not_found;
-	return asf_stack_get_element(asf_stack_element2mem(identifier, &mem),
-			0);
-err_identifier_not_found:
-	printf("amc[backend.asf:%s]: op_get_valr_identifier: "
-			"Identifier not found: \"%s\"!\n", __FILE__,
-			src->name.s);
-	return NULL;
-}
-
-str *op_get_valr_imm(struct object_node *parent, yz_val *src,
-		enum ASF_REGS dest)
-{
-	struct object_node *node = NULL;
-	if (dest != -1 && *asf_regs[dest].purpose != ASF_REG_PURPOSE_NULL) {
-		if (asf_op_save_reg(parent, dest))
-			return NULL;
-		node = malloc(sizeof(*node));
-		if (parent == NULL) {
-			if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
-				goto err_free_node;
-		} else {
-			if (object_insert(node, parent, parent->next))
-				goto err_free_node;
-		}
-		if ((node->s = asf_inst_pop(dest)) == NULL)
-			goto err_inst_failed;
-	}
-	return op_get_val_imm(parent, src, dest);
-err_free_node:
-	free(node);
-	return NULL;
-err_inst_failed:
-	printf("amc[backend.asf:%s]: op_get_valr_imm: "
-			"Get instruction failed!\n", __FILE__);
-	goto err_free_node;
-}
-
-str *op_get_valr_null(struct object_node *parent, enum ASF_REGS dest)
-{
-	yz_val src = {
-		.type = {.type = YZ_U64, .v = NULL},
-		.l = 0
-	};
-	return op_get_valr_imm(parent, &src, dest);
-}
-
-str *op_get_valr_sym(struct object_node *parent, struct expr *e,
-		enum ASF_REGS dest)
-{
-	struct symbol *src = e->valr->v;
-	enum ASF_REGS reg = asf_reg_get(asf_yz_type2bytes(&src->result_type));
-	if (src->type == SYM_IDENTIFIER)
-		return op_get_valr_identifier(parent, src);
-	if (src->type == SYM_FUNC_ARG) {
-		if (src->argc > asf_call_arg_regs_len)
-			return NULL;
-		reg += asf_call_arg_regs[src->argc];
-		return op_get_val_from_reg(parent, reg, dest);
-	}
-	if (e->vall->type.type != AMC_SYM)
-		return op_get_val_from_mem(parent, dest);
-	if (dest == -1)
-		dest = ASF_REG_RCX + reg;
-	return op_get_val_from_reg(parent, reg, dest);
-}
 
 int op_init_obj_node(struct object_node *parent, struct object_node *node)
 {
@@ -298,37 +45,61 @@ err_inst_failed:
 	goto err_free_node;
 }
 
-str *asf_op_get_val_left(struct object_node *parent, struct expr *e)
+str *asf_op_get_dest(enum ASF_BYTES *bytes, struct asf_val *dest)
 {
-	enum ASF_REGS dest = ASF_REG_RAX;
-	if ((dest += asf_reg_get(asf_yz_type2bytes(e->sum_type))) == -1)
-		return NULL;
-	if (e->vall->type.type == AMC_EXPR) {
-		*asf_regs[dest].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
-		return op_get_vall_from_mem_or_reg(parent, e, dest);
-	} else if (e->vall->type.type == AMC_SYM) {
-		return op_get_vall_sym(parent, e, dest);
-	} else if (YZ_IS_DIGIT(e->vall->type.type)) {
-		return op_get_vall_imm(parent, e, dest);
+	if (dest->type == ASF_VAL_MEM) {
+		*bytes = dest->mem.bytes;
+		return asf_mem_get_str(&dest->mem);
+	} else if (dest->type == ASF_VAL_REG) {
+		*bytes = asf_regs[dest->reg].bytes;
+		return asf_reg_get_str(&asf_regs[dest->reg]);
 	}
 	return NULL;
 }
 
-str *asf_op_get_val_right(struct object_node *parent, struct expr *e,
-		enum ASF_REGS dest)
+str *asf_op_get_src(enum ASF_BYTES *bytes, struct asf_val *src)
 {
-	if (dest != -1 && dest <= ASF_REG_RSP)
-		dest += asf_reg_get(asf_yz_type2bytes(e->sum_type));
-	if (e->valr->type.type == AMC_EXPR) {
-		return op_get_valr_expr(parent, e, dest);
-	} else if (e->valr->type.type == AMC_SYM) {
-		return op_get_valr_sym(parent, e, dest);
-	} else if (e->valr->type.type == YZ_NULL) {
-		return op_get_valr_null(parent, dest);
-	} else if (YZ_IS_DIGIT(e->valr->type.type)) {
-		return op_get_valr_imm(parent, e->valr, dest);
+	if (src->type == ASF_VAL_MEM) {
+		*bytes = src->mem.bytes;
+		return asf_mem_get_str(&src->mem);
+	} else if (src->type == ASF_VAL_REG) {
+		*bytes = asf_regs[src->reg].bytes;
+		return asf_reg_get_str(&asf_regs[src->reg]);
 	}
 	return NULL;
+}
+
+int asf_op_handle_expr(str **result, struct expr *e, enum ASF_REGS *src,
+		enum ASF_REGS dest)
+{
+	if (e->vall->type.type != AMC_SYM
+			&& (e->valr->type.type == AMC_SYM
+				|| e->valr->type.type == AMC_EXPR)) {
+		*src = ASF_OP_OPERAND_REG + asf_reg_get(
+				asf_yz_type2bytes(&e->valr->type));
+		*result = asf_inst_pop(ASF_OP_OPERAND_REG);
+		if (*result == NULL)
+			return 1;
+	} else if (e->valr->type.type == AMC_EXPR) {
+		*result = asf_op_handle_expr_and_expr(src, dest);
+		if (*result == NULL)
+			return 1;
+	}
+	return 0;
+}
+
+str *asf_op_handle_expr_and_expr(enum ASF_REGS *src, enum ASF_REGS dest)
+{
+	str *s = NULL, *tmp = NULL;
+	*src = ASF_OP_OPERAND_REG + asf_reg_get(asf_regs[dest].bytes);
+	s = asf_inst_mov_r2r(ASF_OP_RESULT_REG, ASF_OP_OPERAND_REG);
+	if (s == NULL)
+		return NULL;
+	if ((tmp = asf_inst_pop(ASF_OP_RESULT_REG)) == NULL)
+		return NULL;
+	str_append(s, tmp->len, tmp->s);
+	str_free(tmp);
+	return s;
 }
 
 int asf_op_save_reg(struct object_node *parent, enum ASF_REGS reg)
@@ -348,56 +119,66 @@ err_inst_failed:
 	goto err_free_node;
 }
 
-str *asf_inst_op_add(enum ASF_REGS src, enum ASF_REGS dest)
+int asf_op_store_val(yz_val *val, enum ASF_REGS *dest)
 {
-	str *s = NULL;
-	const char *temp = "add%c %%%s, %%%s\n";
-	s = str_new();
-	str_expand(s, strlen(temp));
-	snprintf(s->s, s->len, temp,
-			asf_suffix_get(asf_regs[src].bytes),
-			asf_regs[src].name,
-			asf_regs[dest].name);
-	return s;
+	struct object_node *node = NULL;
+	struct asf_val v = {};
+	if (asf_val_get(val, &v))
+		goto err_unsupport_type;
+	*dest += asf_reg_get(asf_yz_type2bytes(&val->type));
+	node = malloc(sizeof(*node));
+	switch (v.type) {
+	case ASF_VAL_IMM:
+		if ((node->s = asf_inst_mov_i2r(&v.imm, *dest)) == NULL)
+			goto err_free_node;
+		break;
+	case ASF_VAL_MEM:
+		if ((node->s = asf_inst_mov_m2r(&v.mem, *dest)) == NULL)
+			goto err_free_node;
+		break;
+	case ASF_VAL_REG:
+		if (v.reg == *dest) {
+			free(node);
+			return 0;
+		}
+		if ((node->s = asf_inst_mov_r2r(v.reg, *dest)) == NULL)
+			goto err_free_node;
+		break;
+	default: goto err_unsupport_type; break;
+	}
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
+		return 1;
+	return 0;
+err_unsupport_type:
+	printf("amc[backend.asf:%s]: asf_op_store_val: Unsupport type\n",
+			__FILE__);
+	return 1;
+err_free_node:
+	free(node);
+	return 1;
 }
 
-str *asf_inst_op_div(enum ASF_REGS src, int is_unsigned)
+// FIXME: Don't push prev expr result in next line.
+//        e.g:
+//          (1 + 1) + [func 1]
+//          [func (1 - 7)] ; <-- HERE will push prev expr
+int asf_op_try_push_prev_expr_result(struct expr *e, enum ASF_REGS reg)
 {
-	str *s = NULL;
-	const char *temp_signed = "imul%c %%%s\n";
-	const char *temp_unsigned = "mul%c %%%s\n";
-	const char *temp = is_unsigned ? temp_unsigned : temp_signed;
-	s = str_new();
-	str_expand(s, strlen(temp));
-	snprintf(s->s, s->len, temp,
-			asf_suffix_get(asf_regs[src].bytes),
-			asf_regs[src].name);
-	return s;
-}
-
-str *asf_inst_op_mul(enum ASF_REGS src, int is_unsigned)
-{
-	str *s = NULL;
-	const char *temp_signed = "imul%c %%%s\n";
-	const char *temp_unsigned = "mul%c %%%s\n";
-	const char *temp = is_unsigned ? temp_unsigned : temp_signed;
-	s = str_new();
-	str_expand(s, strlen(temp));
-	snprintf(s->s, s->len, temp,
-			asf_suffix_get(asf_regs[src].bytes),
-			asf_regs[src].name);
-	return s;
-}
-
-str *asf_inst_op_sub(enum ASF_REGS src, enum ASF_REGS dest)
-{
-	str *s = NULL;
-	const char *temp = "sub%c %%%s, %%%s\n";
-	s = str_new();
-	str_expand(s, strlen(temp));
-	snprintf(s->s, s->len, temp,
-			asf_suffix_get(asf_regs[src].bytes),
-			asf_regs[src].name,
-			asf_regs[dest].name);
-	return s;
+	struct object_node *node = NULL;
+	if (*asf_regs[reg].purpose == ASF_REG_PURPOSE_NULL)
+		return 0;
+	if (e->vall->type.type == AMC_EXPR || e->vall->type.type == AMC_SYM)
+		return 0;
+	node = malloc(sizeof(*node));
+	if ((node->s = asf_inst_push_reg(reg)) == NULL)
+		goto err_free_node;
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
+		goto err_free_node_and_str;
+	*asf_regs[reg].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
+	return 1;
+err_free_node_and_str:
+	str_free(node->s);
+err_free_node:
+	free(node);
+	return -1;
 }
