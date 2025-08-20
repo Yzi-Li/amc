@@ -72,15 +72,16 @@ str *asf_op_get_src(enum ASF_BYTES *bytes, struct asf_val *src)
 int asf_op_handle_expr(str **result, struct expr *e, enum ASF_REGS *src,
 		enum ASF_REGS dest)
 {
-	if (e->vall->type.type != AMC_SYM
-			&& (e->valr->type.type == AMC_SYM
-				|| e->valr->type.type == AMC_EXPR)) {
+	enum YZ_TYPE lraw = e->vall->type.type, rraw = e->valr->type.type;
+	if (lraw != AMC_SYM && (rraw == AMC_SYM || rraw == AMC_EXPR)) {
 		*src = ASF_OP_OPERAND_REG + asf_reg_get(
 				asf_yz_type2bytes(&e->valr->type));
 		*result = asf_inst_pop(ASF_OP_OPERAND_REG);
 		if (*result == NULL)
 			return 1;
-	} else if (e->valr->type.type == AMC_EXPR) {
+	} else if (rraw == AMC_EXPR
+			|| (rraw == AMC_SYM
+				&& e->valr->sym->type == SYM_FUNC)) {
 		*result = asf_op_handle_expr_and_expr(src, dest);
 		if (*result == NULL)
 			return 1;
@@ -96,10 +97,13 @@ str *asf_op_handle_expr_and_expr(enum ASF_REGS *src, enum ASF_REGS dest)
 	if (s == NULL)
 		return NULL;
 	if ((tmp = asf_inst_pop(ASF_OP_RESULT_REG)) == NULL)
-		return NULL;
+		goto err_free_s;
 	str_append(s, tmp->len, tmp->s);
 	str_free(tmp);
 	return s;
+err_free_s:
+	str_free(s);
+	return NULL;
 }
 
 int asf_op_save_reg(struct object_node *parent, enum ASF_REGS reg)
@@ -167,7 +171,9 @@ int asf_op_try_push_prev_expr_result(struct expr *e, enum ASF_REGS reg)
 	struct object_node *node = NULL;
 	if (*asf_regs[reg].purpose == ASF_REG_PURPOSE_NULL)
 		return 0;
-	if (e->vall->type.type == AMC_EXPR || e->vall->type.type == AMC_SYM)
+	if (e->vall->type.type == AMC_EXPR)
+		return 0;
+	if (e->vall->type.type == AMC_SYM && e->vall->sym->type == SYM_FUNC)
 		return 0;
 	node = malloc(sizeof(*node));
 	if ((node->s = asf_inst_push_reg(reg)) == NULL)

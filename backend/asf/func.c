@@ -121,7 +121,6 @@ int asf_func_call(struct symbol *fn, yz_val **vs, int vlen)
 		goto err_too_many_arg;
 	if ((reg = asf_reg_get(asf_yz_type2bytes(&fn->result_type))) == -1)
 		return 1;
-	*asf_regs[reg].purpose = ASF_REG_PURPOSE_FUNC_RESULT;
 	if (asf_call_push_args(vlen, vs))
 		goto err_free_node;
 	node = malloc(sizeof(*node));
@@ -132,6 +131,7 @@ int asf_func_call(struct symbol *fn, yz_val **vs, int vlen)
 	node->s = str_new();
 	str_expand(node->s, strlen(temp) - 1 + strlen(fn->path.s));
 	snprintf(node->s->s, node->s->len, temp, fn->path.s);
+	*asf_regs[reg].purpose = ASF_REG_PURPOSE_FUNC_RESULT;
 	return 0;
 err_too_many_arg:
 	printf("amc[backend.asf]: Too many arguments!\n");

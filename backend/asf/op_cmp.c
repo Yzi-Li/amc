@@ -66,7 +66,7 @@ err_free_node:
 str *cmp_imm_with_mem_or_reg(struct asf_imm *src, struct asf_val *dest)
 {
 	enum ASF_BYTES bytes;
-	str *s = NULL, *tmp = NULL, *prefix = NULL;
+	str *s = NULL, *tmp = NULL;
 	const char *temp = "cmp%c $%lld, %s\n";
 	if ((tmp = asf_op_get_dest(&bytes, dest)) == NULL)
 		return NULL;
@@ -75,11 +75,7 @@ str *cmp_imm_with_mem_or_reg(struct asf_imm *src, struct asf_val *dest)
 	snprintf(s->s, s->len, temp, asf_suffix_get(bytes),
 			src->iq,
 			tmp->s);
-	if (prefix == NULL)
-		return s;
-	str_append(prefix, s->len, s->s);
-	str_free(s);
-	return prefix;
+	return s;
 }
 
 int cmp_jmp_inst_append(label_id label, str *label_str,
