@@ -450,14 +450,19 @@ int parse_func_def(struct parser *parser)
 		goto err_free_result;
 	if (ret == -1)
 		return func_def_end_scope(parser, NULL);
-	if ((handle = backend_call(func_def)(result, parser->stat.has_pub, 0))
-			== NULL)
-		goto err_free_result;
+	handle = backend_call(func_def)(result, parser->stat.has_pub, 0);
+	if (handle == NULL)
+		goto err_free_and_pop_result;
 	if (parse_block(parser))
-		goto err_free_result;
+		goto err_free_and_pop_result;
 	return func_def_end_scope(parser, handle);
 err_free_result:
 	free_symbol(result);
+	func_def_end_scope(parser, NULL);
+	return 1;
+err_free_and_pop_result:
+	free_symbol(symbol_pop(&dest_scope->sym_groups[SYMG_FUNC]));
+	func_def_end_scope(parser, NULL);
 	return 1;
 }
 

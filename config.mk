@@ -1,5 +1,5 @@
 CC = gcc
 CFLAGS = -Wall -Werror -std=c99 $(CDEBUG)
-CDEBUG = -g
+CDEBUG = -g -DDEBUG
 
 AR = ar

@@ -53,8 +53,8 @@ struct symbol {
 };
 
 struct symbol_group {
+	u8 count, size;
 	const char *name;
-	u8 size;
 	struct symbol **symbols;
 };
 
@@ -64,6 +64,7 @@ int symbol_find(str *token, struct symbol **result,
 		struct scope *scope, enum SYMG group_type);
 int symbol_find_in_group(str *token, struct symbol_group *group,
 		struct symbol **result);
+struct symbol *symbol_pop(struct symbol_group *group);
 int symbol_register(struct symbol *symbol, struct symbol_group *group);
 
 void free_symbol(struct symbol *sym);

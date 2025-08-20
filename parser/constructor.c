@@ -2,7 +2,6 @@
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 #include "include/constructor.h"
-#include "../include/type.h"
 
 void constructor_handle_free(struct constructor_handle *handle)
 {

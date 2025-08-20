@@ -26,13 +26,18 @@ str *module_path2real(str *path)
 
 int check_module_name(str *name)
 {
+	char *err_msg;
 	for (int i = 0; i < name->len; i++) {
 		if (strchr(MODULE_NAME_VAILD_CHARS, name->s[i]) == NULL)
 			goto err_invalid_name;
 	}
 	return 1;
-err_invalid_name: // TODO: better error message.
-	printf("amc: test_module_name: Invaild character in module name!\n");
+err_invalid_name:
+	err_msg = str2chr(name->s, name->len);
+	printf("amc: check_module_name: "
+			"Invaild character in module name: '%s'!\n",
+			err_msg);
+	free(err_msg);
 	return 0;
 }
 

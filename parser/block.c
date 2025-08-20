@@ -124,15 +124,19 @@ int parse_block(struct parser *parser)
 	parser->scope = &cur_scope;
 	if (!try_next_line(parser->f)) {
 		if (block_parse_direct(parser))
-			return 1;
+			goto err_restore_scope;
 		goto restore;
 	}
 	while ((ret = block_parse_line(parser)) != -1) {
 		if (ret > 0)
-			return 1;
+			goto err_restore_scope;
 	}
 restore:
 	parser->scope = cur_scope.parent;
 	scope_end(&cur_scope);
 	return 0;
+err_restore_scope:
+	parser->scope = cur_scope.parent;
+	scope_end(&cur_scope);
+	return 1;
 }

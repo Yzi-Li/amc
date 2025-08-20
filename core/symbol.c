@@ -50,7 +50,7 @@ int symbol_find(str *token, struct symbol **result,
 int symbol_find_in_group(str *token, struct symbol_group *group,
 		struct symbol **result)
 {
-	for (int i = 0; i < group->size; i++) {
+	for (int i = 0; i < group->count; i++) {
 		if (token->len != group->symbols[i]->name.len)
 			continue;
 		if (strncmp(token->s, group->symbols[i]->name.s,
@@ -59,8 +59,16 @@ int symbol_find_in_group(str *token, struct symbol_group *group,
 			return 1;
 		}
 	}
-
 	return 0;
+}
+
+struct symbol *symbol_pop(struct symbol_group *group)
+{
+	struct symbol *result;
+	group->count -= 1;
+	result = group->symbols[group->count];
+	group->symbols[group->count] = NULL;
+	return result;
 }
 
 int symbol_register(struct symbol *symbol, struct symbol_group *group)
@@ -72,10 +80,12 @@ int symbol_register(struct symbol *symbol, struct symbol_group *group)
 		if (!tmp->flags.only_declaration)
 			goto err_defined;
 	}
-	group->size += 1;
+	group->count += 1;
+	if (group->count > group->size)
+		group->size += 1;
 	group->symbols = realloc(group->symbols,
 			sizeof(struct symbol*) * group->size);
-	group->symbols[group->size - 1] = symbol;
+	group->symbols[group->count - 1] = symbol;
 	return 0;
 err_defined:
 	printf("amc: symbol_register: symbol: \"%s\" defined!\n",

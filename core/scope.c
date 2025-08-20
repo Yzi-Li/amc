@@ -32,8 +32,8 @@ void free_scope(struct scope *scope)
 	if (scope == NULL)
 		return;
 	free_symbol_group(scope->sym_groups[SYMG_FUNC].symbols,
-			scope->sym_groups[SYMG_FUNC].size);
+			scope->sym_groups[SYMG_FUNC].count);
 	free_symbol_group(scope->sym_groups[SYMG_SYM].symbols,
-			scope->sym_groups[SYMG_SYM].size);
+			scope->sym_groups[SYMG_SYM].count);
 	sctrie_free_tree_noself(&scope->types, free_yz_user_type);
 }

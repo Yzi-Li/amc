@@ -8,7 +8,6 @@
 #include "../include/symbol.h"
 #include "../include/type.h"
 #include "../include/ptr.h"
-#include "../utils/die.h"
 #include "../utils/utils.h"
 #include <limits.h>
 #include <string.h>
@@ -161,7 +160,6 @@ void free_yz_type_noself(yz_type *self)
 	self->v = NULL;
 	if (YZ_IS_DIGIT(self->type))
 		return;
-	//TODO
 	switch (self->type) {
 	case AMC_EXPR:
 		free_expr(self->v);
@@ -172,6 +170,12 @@ void free_yz_type_noself(yz_type *self)
 		return;
 		break;
 	default:
+#ifdef DEBUG
+		printf(">>> \x1b[34mDEBUG\x1b[0m:amc: "
+				"free_yz_type_noself: "
+				"Not handled type: '%s'\n",
+				yz_get_raw_type_name(self->type));
+#endif
 		return;
 		break;
 	}
