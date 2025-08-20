@@ -6,7 +6,7 @@
 #include "../symbol.h"
 #include "../val.h"
 
-int comptime_check_sym_can_assign(struct symbol *sym);
-int comptime_check_sym_can_assign_val(struct symbol *sym, yz_val *val);
+int check_sym_can_assign(struct symbol *sym);
+int check_sym_can_assign_val(struct symbol *sym, yz_val *val);
 
 #endif

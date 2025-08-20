@@ -12,8 +12,8 @@
 #include "include/type.h"
 #include "include/utils.h"
 #include "../include/backend.h"
-#include "../include/comptime/struct.h"
-#include "../include/comptime/symbol.h"
+#include "../include/checker/struct.h"
+#include "../include/checker/symbol.h"
 #include "../include/parser.h"
 #include "../include/ptr.h"
 #include "../include/token.h"
@@ -345,11 +345,11 @@ int struct_set_elem(struct parser *parser, struct symbol *sym, int index,
 	struct symbol *elem = ((yz_struct*)sym->result_type.v)->elems[index];
 	if (elem->result_type.type == YZ_PTR)
 		((yz_ptr_type*)elem->result_type.v)->flag_checked_null = 0;
-	if (!comptime_check_struct_elem_can_assign(sym, elem))
+	if (!check_struct_elem_can_assign(sym, elem))
 		return err_print_pos(__func__, NULL, orig_line, orig_column);
 	if (identifier_assign_get_val(parser, &elem->result_type, &val))
 		return 1;
-	if (!comptime_check_sym_can_assign_val(elem, val))
+	if (!check_sym_can_assign_val(elem, val))
 		return err_print_pos(__func__, NULL, orig_line, orig_column);
 	if (backend_call(struct_set_elem)(sym, index, val, mode))
 		return err_print_pos(__func__, "Backend call failed!",
@@ -367,11 +367,11 @@ int struct_set_elem_from_ptr(struct parser *parser, struct symbol *sym,
 	struct symbol *elem = ((yz_struct*)sym->result_type.v)->elems[index];
 	if (elem->result_type.type == YZ_PTR)
 		((yz_ptr_type*)elem->result_type.v)->flag_checked_null = 0;
-	if (!comptime_check_struct_elem_can_assign(sym, elem))
+	if (!check_struct_elem_can_assign(sym, elem))
 		return err_print_pos(__func__, NULL, orig_line, orig_column);
 	if (identifier_assign_get_val(parser, &elem->result_type, &val))
 		return 1;
-	if (!comptime_check_sym_can_assign_val(elem, val))
+	if (!check_sym_can_assign_val(elem, val))
 		return err_print_pos(__func__, NULL, orig_line, orig_column);
 	if (backend_call(struct_set_elem_from_ptr)(sym, index, val, mode))
 		return err_print_pos(__func__, "Backend call failed!",

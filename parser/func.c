@@ -12,7 +12,7 @@
 #include "../include/parser.h"
 #include "../include/scope.h"
 #include "../include/token.h"
-#include "../include/comptime/ptr.h"
+#include "../include/checker/ptr.h"
 #include "../utils/utils.h"
 #include "include/utils.h"
 #include <stdio.h>
@@ -52,7 +52,7 @@ yz_val *func_call_arg_handle(struct expr *expr, struct symbol *arg)
 	yz_val *result = expr2yz_val(expr);
 	if ((result->type.type == AMC_SYM || result->type.type == YZ_NULL)
 			&& arg->result_type.type == YZ_PTR) {
-		if (!comptime_ptr_check_can_null(result, arg))
+		if (!check_ptr_can_null(result, arg))
 			goto err_free_result;
 	}
 	if (identifier_handle_val_type(&result->type, &arg->result_type))
@@ -379,7 +379,7 @@ yz_val *func_ret_get_val(struct symbol *fn, struct expr *expr)
 		return NULL;
 	if (result->type.type == AMC_SYM) {
 		if (fn->result_type.type == YZ_PTR)
-			if (!comptime_ptr_check_can_ret(result->v, fn))
+			if (!check_ptr_can_ret(result->v, fn))
 				goto err_free_result;
 		return result;
 	}

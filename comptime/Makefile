@@ -8,7 +8,6 @@ all: $(COMPTIME_BUILD) $(COMPTIME_OBJ) $(DEPS)
 
 $(COMPTIME_BUILD):
 	mkdir -p $@
-	mkdir -p $@/inspector
 
 $(COMPTIME_BUILD)/%.d: %.c | $(COMPTIME_BUILD)
 	@set -e; rm -f $@; \

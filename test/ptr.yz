@@ -1,12 +1,16 @@
 struct A =>
 	mut a: *i32?
 
+; fn func(a: *i32): i32 =>
+; 	*a = 4
+; 	ret 0
+
 pub fn main: i32 =>
-	let a: i32 = 1
+	let mut a: i32 = 1
 	let b: *mut i32 = &a
 	let c: i32 = *b
 	let d: *i32? = null
 	let mut e: A = { null }
 	e.a = null
 	*b = 0
-	ret *b
+	ret 0

@@ -8,7 +8,7 @@
 #include "include/ptr.h"
 #include "include/struct.h"
 #include "../include/backend.h"
-#include "../include/comptime/ptr.h"
+#include "../include/checker/ptr.h"
 #include "../include/parser.h"
 #include "../include/ptr.h"
 #include "../utils/utils.h"
@@ -92,7 +92,7 @@ int op_extract_val_check(struct parser *parser, yz_val *v)
 		return 1;
 	if (ptr->result_type.type != YZ_PTR)
 		goto err_not_ptr;
-	if (!comptime_ptr_check_can_use(ptr))
+	if (!check_ptr_can_use(ptr))
 		return 1;
 	return 0;
 err_not_ptr:
@@ -172,10 +172,14 @@ int op_get_addr_handle_val(struct expr *e, int from_extracted_val)
 		ptr->ref.v = e->valr->v;
 		ptr->ref.type.type = AMC_SYM;
 		ptr->ref.type.v = ptr->ref.v;
+		ptr_type->flag_mut = ((struct symbol*)ptr->ref.v)
+			->flags.mut;
 	} else {
 		ptr->ref.v = ((struct expr*)e->valr->v)->valr->v;
 		ptr->ref.type.type = AMC_EXTRACT_VAL;
 		ptr->ref.type.v = ptr->ref.v;
+		ptr_type->flag_mut = ((yz_extract_val*)ptr->ref.v)
+			->elem->flags.mut;
 	}
 	ptr_type->ref.type = ptr->ref.type.type;
 	ptr_type->ref.v = ptr->ref.type.v;

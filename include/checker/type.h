@@ -5,6 +5,6 @@
 #define AMC_COMPTIME_TYPE_H
 #include "../type.h"
 
-int comptime_type_check_equal(yz_type *src, yz_type *dest);
+int check_type_equal(yz_type *src, yz_type *dest);
 
 #endif

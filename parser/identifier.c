@@ -12,8 +12,9 @@
 #include "include/token.h"
 #include "include/utils.h"
 #include "../include/backend.h"
-#include "../include/comptime/symbol.h"
-#include "../include/comptime/type.h"
+#include "../include/checker/ptr.h"
+#include "../include/checker/symbol.h"
+#include "../include/checker/type.h"
 #include "../include/expr.h"
 #include "../include/parser.h"
 #include "../include/ptr.h"
@@ -105,7 +106,7 @@ int identifier_assign_val(struct parser *parser, struct symbol *sym,
 	yz_val *val = NULL;
 	if (sym->result_type.type == YZ_PTR)
 		((yz_ptr_type*)sym->result_type.v)->flag_checked_null = 0;
-	if (!comptime_check_sym_can_assign(sym))
+	if (!check_sym_can_assign(sym))
 		return err_print_pos(__func__, NULL, orig_line, orig_column);
 	if (identifier_assign_get_val(parser, &sym->result_type, &val))
 		return 1;
@@ -129,15 +130,25 @@ int identifier_check_can_assign_val(struct parser *parser,
 	i64 orig_line = parser->f->cur_line,
 	    orig_column = parser->f->cur_column,
 	    orig_pos = parser->f->pos;
-	yz_ptr_type *ptr = ident->result_type.v;
-	if (ident->result_type.type != YZ_PTR || ptr->flag_can_null)
+	yz_ptr_type *ptr = NULL,
+	            *ident_ptr = ident->result_type.v;
+	if (ident->result_type.type != YZ_PTR || ident_ptr->flag_can_null)
 		return 1;
 	if (val->type.type == YZ_NULL)
 		return 0;
-	ptr = val->sym->result_type.v;
-	if (val->type.type != AMC_SYM || val->sym->type != SYM_FUNC
-			|| !ptr->flag_can_null)
-		return 1;
+	if (val->type.type == AMC_EXPR && val->expr->op->id == OP_GET_ADDR) {
+		if (check_ptr_get_addr_to_ident(val->expr, ident)) {
+			err_print_pos(__func__, NULL,
+					parser->f->cur_line,
+					parser->f->cur_column);
+			return 0;
+		}
+	}
+	if (val->type.type != AMC_SYM || val->sym->type != SYM_FUNC) {
+		ptr = val->sym->result_type.v;
+		if (!ptr->flag_can_null)
+			return 1;
+	}
 	if (!try_next_line(parser->f))
 		return 0;
 	if ((indent = indent_read(parser->f)) != parser->scope->indent)
@@ -146,8 +157,7 @@ int identifier_check_can_assign_val(struct parser *parser,
 		goto err_maybe_null;
 	if (!block_check_start(parser->f))
 		return 0;
-	ptr = ident->result_type.v;
-	ptr->flag_checked_null = 1;
+	ident_ptr->flag_checked_null = 1;
 	if (backend_call(null_handle_begin)(&handle, val))
 		return 0;
 	if (parse_block(parser))
@@ -192,7 +202,7 @@ yz_val *identifier_handle_expr_val(struct expr *e, yz_type *type)
 
 int identifier_handle_val_type(yz_type *src, yz_type *dest)
 {
-	if (!comptime_type_check_equal(src, dest))
+	if (!check_type_equal(src, dest))
 		return 1;
 	if (!YZ_IS_DIGIT(src->type) || !YZ_IS_DIGIT(dest->type))
 		return 0;

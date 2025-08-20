@@ -1,6 +1,8 @@
-include backend/config.mk
-include comptime/config.mk
 include config.mk
+
+include backend/config.mk
+include checker/config.mk
+include comptime/config.mk
 include core/config.mk
 include parser/config.mk
 include utils/config.mk
@@ -20,12 +22,14 @@ TARGET = amc
 
 BUILD       = build
 UTILS       = utils
+CHECKER     = checker
 CORE        = core
 COMPTIME    = comptime
 PARSER      = parser
 BACKEND     = backend
-MODULES     = $(UTILS) $(CORE) $(COMPTIME) $(PARSER) $(BACKEND)
+MODULES     = $(UTILS) $(CHECKER) $(CORE) $(COMPTIME) $(PARSER) $(BACKEND)
 MODULES_OBJ = $(UTILS_OBJ)\
+              $(CHECKER_OBJ)\
               $(CORE_OBJ)\
               $(COMPTIME_OBJ)\
               $(PARSER_OBJ)\
@@ -54,6 +58,7 @@ $(TARGET): $(MODULES_OBJ) $(OBJ) $(STRLIB)
 
 clean:
 	rm -f $(TARGET) $(OBJ)
+	@$(MAKE) -C $(CHECKER) clean
 	@$(MAKE) -C $(CORE) clean
 	@$(MAKE) -C $(COMPTIME) clean
 	@$(MAKE) -C $(STRDIR) clean
