@@ -27,6 +27,8 @@
 static int identifier_assign_backend_call(struct symbol *sym, yz_val *val,
 		enum OP_ID mode);
 static int identifier_read_enum(struct parser *parser, yz_val *val, str *name);
+static enum TRY_RESULT identifier_try_handle_null(struct parser *parser,
+		struct symbol *ident, yz_val *val);
 
 int identifier_assign_backend_call(struct symbol *sym, yz_val *val,
 		enum OP_ID mode)
@@ -71,6 +73,48 @@ err_enum_not_found:
 			err_msg);
 	free(err_msg);
 	return 1;
+}
+
+enum TRY_RESULT
+identifier_try_handle_null(struct parser *parser, struct symbol *ident,
+		yz_val *val)
+{
+	backend_null_handle *handle;
+	str null_handler = {.len = 2, .s = "|?"};
+	i64 orig_line = parser->f->cur_line,
+	    orig_column = parser->f->cur_column,
+	    orig_pos = parser->f->pos;
+	if (!try_next_line(parser->f))
+		return TRY_RESULT_FAULT;
+	if (indent_read(parser->f) != parser->scope->indent)
+		goto not_handled_restore_pos;
+	if (!token_try_read(&null_handler, parser->f))
+		goto err_maybe_null;
+	if (!block_check_start(parser->f))
+		return TRY_RESULT_FAULT;
+	((yz_ptr_type*)ident->result_type.v)->flag_checked_null = 1;
+	if (backend_call(null_handle_begin)(&handle, val))
+		return TRY_RESULT_FAULT;
+	if (parse_block(parser))
+		return TRY_RESULT_FAULT;
+	if (backend_call(null_handle_end)(handle))
+		return TRY_RESULT_FAULT;
+	return TRY_RESULT_HANDLED;
+not_handled_restore_pos:
+	parser->f->cur_line = orig_line;
+	parser->f->cur_column = orig_column;
+	parser->f->pos = orig_pos;
+	return 0;
+err_maybe_null:
+	printf("amc: identifier_check_can_assign_val: %lld,%lld: "
+			ERROR_STR":\n"
+			"| Assign a can null value to a cannot be null "
+			"identifier: '%s'.\n"
+			"| "HINT_STR": "
+			"Append '|? =>' to next line to handle null branch\n",
+			parser->f->cur_line, parser->f->cur_column,
+			ident->name.s);
+	return TRY_RESULT_FAULT;
 }
 
 int identifier_assign_get_val(struct parser *parser,
@@ -124,61 +168,30 @@ int identifier_assign_val(struct parser *parser, struct symbol *sym,
 int identifier_check_can_assign_val(struct parser *parser,
 		struct symbol *ident, yz_val *val)
 {
-	backend_null_handle *handle;
-	int indent = -1;
-	str null_handler = {.len = 2, .s = "|?"};
-	i64 orig_line = parser->f->cur_line,
-	    orig_column = parser->f->cur_column,
-	    orig_pos = parser->f->pos;
 	yz_ptr_type *ptr = NULL,
 	            *ident_ptr = ident->result_type.v;
+	enum TRY_RESULT ret = 0;
 	if (ident->result_type.type != YZ_PTR || ident_ptr->flag_can_null)
 		return 1;
 	if (val->type.type == YZ_NULL)
 		return 0;
 	if (val->type.type == AMC_EXPR && val->expr->op->id == OP_GET_ADDR) {
-		if (check_ptr_get_addr_to_ident(val->expr, ident)) {
-			err_print_pos(__func__, NULL,
-					parser->f->cur_line,
-					parser->f->cur_column);
-			return 0;
-		}
+		if (check_ptr_get_addr_to_ident(val->expr, ident))
+			goto err_print_pos;
 	}
 	if (val->type.type != AMC_SYM || val->sym->type != SYM_FUNC) {
 		ptr = val->sym->result_type.v;
 		if (!ptr->flag_can_null)
 			return 1;
 	}
-	if (!try_next_line(parser->f))
-		return 0;
-	if ((indent = indent_read(parser->f)) != parser->scope->indent)
-		goto restore_pos;
-	if (!token_try_read(&null_handler, parser->f))
-		goto err_maybe_null;
-	if (!block_check_start(parser->f))
-		return 0;
-	ident_ptr->flag_checked_null = 1;
-	if (backend_call(null_handle_begin)(&handle, val))
-		return 0;
-	if (parse_block(parser))
-		return 0;
-	if (backend_call(null_handle_end)(handle))
+	ret = identifier_try_handle_null(parser, ident, val);
+	if (ret != TRY_RESULT_HANDLED)
 		return 0;
 	return 1;
-err_maybe_null:
-	printf("amc: identifier_check_can_assign_val: %lld,%lld: "
-			ERROR_STR":\n"
-			"| Assign a can null value to a cannot be null "
-			"identifier: '%s'.\n"
-			"| "HINT_STR": "
-			"Append '|? =>' to next line to handle null branch\n",
-			parser->f->cur_line, parser->f->cur_column,
-			ident->name.s);
-	return 0;
-restore_pos:
-	parser->f->cur_line = orig_line;
-	parser->f->cur_column = orig_column;
-	parser->f->pos = orig_pos;
+err_print_pos:
+	err_print_pos(__func__, NULL,
+			parser->f->cur_line,
+			parser->f->cur_column);
 	return 0;
 }
 

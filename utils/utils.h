@@ -14,6 +14,12 @@
 #define ERROR_STR "\x1b[31merror\x1b[0m"
 #define HINT_STR "\x1b[34mhint\x1b[0m"
 
+enum TRY_RESULT {
+	TRY_RESULT_FAULT = -1,
+	TRY_RESULT_NOT_HANDLED = 0,
+	TRY_RESULT_HANDLED = 1,
+};
+
 /**
  * @param len: string len
  * @return:

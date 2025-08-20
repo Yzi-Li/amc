@@ -19,12 +19,12 @@ int err_print_pos(const char *name, const char *msg,
 	return 1;
 }
 
-int try_next_line(struct file *f)
+enum TRY_RESULT try_next_line(struct file *f)
 {
 	if (parse_comment(f))
-		return 1;
+		return TRY_RESULT_HANDLED;
 	if (f->src[f->pos] != '\n')
-		return 0;
+		return TRY_RESULT_NOT_HANDLED;
 	file_line_next(f);
-	return 1;
+	return TRY_RESULT_HANDLED;
 }

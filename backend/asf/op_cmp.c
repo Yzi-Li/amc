@@ -30,7 +30,8 @@ int cmp_and_jmp(struct expr *e, enum ASF_JMP_TYPE jmp_type)
 	};
 	if ((label = asf_label_alloc()) == -1)
 		goto err_label_alloc_failed;
-	if (asf_op_try_push_prev_expr_result(e, ASF_OP_RESULT_REG) < 0)
+	if (asf_op_try_push_prev_expr_result(e, ASF_OP_RESULT_REG)
+			== TRY_RESULT_FAULT)
 		return 1;
 	if (asf_op_store_val(e->vall, &dest.reg))
 		return 1;

@@ -67,7 +67,8 @@ int asf_op_add(struct expr *e)
 	};
 	struct object_node *node = NULL;
 	str *tmp = NULL;
-	if (asf_op_try_push_prev_expr_result(e, augend.reg) < 0)
+	if (asf_op_try_push_prev_expr_result(e, augend.reg)
+			== TRY_RESULT_FAULT)
 		return 1;
 	if (asf_op_store_val(e->vall, &augend.reg))
 		return 1;

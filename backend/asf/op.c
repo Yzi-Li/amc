@@ -166,25 +166,26 @@ err_free_node:
 //        e.g:
 //          (1 + 1) + [func 1]
 //          [func (1 - 7)] ; <-- HERE will push prev expr
-int asf_op_try_push_prev_expr_result(struct expr *e, enum ASF_REGS reg)
+enum TRY_RESULT
+asf_op_try_push_prev_expr_result(struct expr *e, enum ASF_REGS reg)
 {
 	struct object_node *node = NULL;
 	if (*asf_regs[reg].purpose == ASF_REG_PURPOSE_NULL)
-		return 0;
+		return TRY_RESULT_NOT_HANDLED;
 	if (e->vall->type.type == AMC_EXPR)
-		return 0;
+		return TRY_RESULT_NOT_HANDLED;
 	if (e->vall->type.type == AMC_SYM && e->vall->sym->type == SYM_FUNC)
-		return 0;
+		return TRY_RESULT_NOT_HANDLED;
 	node = malloc(sizeof(*node));
 	if ((node->s = asf_inst_push_reg(reg)) == NULL)
 		goto err_free_node;
 	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node_and_str;
 	*asf_regs[reg].purpose = ASF_REG_PURPOSE_EXPR_RESULT;
-	return 1;
+	return TRY_RESULT_HANDLED;
 err_free_node_and_str:
 	str_free(node->s);
 err_free_node:
 	free(node);
-	return -1;
+	return TRY_RESULT_FAULT;
 }

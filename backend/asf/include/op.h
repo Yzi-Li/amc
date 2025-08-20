@@ -24,13 +24,9 @@ int asf_op_store_val(yz_val *val, enum ASF_REGS *dest);
  * If the result register store the prev expression result,
  * this function will push it to stack. Then return 1.
  * In other cases, do nothing.
- *
- * @return:
- *  -1: ERROR.
- *  0:  not pushed.
- *  1:  pushed previous.
  */
-int asf_op_try_push_prev_expr_result(struct expr *e, enum ASF_REGS reg);
+enum TRY_RESULT asf_op_try_push_prev_expr_result(struct expr *e,
+		enum ASF_REGS reg);
 
 str *asf_inst_op_add(struct asf_val *src, struct asf_val *dest);
 
