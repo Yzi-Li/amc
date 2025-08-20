@@ -73,7 +73,9 @@ int asf_op_handle_expr(str **result, struct expr *e, enum ASF_REGS *src,
 		enum ASF_REGS dest)
 {
 	enum YZ_TYPE lraw = e->vall->type.type, rraw = e->valr->type.type;
-	if (lraw != AMC_SYM && (rraw == AMC_SYM || rraw == AMC_EXPR)) {
+	if (lraw == AMC_EXPR
+			&& (rraw == AMC_SYM
+				&& e->valr->sym->type == SYM_FUNC)) {
 		*src = ASF_OP_OPERAND_REG + asf_reg_get(
 				asf_yz_type2bytes(&e->valr->type));
 		*result = asf_inst_pop(ASF_OP_OPERAND_REG);

@@ -5,4 +5,9 @@ bin="$2"
 
 $bin
 
-echo $?
+ret=$?
+echo $ret
+
+if [ $ret -ne 34 ]; then
+	exit 1
+fi

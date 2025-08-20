@@ -163,8 +163,10 @@ void free_yz_type_noself(yz_type *self)
 	switch (self->type) {
 	case AMC_EXPR:
 		free_expr(self->v);
+		break;
 	case AMC_EXTRACT_VAL:
 		free_yz_extract_val(self->v);
+		break;
 	case YZ_PTR:
 		free_yz_ptr_type(self->v);
 		return;

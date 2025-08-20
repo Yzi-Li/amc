@@ -15,5 +15,5 @@ fn func__(a: i32): i32 =>
 
 ; The 3rd of comment test
 pub fn main: i32 => ; comment 4th
-	ret [func__ (1 + 2)]
-	;ret [func_ [func 2 + 1]] ; The 5th
+	; ret [func__ (1 + 2)]
+	ret [func [func 1]] ; The 5th
