@@ -32,7 +32,7 @@ struct hooks *hooks_inherit(struct hooks **src)
 	if (src == NULL)
 		return NULL;
 	result = *src;
-	*src = calloc(1, sizeof(**src));
+	*src = NULL;
 	return result;
 }
 
@@ -48,10 +48,9 @@ void free_hook_noself(struct hook *hook)
 {
 	if (hook == NULL)
 		return;
-	for (int i = 0; i < hook->count; i++) {
+	for (int i = 0; i < hook->count; i++)
 		free_hook_callee(hook->s[i]);
-		hook->s[i] = NULL;
-	}
+	free(hook->s);
 }
 
 void free_hook_callee(struct hook_callee *callee)

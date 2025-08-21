@@ -11,3 +11,9 @@ yz_type *yz_type_max_arr(yz_type *l, yz_type *r)
 	return yz_type_max(&larr->type, &rarr->type)
 		== &larr->type ? l : r;
 }
+
+void free_yz_array(yz_array *self)
+{
+	free_yz_type_noself(&self->type);
+	free(self);
+}

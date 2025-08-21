@@ -4,6 +4,7 @@
 #include "include/asf.h"
 #include "include/file.h"
 #include "include/register.h"
+#include "include/stack.h"
 #include "../../include/backend.h"
 #include "../../include/backend/object.h"
 #include <string.h>
@@ -24,7 +25,8 @@ struct backend backend_asf = {
 	.cond_if       = asf_cond_if,
 	.cond_if_begin = asf_cond_if_begin,
 
-	.const_def_str = asf_const_def_str,
+	.const_def_str   = asf_const_def_str,
+	.const_free_data = asf_const_free_data,
 
 	.dec_c_fn    = asf_dec_c_fn,
 	.dec_syscall = asf_dec_syscall,
@@ -68,6 +70,7 @@ struct backend backend_asf = {
 
 	.scope_begin = asf_scope_begin,
 	.scope_end   = asf_scope_end,
+	.scope_free  = asf_scope_free,
 
 	.struct_def               = asf_struct_def,
 	.struct_set_elem          = asf_struct_set_elem,
@@ -93,7 +96,7 @@ int asf_stop(enum BE_STOP_SIGNAL bess)
 {
 	switch (bess) {
 	default:
-		object_head_free(cur_obj);
+		free_object_head(cur_obj);
 		break;
 	}
 	return 0;
@@ -101,6 +104,7 @@ int asf_stop(enum BE_STOP_SIGNAL bess)
 
 int asf_end(str *output)
 {
+	free_asf_stack(asf_stack_top);
 	if (asf_link_files(output))
 		return 1;
 	return 0;

@@ -1,9 +1,13 @@
 /* This file is part of amc.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
+#include "../include/array.h"
+#include "../include/const.h"
+#include "../include/expr.h"
 #include "../include/struct.h"
 #include "../include/symbol.h"
 #include "../include/val.h"
+#include <stdio.h>
 
 struct symbol *yz_get_extracted_val(yz_extract_val *val)
 {
@@ -45,5 +49,25 @@ void free_yz_val_noself(yz_val *self)
 {
 	if (self == NULL)
 		return;
+	if (YZ_IS_DIGIT(self->type.type))
+		return;
 	free_yz_type_noself(&self->type);
+	switch (self->type.type) {
+	case AMC_EXPR:        free_expr(self->v);           break;
+	case AMC_EXTRACT_VAL: free_yz_extract_val(self->v); break;
+	case YZ_ARRAY:        free_yz_array(self->v);       break;
+	case YZ_CONST:        free_yz_const(self->v);       break;
+	case AMC_SYM:
+	case AMC_ERR_TYPE:
+		break;
+	default:
+#ifdef DEBUG
+		printf(">>> \x1b[34mDEBUG\x1b[0m:amc: "
+				"free_yz_val_noself: "
+				"Not handled type: '%s','%d'\n",
+				yz_get_raw_type_name(self->type.type),
+				self->type.type);
+#endif
+		break;
+	}
 }

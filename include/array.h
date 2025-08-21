@@ -13,4 +13,6 @@ typedef struct yz_array {
 
 yz_type *yz_type_max_arr(yz_type *l, yz_type *r);
 
+void free_yz_array(yz_array *self);
+
 #endif

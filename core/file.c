@@ -81,3 +81,10 @@ int file_try_skip_space(struct file *self)
 	file_skip_space(self);
 	return 0;
 }
+
+void free_file_noself(struct file *self)
+{
+	if (self == NULL)
+		return;
+	free(self->src);
+}

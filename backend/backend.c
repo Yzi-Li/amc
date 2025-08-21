@@ -155,7 +155,12 @@ int backend_end(str *output)
 {
 	if (backend_flag & BE_FLAG_ENDED)
 		return 0;
-	return backends[cur_backend]->end(output);
+	if (backends[cur_backend]->end(output))
+		return 1;
+	for (int i = 0; i < backend_assembled_files_count; i++)
+		free(backend_assembled_files[i]);
+	free(backend_assembled_files);
+	return 0;
 }
 
 int backend_file_end(const char *target_path, int len)
@@ -203,4 +208,14 @@ int backend_stop(enum BE_STOP_SIGNAL bess)
 		return 1;
 	backend_flag |= BE_FLAG_STOPED;
 	return 0;
+}
+
+void free_backend_const_noself(backend_const *self)
+{
+	if (self == NULL)
+		return;
+	free_yz_val_noself(&self->val);
+	if (self->data == NULL)
+		return;
+	backend_call(const_free_data)(self->data);
 }

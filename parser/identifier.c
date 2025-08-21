@@ -178,15 +178,17 @@ int identifier_check_can_assign_val(struct parser *parser,
 	if (val->type.type == AMC_EXPR && val->expr->op->id == OP_GET_ADDR) {
 		if (check_ptr_get_addr_to_ident(val->expr, ident))
 			goto err_print_pos;
+		return 1;
 	}
-	if (val->type.type != AMC_SYM || val->sym->type != SYM_FUNC) {
+	if (val->type.type == AMC_SYM && val->sym->type == SYM_FUNC) {
 		ptr = val->sym->result_type.v;
 		if (!ptr->flag_can_null)
 			return 1;
+		ret = identifier_try_handle_null(parser, ident, val);
+		if (ret != TRY_RESULT_HANDLED)
+			return 0;
+		return 1;
 	}
-	ret = identifier_try_handle_null(parser, ident, val);
-	if (ret != TRY_RESULT_HANDLED)
-		return 0;
 	return 1;
 err_print_pos:
 	err_print_pos(__func__, NULL,

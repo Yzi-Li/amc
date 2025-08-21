@@ -186,3 +186,15 @@ str *asf_stack_get_element(struct asf_mem *mem, int pop)
 		stack_element_remove();
 	return s;
 }
+
+void free_asf_stack(struct asf_stack_element *start)
+{
+	struct asf_stack_element *cur = start, *nex;
+	if (start == NULL)
+		return;
+	while (cur != NULL) {
+		nex = cur->next;
+		free(cur);
+		cur = nex;
+	}
+}

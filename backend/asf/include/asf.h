@@ -30,11 +30,12 @@ int asf_cond_if(backend_scope_status *raw_status);
 int asf_cond_if_begin(backend_scope_status *raw_status);
 
 int asf_const_def_str(backend_const *self, str *s);
+void asf_const_free_data(void *self);
 
 int asf_dec_c_fn(str *name, int argc);
 int asf_dec_syscall(int code, int argc);
 
-int asf_func_call(struct symbol *fn, yz_val **v, int vlen);
+int asf_func_call(struct symbol *fn, yz_val **v);
 backend_func_def_handle *asf_func_def(struct symbol *fn, int pub, int main);
 int asf_func_def_end(backend_func_def_handle *handle);
 int asf_func_ret(yz_val *v, int is_main);
@@ -44,6 +45,7 @@ int asf_null_handle_end(backend_null_handle *handle);
 
 backend_scope_status *asf_scope_begin();
 int asf_scope_end(backend_scope_status *raw_status);
+void asf_scope_free(backend_scope_status *raw_status);
 
 int asf_struct_def(backend_symbol_status *raw_sym_stat, yz_val **vs, int len);
 int asf_struct_set_elem(struct symbol *ident, int index, yz_val *val,

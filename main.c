@@ -163,5 +163,7 @@ int main(int argc, char *argv[])
 		return print_version();
 	if (src == NULL)
 		return err_no_input();
-	return parser_init(src, &f);
+	if (parser_init(src, &f))
+		return 1;
+	free_file_noself(&f);
 }

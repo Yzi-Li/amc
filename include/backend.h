@@ -55,6 +55,7 @@ struct backend {
 	backend_cond_if_f                  cond_if;
 	backend_cond_if_begin_f            cond_if_begin;
 	backend_const_def_str_f            const_def_str;
+	backend_const_free_data_f          const_free_data;
 	backend_dec_c_fn_f                 dec_c_fn;
 	backend_dec_syscall_f              dec_syscall;
 	backend_func_call_f                func_call;
@@ -67,6 +68,7 @@ struct backend {
 	backend_ptr_set_val_f              ptr_set_val;
 	backend_scope_begin_f              scope_begin;
 	backend_scope_end_f                scope_end;
+	backend_scope_free_f               scope_free;
 	backend_struct_def_f               struct_def;
 	backend_struct_set_elem_f          struct_set_elem;
 	backend_struct_set_elem_from_ptr_f struct_set_elem_from_ptr;

@@ -29,4 +29,6 @@ struct asf_mem *asf_stack_element2mem(struct asf_stack_element *src,
 int asf_stack_end_frame(struct asf_stack_element *start_stack);
 str *asf_stack_get_element(struct asf_mem *mem, int pop);
 
+void free_asf_stack(struct asf_stack_element *start);
+
 #endif

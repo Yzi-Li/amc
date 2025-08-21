@@ -1,5 +1,6 @@
 CORE_SRC =\
 	array.c\
+	const.c\
 	enum.c\
 	expr.c\
 	file.c\

@@ -21,4 +21,6 @@ int file_pos_nnext(int n, struct file *self);
 int file_skip_space(struct file *self);
 int file_try_skip_space(struct file *self);
 
+void free_file_noself(struct file *self);
+
 #endif

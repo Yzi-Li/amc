@@ -53,6 +53,7 @@ struct scope *import_parse_file(str *path, struct parser *parent)
 		goto err_free_real_path;
 	result = parser->scope_pub;
 	parser->scope_pub = NULL;
+	free_file_noself(&f);
 	free_parser(parser);
 	return result;
 err_free_real_path:

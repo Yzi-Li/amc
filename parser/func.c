@@ -30,7 +30,7 @@ struct func_call_handle {
 static yz_val *func_call_arg_handle(struct expr *expr, struct symbol *arg);
 static int func_call_main(struct parser *parser);
 static int func_call_read_arg(const char *se, struct file *f, void *data);
-static yz_val **func_call_read_args(struct parser *parser);
+static int func_call_read_args(struct parser *parser, yz_val **result);
 static int func_call_read_callee(struct parser *parser,
 		struct symbol **callee);
 static int func_call_read_token(struct file *f, str *token);
@@ -99,9 +99,8 @@ err_print_pos:
 			f->cur_line, f->cur_column);
 }
 
-yz_val **func_call_read_args(struct parser *parser)
+int func_call_read_args(struct parser *parser, yz_val **result)
 {
-	yz_val **result = calloc(parser->sym->argc, sizeof(*result));
 	struct func_call_handle *handle = malloc(sizeof(*handle));
 	handle->f = parser->f;
 	handle->fn = parser->sym;
@@ -114,16 +113,13 @@ yz_val **func_call_read_args(struct parser *parser)
 		goto err_too_few_arg;
 	free_safe(handle);
 	if (parser->f->src[parser->f->pos] != ']')
-		return NULL;
+		return 1;
 	file_pos_next(parser->f);
 	file_skip_space(parser->f);
-	return result;
+	return 0;
 err_free_result:
 	free_safe(handle);
-	for (int i = 0; i < parser->sym->argc; i++)
-		free_safe(result[i]);
-	free_safe(result);
-	return NULL;
+	return 1;
 err_too_few_arg:
 	printf("amc: func_call_read_args: %lld,%lld: Too few arguments!\n"
 			"| Function: \"%s\"\n"
@@ -141,8 +137,8 @@ int func_call_read_callee(struct parser *parser, struct symbol **callee)
 	yz_module *mod = NULL;
 	i64 orig_column = parser->f->cur_column,
 	    orig_line = parser->f->cur_line;
-	int ret = 0;
 	struct symbol *result = NULL;
+	int ret = 0;
 	struct scope *scope = parser->scope;
 	str token = TOKEN_NEW;
 	if ((ret = func_call_read_token(parser->f, &token)) > 0)
@@ -244,7 +240,7 @@ int func_def_inherit_decorators(struct decorators *src,
 		struct symbol *dest)
 {
 	if ((dest->hooks = hooks_inherit(&src->hooks)) == NULL)
-		return 1;
+		return 0;
 	src->used = 1;
 	return 0;
 }
@@ -392,24 +388,32 @@ err_free_result:
 int parse_func_call(struct parser *parser)
 {
 	yz_val **args = NULL;
-	if (parser->sym->argc == 0 && parser->f->src[parser->f->pos] == ']') {
+	struct symbol *fn = parser->sym;
+	if (fn->argc == 0 && parser->f->src[parser->f->pos] == ']') {
 		file_pos_next(parser->f);
 		file_skip_space(parser->f);
 	} else {
-		args = func_call_read_args(parser);
-		if (args == NULL)
-			return 1;
+		args = calloc(fn->argc, sizeof(*args));
+		if (func_call_read_args(parser, args))
+			goto err_free_args;
 	}
-	if (hook_apply(parser, &parser->sym
-				->hooks->times[HOOK_FUNC_CALL_BEFORE]))
+	if (fn->hooks && hook_apply(parser, &fn->hooks
+				->times[HOOK_FUNC_CALL_BEFORE]))
 		return 1;
-	if (backend_call(func_call)(parser->sym,
-				args, parser->sym->argc))
+	if (backend_call(func_call)(fn, args))
 		return 1;
-	if (hook_apply(parser, &parser->sym
-				->hooks->times[HOOK_FUNC_CALL_AFTER]))
+	if (fn->hooks && hook_apply(parser, &fn->hooks
+				->times[HOOK_FUNC_CALL_AFTER]))
 		return 1;
+	for (int i = 0; i < fn->argc; i++)
+		free_yz_val(args[i]);
+	free(args);
 	return 0;
+err_free_args:
+	for (int i = 0; i < fn->argc; i++)
+		free_yz_val(args[i]);
+	free(args);
+	return 1;
 }
 
 int parse_func_def(struct parser *parser)

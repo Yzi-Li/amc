@@ -129,6 +129,8 @@ int parse_decorator(struct decorators *self, struct file *f)
 	callee->apply = dec->apply;
 	if (parse_decorator_args(f, callee))
 		return 1;
+	if (self->hooks == NULL)
+		self->hooks = calloc(1, sizeof(*self->hooks));
 	if (hook_append(&self->hooks->times[dec->time], callee))
 		return 1;
 	self->has = 1;

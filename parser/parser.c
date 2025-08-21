@@ -121,7 +121,6 @@ struct parser *parse_file(str *path, const char *real_path, struct file *f)
 	}
 	if (backend_file_end(parser->target.s, parser->target.len))
 		goto err_free_parser;
-	free_parser(parser);
 	return parser;
 err_free_parser:
 	free_parser(parser);
@@ -178,6 +177,8 @@ int parser_get_target_from_mod_path(str *result, str *path)
 
 int parser_init(const char *path, struct file *f)
 {
+	int free_root_dir_cpy = 0;
+	struct parser *parser = NULL;
 	str pwd = {
 		.len = PATH_MAX,
 		.s = calloc(PATH_MAX, sizeof(char))
@@ -198,15 +199,21 @@ int parser_init(const char *path, struct file *f)
 				global_parser.root_dir.len);
 		global_parser.root_mod.s = basename(root_dir_cpy);
 		global_parser.root_mod.len = strlen(global_parser.root_mod.s);
+		free_root_dir_cpy = 1;
 	}
 	if (global_parser.target_path.s == NULL)
 		if (cache_dir_create(&global_parser.root_dir))
 			return 0;
-	if (parse_file(&global_parser.root_mod, path, f) == NULL)
+	parser = parse_file(&global_parser.root_mod, path, f);
+	if (parser == NULL)
 		return 1;
+	free_parser(parser);
 	if (backend_end(&global_parser.output))
 		return 1;
 	str_free_noself(&pwd);
+	str_free_noself(&global_parser.target_path);
+	if (free_root_dir_cpy)
+		free(root_dir_cpy);
 	return 0;
 }
 
@@ -261,6 +268,7 @@ void free_parser(struct parser *self)
 	free_scope(self->scope);
 	free_scope(self->scope_pub);
 	free(self->target.s);
+	free(self);
 }
 
 void free_parser_imported(struct parser_imported *self)

@@ -112,31 +112,31 @@ err_free_node_and_str:
 	return 1;
 }
 
-int asf_func_call(struct symbol *fn, yz_val **vs, int vlen)
+int asf_func_call(struct symbol *fn, yz_val **vs)
 {
 	struct object_node *node = NULL;
 	enum ASF_REGS reg = ASF_REG_RAX;
 	const char *temp = "call %s\n";
-	if (vlen > asf_call_arg_regs_len)
+	if (fn->argc > asf_call_arg_regs_len)
 		goto err_too_many_arg;
 	if ((reg = asf_reg_get(asf_yz_type2bytes(&fn->result_type))) == -1)
 		return 1;
-	if (asf_call_push_args(vlen, vs))
-		goto err_free_node;
+	if (asf_call_push_args(fn->argc, vs))
+		return 1;
 	node = malloc(sizeof(*node));
-	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
-		goto err_free_node;
-	if (asf_call_restore_regs(vlen, vs))
-		goto err_free_node;
 	node->s = str_new();
 	str_expand(node->s, strlen(temp) - 1 + strlen(fn->path.s));
 	snprintf(node->s->s, node->s->len, temp, fn->path.s);
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
+		goto err_free_node_and_str;
+	if (asf_call_restore_regs(fn->argc, vs))
+		return 1;
 	*asf_regs[reg].purpose = ASF_REG_PURPOSE_FUNC_RESULT;
 	return 0;
 err_too_many_arg:
 	printf("amc[backend.asf]: Too many arguments!\n");
 	return 1;
-err_free_node:
+err_free_node_and_str:
 	str_free(node->s);
 	free(node);
 	return 1;
@@ -204,12 +204,13 @@ int asf_func_ret(yz_val *v, int is_main)
 		return 1;
 	}
 	node = malloc(sizeof(*node));
-	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
-		goto err_free_node;
 	node->s = str_new();
 	str_append(node->s, strlen(temp), temp);
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
+		goto err_free_node_and_str;
 	return 0;
-err_free_node:
+err_free_node_and_str:
+	str_free(node->s);
 	free(node);
 	return 1;
 }

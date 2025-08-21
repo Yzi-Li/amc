@@ -69,3 +69,11 @@ err_unsupport_type:
 	free(raw_status);
 	return 1;
 }
+
+void asf_scope_free(backend_scope_status *raw_status)
+{
+	struct asf_scope_status *self = raw_status;
+	if (raw_status == NULL)
+		return;
+	free(self);
+}

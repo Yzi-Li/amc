@@ -5,18 +5,28 @@
 #include "include/imm.h"
 #include "include/mov.h"
 #include "../../include/backend.h"
-#include <stdlib.h>
 #include <string.h>
 
+static enum ASF_REG_PURPOSE_TYPE asf_regs_purposes[] = {
+	[ASF_REG_RAX] = ASF_REG_PURPOSE_NULL,
+	[ASF_REG_RBX] = ASF_REG_PURPOSE_NULL,
+	[ASF_REG_RCX] = ASF_REG_PURPOSE_NULL,
+	[ASF_REG_RDX] = ASF_REG_PURPOSE_NULL,
+	[ASF_REG_RBP] = ASF_REG_PURPOSE_NULL,
+	[ASF_REG_RSI] = ASF_REG_PURPOSE_NULL,
+	[ASF_REG_RDI] = ASF_REG_PURPOSE_NULL,
+	[ASF_REG_RSP] = ASF_REG_PURPOSE_NULL,
+};
+
 struct asf_reg asf_regs[] = {
-	[ASF_REG_RAX] = {"rax", 8, {1, 1}, NULL},
-	[ASF_REG_RBX] = {"rbx", 8, {1, 1}, NULL},
-	[ASF_REG_RCX] = {"rcx", 8, {1, 1}, NULL},
-	[ASF_REG_RDX] = {"rdx", 8, {1, 1}, NULL},
-	[ASF_REG_RBP] = {"rbp", 8, {1, 0}, NULL},
-	[ASF_REG_RSI] = {"rsi", 8, {1, 1}, NULL},
-	[ASF_REG_RDI] = {"rdi", 8, {1, 1}, NULL},
-	[ASF_REG_RSP] = {"rsp", 8, {1, 0}, NULL},
+	[ASF_REG_RAX] = {"rax", 8, {1, 1}, &asf_regs_purposes[ASF_REG_RAX]},
+	[ASF_REG_RBX] = {"rbx", 8, {1, 1}, &asf_regs_purposes[ASF_REG_RBX]},
+	[ASF_REG_RCX] = {"rcx", 8, {1, 1}, &asf_regs_purposes[ASF_REG_RCX]},
+	[ASF_REG_RDX] = {"rdx", 8, {1, 1}, &asf_regs_purposes[ASF_REG_RDX]},
+	[ASF_REG_RBP] = {"rbp", 8, {1, 0}, &asf_regs_purposes[ASF_REG_RBP]},
+	[ASF_REG_RSI] = {"rsi", 8, {1, 1}, &asf_regs_purposes[ASF_REG_RSI]},
+	[ASF_REG_RDI] = {"rdi", 8, {1, 1}, &asf_regs_purposes[ASF_REG_RDI]},
+	[ASF_REG_RSP] = {"rsp", 8, {1, 0}, &asf_regs_purposes[ASF_REG_RSP]},
 
 	// only in 64-bit
 	[ASF_REG_R8]  = {"r8",  8, {1, 1}, NULL},
@@ -82,11 +92,6 @@ enum ASF_REGS asf_reg_get(enum ASF_BYTES bytes)
 
 int asf_regs_init()
 {
-	enum ASF_REG_PURPOSE_TYPE *purposes = calloc(ASF_REG_R15,
-			sizeof(*purposes));
-	for (int i = 0; i < ASF_REG_R15; i++) {
-		asf_regs[i].purpose = &purposes[i];
-	}
 	for (int i = ASF_REG_EAX, base_reg = ASF_REG_RAX;
 			i < LENGTH(asf_regs); i++) {
 		asf_regs[i].purpose = asf_regs[base_reg].purpose;

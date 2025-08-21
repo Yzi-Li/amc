@@ -14,7 +14,7 @@ int asf_file_end(const char *path, int path_len)
 		return 1;
 	if (backend_assemble_file(path, path_len))
 		return 1;
-	object_head_free(cur_obj);
+	free_object_head(cur_obj);
 	cur_obj = prev;
 	return 0;
 }

@@ -16,5 +16,8 @@ typedef struct backend_const {
  *   -1: error.
  */
 typedef int (*backend_const_def_str_f)(backend_const *self, str *s);
+typedef void (*backend_const_free_data_f)(void *self);
+
+void free_backend_const_noself(backend_const *self);
 
 #endif

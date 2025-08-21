@@ -34,7 +34,8 @@ int object_insert(struct object_node *src, struct object_node *n1,
 int object_remove(struct object_section *sec, struct object_node *n);
 int object_remove_last(struct object_section *sec);
 int object_swap(struct object_node *n1, struct object_node *n2);
-void object_head_free(struct object_head *h);
-void object_section_free(struct object_section *sec);
+
+void free_object_head(struct object_head *self);
+void free_object_section(struct object_section *sec);
 
 #endif

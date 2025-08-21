@@ -11,4 +11,6 @@ typedef struct yz_const {
 	yz_val val;
 } yz_const;
 
+void free_yz_const(yz_const *self);
+
 #endif

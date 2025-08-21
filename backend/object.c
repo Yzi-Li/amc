@@ -103,22 +103,23 @@ int object_swap(struct object_node *n1, struct object_node *n2)
 	return 0;
 }
 
-void object_head_free(struct object_head *h)
+void free_object_head(struct object_head *self)
 {
-	if (h == NULL)
+	if (self == NULL)
 		return;
-	for (int i = 0; i < h->sec_count; i++)
-		object_section_free(&h->sections[i]);
-	free(h);
+	for (int i = 0; i < self->sec_count; i++)
+		free_object_section(&self->sections[i]);
+	free(self->sections);
+	free(self);
 }
 
-void object_section_free(struct object_section *o)
+void free_object_section(struct object_section *o)
 {
 	struct object_node *cur, *nex;
 	if (o->head == NULL)
 		return;
 	cur = o->head;
-	while (cur->next != NULL) {
+	while (cur != NULL) {
 		nex = cur->next;
 		str_free(cur->s);
 		free(cur);

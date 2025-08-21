@@ -436,6 +436,7 @@ int expr_term_str(struct parser *parser, int top, yz_val *v)
 	c = calloc(1, sizeof(*c));
 	if (backend_call(const_def_str)(&c->be_data, s))
 		goto err_backend_failed;
+	str_free(s);
 	arr = calloc(1, sizeof(*arr));
 	arr->len = token.len;
 	arr->type.type = YZ_CHAR;
@@ -537,6 +538,6 @@ struct expr *parse_expr(struct parser *parser, int top)
 	}
 	return expr;
 err_free_expr:
-	free_safe(expr);
+	free_expr(expr);
 	return NULL;
 }

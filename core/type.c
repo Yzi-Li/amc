@@ -157,19 +157,19 @@ void free_yz_type_noself(yz_type *self)
 {
 	if (self == NULL || self->v == NULL)
 		return;
-	self->v = NULL;
 	if (YZ_IS_DIGIT(self->type))
 		return;
 	switch (self->type) {
+	case YZ_PTR:   free_yz_ptr_type(self->v);    break;
+	// no handle and don't print DEBUG msg.
+	case AMC_ERR_TYPE:
 	case AMC_EXPR:
-		free_expr(self->v);
-		break;
 	case AMC_EXTRACT_VAL:
-		free_yz_extract_val(self->v);
-		break;
-	case YZ_PTR:
-		free_yz_ptr_type(self->v);
-		return;
+	case AMC_SYM:
+	case YZ_ARRAY:
+	case YZ_CONST:
+	case YZ_STRUCT:
+	case YZ_ENUM:
 		break;
 	default:
 #ifdef DEBUG
