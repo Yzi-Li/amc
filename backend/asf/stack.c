@@ -94,8 +94,8 @@ str *asf_inst_push_const(int src)
 	struct asf_mem mem = {};
 	if (stack_element_append(ASF_BYTES_U64))
 		return NULL;
-	return asf_inst_mov_c2m(src,
-			asf_stack_element2mem(asf_stack_top, &mem));
+	asf_stack_element2mem(asf_stack_top, &mem);
+	return asf_inst_mov_c2m(src, &mem);
 }
 
 str *asf_inst_push_imm(struct asf_imm *src)
@@ -103,8 +103,8 @@ str *asf_inst_push_imm(struct asf_imm *src)
 	struct asf_mem mem = {};
 	if (stack_element_append(src->type))
 		return NULL;
-	return asf_inst_mov_i2m(src,
-			asf_stack_element2mem(asf_stack_top, &mem));
+	asf_stack_element2mem(asf_stack_top, &mem);
+	return asf_inst_mov_i2m(src, &mem);
 }
 
 str *asf_inst_push_mem(struct asf_mem *src)
@@ -112,8 +112,8 @@ str *asf_inst_push_mem(struct asf_mem *src)
 	struct asf_mem right_operand = {};
 	if (stack_element_append(src->bytes))
 		return NULL;
-	return asf_inst_mov_m2m(src, asf_stack_element2mem(asf_stack_top,
-				&right_operand));
+	asf_stack_element2mem(asf_stack_top, &right_operand);
+	return asf_inst_mov_m2m(src, &right_operand);
 }
 
 str *asf_inst_push_reg(enum ASF_REGS src)
@@ -122,8 +122,8 @@ str *asf_inst_push_reg(enum ASF_REGS src)
 	if (stack_element_append(asf_regs[src].bytes))
 		return NULL;
 	*asf_regs[src].purpose = ASF_REG_PURPOSE_NULL;
-	return asf_inst_mov_r2m(src,
-			asf_stack_element2mem(asf_stack_top, &mem));
+	asf_stack_element2mem(asf_stack_top, &mem);
+	return asf_inst_mov_r2m(src, &mem);
 }
 
 int asf_stack_align(struct object_node *start_node)
@@ -194,6 +194,18 @@ void free_asf_stack(struct asf_stack_element *start)
 		return;
 	while (cur != NULL) {
 		nex = cur->next;
+		free(cur);
+		cur = nex;
+	}
+}
+
+void free_asf_stack_reverse(struct asf_stack_element *start)
+{
+	struct asf_stack_element *cur = start, *nex;
+	if (start == NULL)
+		return;
+	while (cur != NULL) {
+		nex = cur->prev;
 		free(cur);
 		cur = nex;
 	}

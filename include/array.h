@@ -5,14 +5,14 @@
 #define AMC_ARRAY_H
 #include "type.h"
 
-typedef struct yz_array {
+typedef struct yz_array_type {
 	yz_type type;
 	// when len == 0: mut array
 	int len;
-} yz_array;
+} yz_array_type;
 
 yz_type *yz_type_max_arr(yz_type *l, yz_type *r);
 
-void free_yz_array(yz_array *self);
+void free_yz_array_type(yz_array_type *self);
 
 #endif

@@ -6,7 +6,7 @@
 yz_val *expr2yz_val(struct expr *expr)
 {
 	yz_val *result = NULL;
-	if (expr->op == NULL && expr->valr == NULL) {
+	if (EXPR_IS_SINGLE_TERM(expr)) {
 		result = expr->vall;
 		free(expr);
 		return result;
@@ -24,6 +24,5 @@ void free_expr(struct expr *e)
 		return;
 	free_yz_val(e->vall);
 	free_yz_val(e->valr);
-	free_safe(e->op);
 	free(e);
 }

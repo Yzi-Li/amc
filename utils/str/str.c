@@ -17,16 +17,18 @@ char *str2chr(const char *s, int len)
 
 int str_append(str *dest, int len, const char *s)
 {
-	int last;
+	int last, src_has_zero = 0;
 	if (dest == NULL)
 		return 1;
 	last = dest->len;
-	if (dest->len > 0 && dest->s[last - 1] == '\0') {
+	if (dest->len > 0 && dest->s[last - 1] == '\0')
 		last -= 1;
+	if (len > 1 && s[len - 1] == '\0') {
 		len -= 1;
+		src_has_zero = 1;
 	}
 	str_expand(dest, len);
-	memcpy(&dest->s[last], s, len);
+	memcpy(&dest->s[last], s, len + src_has_zero);
 	return 0;
 }
 

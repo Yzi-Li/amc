@@ -19,7 +19,7 @@ static int val_get_sym(struct symbol *src, struct asf_val *result);
 
 int val_get_const(yz_const *self, struct asf_val *result)
 {
-	yz_array *arr = self->val.v;
+	yz_array_type *arr = self->val.type.v;
 	if (self->val.type.type != YZ_ARRAY)
 		return 1;
 	if (arr->type.type != YZ_CHAR)

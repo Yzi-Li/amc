@@ -180,8 +180,8 @@ int struct_get_elem_from_ptr_handle_val(yz_val *val, int index,
 	v->sym = val->sym;
 	v->elem = elem;
 	v->type = YZ_EXTRACT_STRUCT_FROM_PTR;
-	if ((val->v = op_extract_val_expr_create(&elem->result_type, v))
-			== NULL)
+	val->v = op_extract_val_expr_create(&elem->result_type, v);
+	if (val->v == NULL)
 		return 1;
 	val->type.type = AMC_EXPR;
 	val->type.v = val->v;
@@ -195,8 +195,8 @@ int struct_get_elem_handle_val(yz_val *val, int index, struct symbol *elem)
 	v->sym = val->v;
 	v->elem = elem;
 	v->type = YZ_EXTRACT_STRUCT;
-	if ((val->v = op_extract_val_expr_create(&elem->result_type, v))
-			== NULL)
+	val->v = op_extract_val_expr_create(&elem->result_type, v);
+	if (val->v == NULL)
 		return 1;
 	val->type.type = AMC_EXPR;
 	val->type.v = val->v;
@@ -243,18 +243,18 @@ int constructor_struct(struct parser *parser, struct symbol *sym)
 	if (backend_call(struct_def)(&sym->backend_status, handle->vs,
 				handle->len))
 		goto err_backend_failed;
-	constructor_handle_free(handle);
+	free_constructor_handle(handle);
 	if (parser->f->src[parser->f->pos] != '}')
 		goto err_not_end;
 	file_pos_next(parser->f);
 	file_skip_space(parser->f);
 	return keyword_end(parser->f);
 err_backend_failed:
-	constructor_handle_free(handle);
+	free_constructor_handle(handle);
 	printf("amc: constructor_struct: %lld,%lld: Backend call failed!\n",
 			parser->f->cur_line, parser->f->cur_column);
 err_free_handle:
-	constructor_handle_free(handle);
+	free_constructor_handle(handle);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;
 err_not_end:
@@ -350,12 +350,18 @@ int struct_set_elem(struct parser *parser, struct symbol *sym, int index,
 	if (identifier_assign_get_val(parser, &elem->result_type, &val))
 		return 1;
 	if (!check_sym_can_assign_val(elem, val))
-		return err_print_pos(__func__, NULL, orig_line, orig_column);
+		goto err_cannot_assign;
 	if (backend_call(struct_set_elem)(sym, index, val, mode))
-		return err_print_pos(__func__, "Backend call failed!",
-				orig_line, orig_column);
+		goto err_backend_failed;
 	free_yz_val(val);
 	return 0;
+err_cannot_assign:
+	free_yz_val(val);
+	return err_print_pos(__func__, NULL, orig_line, orig_column);
+err_backend_failed:
+	free_yz_val(val);
+	return err_print_pos(__func__, "Backend call failed!",
+			orig_line, orig_column);
 }
 
 int struct_set_elem_from_ptr(struct parser *parser, struct symbol *sym,

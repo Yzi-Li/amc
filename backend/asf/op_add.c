@@ -24,6 +24,7 @@ str *add_imm_to_mem_or_reg(struct asf_imm *src, struct asf_val *dest)
 	snprintf(s->s, s->len, temp, asf_suffix_get(bytes),
 			src->iq,
 			tmp->s);
+	str_free(tmp);
 	return s;
 }
 

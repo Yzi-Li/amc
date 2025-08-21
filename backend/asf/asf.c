@@ -104,7 +104,9 @@ int asf_stop(enum BE_STOP_SIGNAL bess)
 
 int asf_end(str *output)
 {
-	free_asf_stack(asf_stack_top);
+	struct asf_stack_element *next = asf_stack_top->next;
+	free_asf_stack(next);
+	free_asf_stack_reverse(asf_stack_top);
 	if (asf_link_files(output))
 		return 1;
 	return 0;

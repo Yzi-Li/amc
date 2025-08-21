@@ -155,14 +155,19 @@ int identifier_assign_val(struct parser *parser, struct symbol *sym,
 	if (identifier_assign_get_val(parser, &sym->result_type, &val))
 		return 1;
 	if (!(ret = identifier_check_can_assign_val(parser, sym, val)))
-		return 1;
+		goto err_free_val;
 	if (identifier_assign_backend_call(sym, val, mode))
-		return err_print_pos(__func__, "Backend call failed!",
-				orig_line, orig_column);
+		goto err_print_pos;
 	free_yz_val(val);
 	if (parser->f->src[parser->f->pos] == ']')
 		file_pos_next(parser->f);
 	return 0;
+err_print_pos:
+	err_print_pos(__func__, "Backend call failed!",
+			orig_line, orig_column);
+err_free_val:
+	free_yz_val(val);
+	return 1;
 }
 
 int identifier_check_can_assign_val(struct parser *parser,
@@ -175,7 +180,7 @@ int identifier_check_can_assign_val(struct parser *parser,
 		return 1;
 	if (val->type.type == YZ_NULL)
 		return 0;
-	if (val->type.type == AMC_EXPR && val->expr->op->id == OP_GET_ADDR) {
+	if (val->type.type == AMC_EXPR && val->expr->op == OP_GET_ADDR) {
 		if (check_ptr_get_addr_to_ident(val->expr, ident))
 			goto err_print_pos;
 		return 1;

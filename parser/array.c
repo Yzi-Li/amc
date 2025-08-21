@@ -20,7 +20,7 @@
 
 static int array_get_elem_handle_val(yz_val *val, yz_val *offset,
 		struct symbol *sym);
-static int array_get_len(struct file *f, yz_array *arr);
+static int array_get_len(struct file *f, yz_array_type *arr);
 static int array_get_len_check_mut(struct file *f);
 static int array_get_len_end(struct file *f, int len);
 static int array_get_len_from_num(struct file *f, int *len);
@@ -29,7 +29,7 @@ static int constructor_array_elem(const char *se, struct file *f, void *data);
 
 int array_get_elem_handle_val(yz_val *val, yz_val *offset, struct symbol *sym)
 {
-	yz_array *arr = sym->result_type.v;
+	yz_array_type *arr = sym->result_type.v;
 	yz_extract_val *v = malloc(sizeof(*v));
 	v->sym = sym;
 	v->elem = sym;
@@ -42,7 +42,7 @@ int array_get_elem_handle_val(yz_val *val, yz_val *offset, struct symbol *sym)
 	return 0;
 }
 
-int array_get_len(struct file *f, yz_array *arr)
+int array_get_len(struct file *f, yz_array_type *arr)
 {
 	arr->len = 0;
 	if (CHR_IS_NUM(f->src[f->pos]))
@@ -124,7 +124,7 @@ err_read_offset_failed:
 int constructor_array_elem(const char *se, struct file *f, void *data)
 {
 	struct constructor_handle *handle = data;
-	yz_array *arr = handle->sym->result_type.v;
+	yz_array_type *arr = handle->sym->result_type.v;
 	struct expr *expr = NULL;
 	yz_val *val = NULL;
 	if (handle->index > handle->len - 1)
@@ -188,7 +188,7 @@ err_not_end:
 int array_set_elem(struct parser *parser, struct symbol *sym, yz_val *offset,
 		enum OP_ID mode)
 {
-	yz_array *arr = sym->result_type.v;
+	yz_array_type *arr = sym->result_type.v;
 	i64 orig_column = parser->f->cur_column,
 	    orig_line = parser->f->cur_line;
 	yz_val *val = NULL;
@@ -208,7 +208,7 @@ int constructor_array(struct parser *parser, struct symbol *sym)
 {
 	struct constructor_handle *handle = malloc(sizeof(*handle));
 	handle->index = 0;
-	handle->len = ((yz_array*)sym->result_type.v)->len;
+	handle->len = ((yz_array_type*)sym->result_type.v)->len;
 	handle->parser = parser;
 	handle->sym = sym;
 	handle->vs = calloc(handle->len, sizeof(yz_val*));
@@ -217,19 +217,19 @@ int constructor_array(struct parser *parser, struct symbol *sym)
 	if (backend_call(array_def)(&sym->backend_status, handle->vs,
 				handle->len))
 		goto err_backend_failed;
-	constructor_handle_free(handle);
+	free_constructor_handle(handle);
 	if (parser->f->src[parser->f->pos] != '}')
 		goto err_not_end;
 	file_pos_next(parser->f);
 	file_skip_space(parser->f);
 	return keyword_end(parser->f);
 err_backend_failed:
-	constructor_handle_free(handle);
+	free_constructor_handle(handle);
 	printf("amc: constructor_array: %lld,%lld: Backend call failed!\n",
 			parser->f->cur_line, parser->f->cur_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 err_free_handle:
-	constructor_handle_free(handle);
+	free_constructor_handle(handle);
 	return 1;
 err_not_end:
 	printf("amc: constructor_array: %lld,%lld: Not end!\n",
@@ -240,7 +240,7 @@ err_not_end:
 
 int parse_type_array(struct parser *parser, yz_type *type)
 {
-	yz_array *arr = NULL;
+	yz_array_type *arr = NULL;
 	int ret = 0;
 	file_pos_next(parser->f);
 	file_skip_space(parser->f);

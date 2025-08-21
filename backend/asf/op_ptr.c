@@ -114,29 +114,31 @@ int asf_op_get_addr(struct expr *e)
 	const char *temp = "lea%c %s, %%%s\n";
 	if (e->valr->type.type != YZ_PTR)
 		goto err_not_ptr;
-	node = malloc(sizeof(*node));
-	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
-		goto err_free_node;
 	dest = asf_reg_get(asf_yz_type2bytes(e->sum_type));
 	if (*asf_regs[dest].purpose != ASF_REG_PURPOSE_NULL)
 		if (asf_op_save_reg(node, dest))
-			goto err_free_node;
+			return 1;
 	if ((src = op_ptr_get_addr_get_src(e->valr->v)) == NULL)
-		goto err_free_node;
+		return 1;
 	if (src->s[src->len - 1] != '\0')
 		str_append(src, 1, "\0");
+	node = malloc(sizeof(*node));
 	node->s = str_new();
 	str_expand(node->s, strlen(temp) - 3 + src->len);
 	snprintf(node->s->s, node->s->len, temp,
 			asf_suffix_get(asf_regs[dest].bytes),
 			src->s,
 			asf_regs[dest].name);
+	str_free(src);
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
+		goto err_free_all;
 	return 0;
 err_not_ptr:
 	printf("amc[backend.asf:%s]: asf_op_get_addr: "
 			"Value is not a pointer!\n", __FILE__);
 	return 1;
-err_free_node:
+err_free_all:
+	str_free(node->s);
 	free(node);
 	return 1;
 }

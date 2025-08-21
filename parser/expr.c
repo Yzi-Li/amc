@@ -60,7 +60,7 @@ static int expr_check_end(struct file *f);
 static int expr_check_end_special(struct file *f, int top);
 static int expr_check_end_top(struct file *f, str *tok);
 static yz_type *expr_get_sum_type(yz_type *l, yz_type *r);
-static int expr_operator(struct file *f, int top, struct expr_operator **op);
+static int expr_operator(struct file *f, int top, struct expr *e);
 static int expr_read_token(struct file *f, int top, str *token);
 static int expr_single_term(struct expr *e);
 static int expr_sub(struct parser *parser, int top, struct expr **e);
@@ -75,8 +75,8 @@ static int expr_term_int(struct parser *parser, int top, yz_val *v);
 static int expr_term_null(struct parser *parser, int top, yz_val *v);
 static int expr_term_str(struct parser *parser, int top, yz_val *v);
 static int expr_unary(struct parser *parser, int top, yz_val *v,
-		struct expr_operator *op);
-static struct expr_operator *expr_unary_get_op(char c);
+		enum OP_ID op);
+static enum OP_ID expr_unary_get_op(char c);
 
 int expr_assign(struct parser *parser, struct expr *e)
 {
@@ -96,7 +96,7 @@ int expr_binary(struct parser *parser, int top, struct expr *e)
 		return ret;
 	if ((ret = expr_term(parser, top, e->valr)) > 0)
 		return 1;
-	if (OP_IS_CMP(e->op->id)) {
+	if (OP_IS_CMP(e->op)) {
 		e->sum_type = &e->vall->type;
 	} else {
 		if ((e->sum_type = expr_get_sum_type(&e->vall->type,
@@ -112,15 +112,15 @@ int expr_binary(struct parser *parser, int top, struct expr *e)
 int expr_binary_read_op(struct parser *parser, int top, struct expr *e)
 {
 	int ret = 0;
-	if ((ret = expr_operator(parser->f, top, &e->op)) > 0)
+	if ((ret = expr_operator(parser->f, top, e)) > 0)
 		return 1;
 	if (ret == EXPR_TERM_END)
 		goto err_valr_not_found;
 	if (ret == EXPR_OP_EMPTY)
 		return EXPR_TERM_END;
 	if (!top)
-		e->op->priority = -1;
-	if (REGION_INT(e->op->id, OP_ASSIGN, OP_ASSIGN_SUB))
+		e->priority = -1;
+	if (REGION_INT(e->op, OP_ASSIGN, OP_ASSIGN_SUB))
 		return expr_assign(parser, e);
 	return 0;
 err_valr_not_found:
@@ -169,7 +169,7 @@ err_get_failed:
 	return NULL;
 }
 
-int expr_operator(struct file *f, int top, struct expr_operator **op)
+int expr_operator(struct file *f, int top, struct expr *e)
 {
 	int end = 0;
 	str *tmp = str_new(),
@@ -181,12 +181,12 @@ int expr_operator(struct file *f, int top, struct expr_operator **op)
 	str_append(tmp, token.len, token.s);
 	str_append(tmp, 1, "\0");
 	for (int i = 0; i < LENGTH(operators); i++) {
-		if (strcmp(tmp->s, operators[i].sym) == 0) {
-			*op = malloc(sizeof(**op));
-			memcpy(*op, &operators[i], sizeof(**op));
-			str_free(tmp);
-			return end == 1 ? EXPR_TERM_END : 0;
-		}
+		if (strcmp(tmp->s, operators[i].sym) != 0)
+			continue;
+		e->op = operators[i].id;
+		e->priority = operators[i].priority;
+		str_free(tmp);
+		return end == 1 ? EXPR_TERM_END : 0;
 	}
 	str_free(tmp);
 	return 1;
@@ -218,14 +218,14 @@ err_empty_token:
 int expr_single_term(struct expr *e)
 {
 	if (e->vall->type.type == AMC_EXPR) {
-		e->sum_type = ((struct expr*)e->vall->v)->sum_type;
+		e->sum_type = e->vall->expr->sum_type;
 	} else if (e->vall->type.type == AMC_SYM) {
-		e->sum_type = &((struct symbol*)e->vall->v)->result_type;
+		e->sum_type = &e->vall->sym->result_type;
 	} else {
 		e->sum_type = &e->vall->type;
 	}
+	e->op = -1;
 	free_safe(e->valr);
-	free_safe(e->op);
 	return EXPR_END;
 }
 
@@ -235,7 +235,7 @@ int expr_sub(struct parser *parser, int top, struct expr **e)
 	int end = 0;
 	expr->vall = calloc(1, sizeof(*expr->vall));
 	expr->valr = calloc(1, sizeof(*expr->valr));
-	if ((end = expr_operator(parser->f, top, &expr->op)) > 0)
+	if ((end = expr_operator(parser->f, top, expr)) > 0)
 		return 1;
 	if (end == EXPR_TERM_END)
 		goto err_valr_not_found;
@@ -243,7 +243,7 @@ int expr_sub(struct parser *parser, int top, struct expr **e)
 		return EXPR_END;
 	if ((end = expr_term(parser, top, expr->valr)) > 0)
 		return 1;
-	if (expr->op->priority < (*e)->op->priority) {
+	if (expr->priority < (*e)->priority) {
 		// 1 + 2 * 3
 		if (expr_sub_merge_prev(*e, expr))
 			return 1;
@@ -298,7 +298,7 @@ int expr_sub_append(struct expr **prev, struct expr *cur)
 
 int expr_term(struct parser *parser, int top, yz_val *v)
 {
-	struct expr_operator *unary = NULL;
+	enum OP_ID unary;
 	if (CHR_IS_NUM(parser->f->src[parser->f->pos])) {
 		return expr_term_int(parser, top, v);
 	} else if (parser->f->src[parser->f->pos] == '\'') {
@@ -310,7 +310,7 @@ int expr_term(struct parser *parser, int top, yz_val *v)
 	} else if (parser->f->src[parser->f->pos] == '"') {
 		return expr_term_str(parser, top, v);
 	} else if ((unary = expr_unary_get_op(parser->f->src[parser->f->pos]))
-			!= NULL) {
+			!= -1) {
 		return expr_unary(parser, top, v, unary);
 	} else if (parser->f->src[parser->f->pos] == CHR_NULL[0]
 			&& CHR_IS_NULL(&parser->f->src[parser->f->pos])) {
@@ -423,7 +423,7 @@ int expr_term_null(struct parser *parser, int top, yz_val *v)
 int expr_term_str(struct parser *parser, int top, yz_val *v)
 {
 	yz_const *c = NULL;
-	yz_array *arr = NULL;
+	yz_array_type *arr = NULL;
 	str *s = NULL, token = TOKEN_NEW;
 	file_pos_next(parser->f);
 	if (token_read_before("\"", &token, parser->f) == NULL)
@@ -441,7 +441,7 @@ int expr_term_str(struct parser *parser, int top, yz_val *v)
 	arr->len = token.len;
 	arr->type.type = YZ_CHAR;
 	c->val.type.type = YZ_ARRAY;
-	c->val.v = arr;
+	c->val.type.v = arr;
 	v->type.type = YZ_CONST;
 	v->type.v = &c->val.type;
 	v->v = c;
@@ -453,8 +453,7 @@ err_backend_failed:
 	return 1;
 }
 
-int expr_unary(struct parser *parser, int top, yz_val *v,
-		struct expr_operator *op)
+int expr_unary(struct parser *parser, int top, yz_val *v, enum OP_ID op)
 {
 	int ret = 0;
 	struct expr *unary = NULL;
@@ -465,6 +464,7 @@ int expr_unary(struct parser *parser, int top, yz_val *v,
 	unary->vall = NULL;
 	unary->valr = calloc(1, sizeof(*unary->valr));
 	unary->op = op;
+	unary->priority = 0;
 	v->v = unary;
 	v->type.type = AMC_EXPR;
 	v->type.v = v->v;
@@ -479,17 +479,14 @@ err_eou:
 	return 1;
 }
 
-struct expr_operator *expr_unary_get_op(char c)
+enum OP_ID expr_unary_get_op(char c)
 {
-	struct expr_operator *result = NULL;
 	for (int i = 0; i < LENGTH(unary_ops); i++) {
 		if (c != unary_ops[i].sym[0])
 			continue;
-		result = malloc(sizeof(*result));
-		memcpy(result, &unary_ops[i], sizeof(*result));
-		return result;
+		return unary_ops[i].id;
 	}
-	return NULL;
+	return -1;
 }
 
 int expr_apply(struct parser *parser, struct expr *e)
@@ -509,11 +506,11 @@ int expr_apply(struct parser *parser, struct expr *e)
 		if (expr_apply(parser, e->valr->v) > 0)
 			return 1;
 	}
-	if (e->op->id >= OP_SPECIAL_START)
+	if (e->op >= OP_SPECIAL_START)
 		return op_apply_special(parser, e);
-	if (OP_IS_CMP(e->op->id))
+	if (OP_IS_CMP(e->op))
 		return op_apply_cmp(e);
-	if (backend_call(ops[e->op->id])(e))
+	if (backend_call(ops[e->op])(e))
 		goto err_backend_call;
 	return 0;
 err_backend_call:

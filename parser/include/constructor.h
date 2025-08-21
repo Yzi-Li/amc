@@ -14,6 +14,6 @@ struct constructor_handle {
 	yz_val **vs;
 };
 
-void constructor_handle_free(struct constructor_handle *handle);
+void free_constructor_handle(struct constructor_handle *handle);
 
 #endif

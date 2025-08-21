@@ -42,6 +42,7 @@ str *div_mem_or_reg_to_reg(struct asf_val *src, int is_unsigned)
 	s = str_new();
 	str_expand(s, strlen(temp) - 2 + tmp->len);
 	snprintf(s->s, s->len, temp, asf_suffix_get(bytes), tmp->s);
+	str_free(tmp);
 	return s;
 }
 

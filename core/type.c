@@ -160,13 +160,13 @@ void free_yz_type_noself(yz_type *self)
 	if (YZ_IS_DIGIT(self->type))
 		return;
 	switch (self->type) {
-	case YZ_PTR:   free_yz_ptr_type(self->v);    break;
+	case YZ_ARRAY: free_yz_array_type(self->v); break;
+	case YZ_PTR:   free_yz_ptr_type(self->v);   break;
 	// no handle and don't print DEBUG msg.
 	case AMC_ERR_TYPE:
 	case AMC_EXPR:
 	case AMC_EXTRACT_VAL:
 	case AMC_SYM:
-	case YZ_ARRAY:
 	case YZ_CONST:
 	case YZ_STRUCT:
 	case YZ_ENUM:

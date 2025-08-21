@@ -9,12 +9,12 @@
 #include <stdio.h>
 
 #define EXPR_IS_SINGLE_TERM(EXPR) (\
-		(EXPR)->op == NULL\
+		(EXPR)->op == -1\
 		&& (EXPR)->vall != NULL\
 		&& (EXPR)->valr == NULL)
 
 #define EXPR_IS_UNARY(EXPR) (\
-		(EXPR)->op != NULL\
+		(EXPR)->op != -1\
 		&& (EXPR)->vall == NULL\
 		&& (EXPR)->valr != NULL)
 
@@ -25,7 +25,8 @@ struct expr_operator {
 };
 
 struct expr {
-	struct expr_operator *op;
+	enum OP_ID op;
+	int priority;
 	yz_type *sum_type;
 	yz_val *vall, *valr;
 };

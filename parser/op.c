@@ -49,7 +49,7 @@ int op_unary_extract_val(struct parser *parser, struct expr *e)
 	} else if (e->valr->type.type != AMC_EXTRACT_VAL) {
 		return 1;
 	}
-	if (backend_call(ops[e->op->id])(e))
+	if (backend_call(ops[e->op])(e))
 		goto err_backend_failed;
 	return 0;
 err_check_failed:
@@ -73,7 +73,7 @@ int op_unary_get_addr(struct parser *parser, struct expr *e)
 			return 1;
 	if (op_get_addr_handle_val(e, ret == -1))
 		goto err_check_failed;
-	if (backend_call(ops[e->op->id])(e))
+	if (backend_call(ops[e->op])(e))
 		goto err_backend_failed;
 	return 0;
 err_check_failed:
@@ -152,7 +152,7 @@ int op_get_addr_check(yz_val *v)
 	if (v->type.type != AMC_EXPR)
 		return 1;
 	expr = v->v;
-	if (expr->op->id != OP_EXTRACT_VAL
+	if (expr->op != OP_EXTRACT_VAL
 			|| expr->valr->type.type != AMC_EXTRACT_VAL)
 		goto err_not_extracted_val;
 	return -1;
@@ -175,11 +175,13 @@ int op_get_addr_handle_val(struct expr *e, int from_extracted_val)
 		ptr_type->flag_mut = ((struct symbol*)ptr->ref.v)
 			->flags.mut;
 	} else {
-		ptr->ref.v = ((struct expr*)e->valr->v)->valr->v;
+		ptr->ref.v = e->valr->expr->valr->v;
 		ptr->ref.type.type = AMC_EXTRACT_VAL;
 		ptr->ref.type.v = ptr->ref.v;
 		ptr_type->flag_mut = ((yz_extract_val*)ptr->ref.v)
 			->elem->flags.mut;
+		e->valr->expr->valr->v = NULL;
+		free_expr(e->valr->expr);
 	}
 	ptr_type->ref.type = ptr->ref.type.type;
 	ptr_type->ref.v = ptr->ref.type.v;
@@ -211,7 +213,7 @@ struct symbol *op_get_ptr_from_expr(struct parser *parser, struct expr *e)
 {
 	struct symbol *ptr = NULL;
 	yz_extract_val *src = NULL;
-	if (e->op->id != OP_EXTRACT_VAL)
+	if (e->op != OP_EXTRACT_VAL)
 		goto err_not_extracted_val;
 	if (e->valr->type.type != AMC_EXTRACT_VAL)
 		goto err_not_extracted_val;
@@ -236,7 +238,7 @@ int op_assign_extracted_val(struct parser *parser, struct expr *e)
 	if (e->vall->type.type != AMC_EXPR)
 		return 1;
 	if (val->type.type == AMC_SYM) {
-		if (ptr_set_val(parser, val->v, e->op->id))
+		if (ptr_set_val(parser, val->v, e->op))
 			return 1;
 		return ptr_set_val_handle_expr(e);
 	}
@@ -245,16 +247,16 @@ int op_assign_extracted_val(struct parser *parser, struct expr *e)
 	src = src_expr->valr->v;
 	switch (src->type) {
 	case YZ_EXTRACT_ARRAY:
-		if (array_set_elem(parser, src->sym, src->offset, e->op->id))
+		if (array_set_elem(parser, src->sym, src->offset, e->op))
 			return 1;
 		break;
 	case YZ_EXTRACT_STRUCT:
-		if (struct_set_elem(parser, src->sym, src->index, e->op->id))
+		if (struct_set_elem(parser, src->sym, src->index, e->op))
 			return 1;
 		break;
 	case YZ_EXTRACT_STRUCT_FROM_PTR:
 		if (struct_set_elem_from_ptr(parser, src->sym, src->index,
-					e->op->id))
+					e->op))
 			return 1;
 		break;
 	default:
@@ -262,6 +264,7 @@ int op_assign_extracted_val(struct parser *parser, struct expr *e)
 	}
 	free_expr(src_expr);
 	e->vall->type.type = AMC_ERR_TYPE;
+	e->vall->type.v = NULL;
 	e->vall->v = NULL;
 	return 0;
 }
@@ -279,7 +282,7 @@ int op_assign_get_vall(struct expr *e, struct symbol **result)
 int op_assign_get_vall_expr(struct expr *e, struct symbol **result)
 {
 	struct symbol *sym = e->valr->sym;
-	if (e->op->id != OP_EXTRACT_VAL)
+	if (e->op != OP_EXTRACT_VAL)
 		return 1;
 	if (e->valr->type.type == AMC_SYM
 			&& sym->result_type.type == YZ_PTR
@@ -315,7 +318,7 @@ int op_apply_cmp(struct expr *e)
 	if (e->valr->type.type == YZ_NULL)
 		if (op_cmp_ptr_and_null(e))
 			return 1;
-	if (backend_call(ops[e->op->id])(e))
+	if (backend_call(ops[e->op])(e))
 		goto err_backend_failed;
 	return 0;
 err_backend_failed:
@@ -327,9 +330,9 @@ err_backend_failed:
 int op_apply_special(struct parser *parser, struct expr *e)
 {
 	int func_id = 0;
-	if (REGION_INT(e->op->id, OP_ASSIGN, OP_ASSIGN_SUB))
+	if (REGION_INT(e->op, OP_ASSIGN, OP_ASSIGN_SUB))
 		return 0;
-	func_id = e->op->id - OP_SPECIAL_START - 5;
+	func_id = e->op - OP_SPECIAL_START - 5;
 	if (func_id < LENGTH(op_special_f))
 		return op_special_f[func_id](parser, e);
 	return 0;
@@ -345,7 +348,7 @@ int op_assign(struct parser *parser, struct expr *e)
 		return 1;
 	if (ret == -1)
 		return op_assign_extracted_val(parser, e);
-	return identifier_assign_val(parser, sym, e->op->id);
+	return identifier_assign_val(parser, sym, e->op);
 }
 
 struct expr *op_extract_val_expr_create(yz_type *sum_type,
@@ -357,10 +360,8 @@ struct expr *op_extract_val_expr_create(yz_type *sum_type,
 	expr->valr->v = val;
 	expr->valr->type.type = AMC_EXTRACT_VAL;
 	expr->valr->type.v = expr->valr->v;
-	expr->op = malloc(sizeof(*expr->op));
-	expr->op->id = OP_EXTRACT_VAL;
-	expr->op->priority = 0;
-	expr->op->sym = NULL;
+	expr->op = OP_EXTRACT_VAL;
+	expr->priority = 0;
 	expr->sum_type = sum_type;
 	return expr;
 }
