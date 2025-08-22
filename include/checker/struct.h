@@ -5,7 +5,6 @@
 #define AMC_COMPTIME_STRUCT_H
 #include "../symbol.h"
 
-int check_struct_elem_can_assign(struct symbol *sym,
-		struct symbol *elem);
+int check_struct_elem_can_assign(struct symbol *ident, struct symbol *elem);
 
 #endif

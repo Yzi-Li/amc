@@ -367,10 +367,16 @@ err_backend_failed:
 int struct_set_elem_from_ptr(struct parser *parser, struct symbol *sym,
 		int index, enum OP_ID mode)
 {
+	struct symbol *elem = NULL;
 	i64 orig_column = parser->f->cur_column,
 	    orig_line = parser->f->cur_line;
+	yz_ptr_type *struct_ref = sym->result_type.v;
 	yz_val *val = NULL;
-	struct symbol *elem = ((yz_struct*)sym->result_type.v)->elems[index];
+	if (sym->result_type.type != YZ_PTR)
+		return 1;
+	if (struct_ref->ref.type != YZ_STRUCT)
+		return 1;
+	elem = ((yz_struct*)struct_ref->ref.v)->elems[index];
 	if (elem->result_type.type == YZ_PTR)
 		((yz_ptr_type*)elem->result_type.v)->flag_checked_null = 0;
 	if (!check_struct_elem_can_assign(sym, elem))
