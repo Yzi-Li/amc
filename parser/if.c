@@ -32,6 +32,7 @@ int if_condition_parse(struct parser *parser)
 		goto err_cannot_parse_expr;
 	if (expr_apply(parser, expr) > 0)
 		goto err_cannot_apply_expr;
+	free_expr(expr);
 	return 0;
 err_cannot_parse_expr:
 	printf("|< amc: if_condition_parse: %lld,%lld: "

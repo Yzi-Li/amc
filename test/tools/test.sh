@@ -22,6 +22,12 @@ compile() {
 	local arg="$input --root-mod $(basename $input .yz) -o $output"
 	local cmd="$COMPILER $arg"
 	echo -e "==> \x1b[34mCompiling\x1b[0m: $(basename $input) $arg"
+	#valgrind --tool=memcheck \
+	#	--leak-check=full \
+	#	--show-leak-kinds=all \
+	#	--undef-value-errors=no \
+	#	--log-file="$output".log \
+	#	$cmd
 	$cmd
 	err=$?
 	if [ $err -ne 0 ]; then

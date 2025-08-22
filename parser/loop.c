@@ -29,6 +29,7 @@ int loop_condition_parse(struct parser *parser)
 		goto err_parse_expr_failed;
 	if (expr_apply(parser, expr) > 0)
 		goto err_apply_expr_failed;
+	free_expr(expr);
 	return 0;
 err_parse_expr_failed:
 	printf("amc: loop_condition_parse: %lld,%lld: "

@@ -144,8 +144,8 @@ struct parser *parser_create(str *path, const char *real_path, struct file *f)
 	result->scope_pub->status = NULL;
 	result->scope_pub->status_type = SCOPE_TOP;
 	result->scope->parent = result->scope_pub;
-	result->stat.decorators.hooks
-		= calloc(1, sizeof(*result->stat.decorators.hooks));
+	//result->stat.decorators.hooks
+	//	= calloc(1, sizeof(*result->stat.decorators.hooks));
 	if (parser_get_target_from_mod_path(&result->target, path))
 		goto err_free_parser;
 	if (parser_create_get_path(&result->path, path))
@@ -177,20 +177,20 @@ int parser_get_target_from_mod_path(str *result, str *path)
 
 int parser_init(const char *path, struct file *f)
 {
-	int free_root_dir_cpy = 0;
+	int free_root_dir_cpy = 0, free_pwd = 0;
 	struct parser *parser = NULL;
-	str pwd = {
-		.len = PATH_MAX,
-		.s = calloc(PATH_MAX, sizeof(char))
-	};
+	str pwd = {};
 	char *root_dir_cpy;
 	if (global_parser.output.s == NULL) {
 		global_parser.output.s = "a.out";
 		global_parser.output.len = strlen(global_parser.output.s);
 	}
 	if (global_parser.root_dir.s == NULL) {
+		pwd.len = PATH_MAX;
+		pwd.s = calloc(PATH_MAX, sizeof(char));
 		global_parser.root_dir.s = getcwd(pwd.s, pwd.len);
 		global_parser.root_dir.len = strlen(global_parser.root_dir.s);
+		free_pwd = 1;
 	}
 	if (global_parser.root_mod.s == NULL) {
 		root_dir_cpy = calloc(global_parser.root_dir.len + 1,
@@ -208,12 +208,13 @@ int parser_init(const char *path, struct file *f)
 	if (parser == NULL)
 		return 1;
 	free_parser(parser);
-	if (backend_end(&global_parser.output))
-		return 1;
-	str_free_noself(&pwd);
 	str_free_noself(&global_parser.target_path);
+	if (free_pwd)
+		str_free_noself(&pwd);
 	if (free_root_dir_cpy)
 		free(root_dir_cpy);
+	if (backend_end(&global_parser.output))
+		return 1;
 	return 0;
 }
 

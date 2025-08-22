@@ -20,10 +20,11 @@ int loop_append_jmp_begin(struct asf_scope_status *status, label_id label)
 	label_str = asf_label_get_str(label);
 	if ((node->s = asf_inst_jmp(ASF_JMP_ALWAYS, label_str->s,
 					label_str->len)) == NULL)
-		goto err_free_node;
+		goto err_free_node_and_label_str;
+	str_free(label_str);
 	status->end_node = node;
 	return 0;
-err_free_node:
+err_free_node_and_label_str:
 	str_free(label_str);
 	free(node);
 	return 1;

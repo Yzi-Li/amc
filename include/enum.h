@@ -22,5 +22,6 @@ typedef struct yz_enum {
 } yz_enum;
 
 void free_yz_enum(yz_enum *self);
+void free_yz_enum_item(yz_enum_item *self);
 
 #endif

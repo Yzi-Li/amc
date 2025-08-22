@@ -172,12 +172,13 @@ err_get_failed:
 int expr_operator(struct file *f, int top, struct expr *e)
 {
 	int end = 0;
-	str *tmp = str_new(),
+	str *tmp = NULL,
 	    token = TOKEN_NEW;
 	if ((end = expr_read_token(f, top, &token)) == 2)
 		goto err_eoe;
 	if (end == EXPR_TOK_END_DIRECT)
 		return EXPR_OP_EMPTY;
+	tmp = str_new();
 	str_append(tmp, token.len, token.s);
 	str_append(tmp, 1, "\0");
 	for (int i = 0; i < LENGTH(operators); i++) {
@@ -233,14 +234,16 @@ int expr_sub(struct parser *parser, int top, struct expr **e)
 {
 	struct expr *expr = calloc(1, sizeof(*expr));
 	int end = 0;
-	expr->vall = calloc(1, sizeof(*expr->vall));
-	expr->valr = calloc(1, sizeof(*expr->valr));
 	if ((end = expr_operator(parser->f, top, expr)) > 0)
-		return 1;
+		goto err_free_expr;
 	if (end == EXPR_TERM_END)
 		goto err_valr_not_found;
-	if (end == EXPR_OP_EMPTY)
+	if (end == EXPR_OP_EMPTY) {
+		free(expr);
 		return EXPR_END;
+	}
+	expr->vall = calloc(1, sizeof(*expr->vall));
+	expr->valr = calloc(1, sizeof(*expr->valr));
 	if ((end = expr_term(parser, top, expr->valr)) > 0)
 		return 1;
 	if (expr->priority < (*e)->priority) {
@@ -259,7 +262,11 @@ int expr_sub(struct parser *parser, int top, struct expr **e)
 			return EXPR_END;
 	}
 	return end;
+err_free_expr:
+	free_expr(expr);
+	return 1;
 err_valr_not_found:
+	free_expr(expr);
 	printf("amc: expr_sub: Value right not found!\n");
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return 1;

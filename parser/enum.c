@@ -132,7 +132,8 @@ int parse_enum(struct parser *parser)
 		goto err_free_self;
 	if (!block_check_start(parser->f))
 		goto err_block_not_start;
-	str_copy(&name, &self->name);
+	self->name.s = name.s;
+	self->name.len = name.len;
 	if (!YZ_IS_DIGIT(self->type.type))
 		goto err_not_digit;
 	if (enum_def_reg(self, parser->scope))

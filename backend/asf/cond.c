@@ -56,17 +56,22 @@ err_free_node:
 int cond_end_branches(struct asf_cond_handle *handle, label_id label,
 		int has_else)
 {
-	str *jmp = NULL; // don't free
-	if (!has_else && handle->branch_num == 1)
+	str *jmp_temp = NULL, *jmp = NULL;
+	if (!has_else && handle->branch_num == 1) {
+		free(handle->branch);
 		return 0;
-	if ((jmp = cond_get_jmp_exit(label)) == NULL)
+	}
+	if ((jmp_temp = cond_get_jmp_exit(label)) == NULL)
 		goto err_free_branches;
 	for (int i = 0; i < handle->branch_num; i++) {
+		jmp = str_new();
+		str_copy(jmp_temp, jmp);
 		if (handle->branch[i] == NULL)
 			return 1;
 		if (cond_append_jmp_exit(handle->branch[i], jmp))
 			return 1;
 	}
+	str_free(jmp_temp);
 	handle->branch_num = 0;
 	free(handle->branch);
 	return 0;
@@ -83,7 +88,7 @@ str *cond_get_jmp_exit(label_id label)
 	if ((s = asf_inst_jmp(ASF_JMP_ALWAYS, label_str->s,
 					label_str->len)) == NULL)
 		goto err_inst_failed;
-	free(label_str);
+	str_free(label_str);
 	return s;
 err_inst_failed:
 	str_free(label_str);

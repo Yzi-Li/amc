@@ -13,15 +13,13 @@
 
 static int cmp_and_jmp(struct expr *e, enum ASF_JMP_TYPE jmp_type);
 static str *cmp_imm_with_mem_or_reg(struct asf_imm *src, struct asf_val *dest);
-static int cmp_jmp_inst_append(label_id label, str *label_str,
-		enum ASF_JMP_TYPE jmp_type);
+static int cmp_jmp_inst_append(label_id label, enum ASF_JMP_TYPE jmp_type);
 static str *cmp_mem_with_reg(struct asf_mem *src, enum ASF_REGS dest);
 static str *cmp_reg_with_mem_or_reg(enum ASF_REGS src, struct asf_val *dest);
 
 int cmp_and_jmp(struct expr *e, enum ASF_JMP_TYPE jmp_type)
 {
 	label_id label = -1;
-	str *label_str = NULL;
 	struct object_node *node = NULL;
 	struct asf_val src = {},
 	               dest = {
@@ -42,9 +40,7 @@ int cmp_and_jmp(struct expr *e, enum ASF_JMP_TYPE jmp_type)
 		goto err_free_node;
 	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node_and_str;
-	if ((label_str = asf_label_get_str(label)) == NULL)
-		goto err_label_get_str_failed;
-	if (cmp_jmp_inst_append(label, label_str, jmp_type))
+	if (cmp_jmp_inst_append(label, jmp_type))
 		return 1;
 	return 0;
 err_label_alloc_failed:
@@ -54,9 +50,6 @@ err_label_alloc_failed:
 err_unsupport_type:
 	printf("amc[backend.asf:%s]: cmp_and_jmp: Unsupport type\n", __FILE__);
 	return 1;
-err_label_get_str_failed:
-	printf("amc[backend.asf:%s]: cmp_and_jmp: Label get str failed!\n",
-			__FILE__);
 err_free_node_and_str:
 	str_free(node->s);
 err_free_node:
@@ -76,18 +69,21 @@ str *cmp_imm_with_mem_or_reg(struct asf_imm *src, struct asf_val *dest)
 	snprintf(s->s, s->len, temp, asf_suffix_get(bytes),
 			src->iq,
 			tmp->s);
+	str_free(tmp);
 	return s;
 }
 
-int cmp_jmp_inst_append(label_id label, str *label_str,
+int cmp_jmp_inst_append(label_id label,
 		enum ASF_JMP_TYPE jmp_type)
 {
+	str *label_str = asf_label_get_str(label);
 	struct object_node *node = malloc(sizeof(*node));
 	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node;
-	if ((node->s = asf_inst_jmp(jmp_type, label_str->s, label_str->len))
-			== NULL)
+	node->s = asf_inst_jmp(jmp_type, label_str->s, label_str->len);
+	if (node->s == NULL)
 		goto err_inst_jmp;
+	str_free(label_str);
 	return 0;
 err_free_node:
 	free(node);
@@ -110,6 +106,7 @@ str *cmp_mem_with_reg(struct asf_mem *src, enum ASF_REGS dest)
 	snprintf(s->s, s->len, temp, asf_suffix_get(asf_regs[dest].bytes),
 			tmp->s,
 			asf_regs[dest].name);
+	str_free(tmp);
 	return s;
 }
 
@@ -125,6 +122,7 @@ str *cmp_reg_with_mem_or_reg(enum ASF_REGS src, struct asf_val *dest)
 	snprintf(s->s, s->len, temp, asf_suffix_get(bytes),
 			asf_regs[src].name,
 			tmp->s);
+	str_free(tmp);
 	return s;
 }
 
