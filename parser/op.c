@@ -32,7 +32,6 @@ static struct symbol *op_get_ptr(struct parser *parser, yz_val *v);
 static struct symbol *op_get_ptr_from_expr(struct parser *parser, struct expr *e);
 
 static int op_assign_extracted_val(struct parser *parser, struct expr *e);
-static int op_assign_get_vall(struct expr *e, struct symbol **result);
 static int op_assign_get_vall_expr(struct expr *e, struct symbol **result);
 static int op_assign_get_vall_sym(struct symbol *sym, struct symbol **result);
 static int op_cmp_ptr_and_null(struct expr *e);
@@ -233,10 +232,10 @@ err_cannot_apply_expr:
 int op_assign_extracted_val(struct parser *parser, struct expr *e)
 {
 	yz_extract_val *src = NULL;
-	struct expr *src_expr = e->vall->v;
-	yz_val *val = src_expr->valr;
+	yz_val *val = NULL;
 	if (e->vall->type.type != AMC_EXPR)
 		return 1;
+	val = e->vall->expr->valr;
 	if (val->type.type == AMC_SYM) {
 		if (ptr_set_val(parser, val->v, e->op))
 			return 1;
@@ -244,7 +243,7 @@ int op_assign_extracted_val(struct parser *parser, struct expr *e)
 	}
 	if (val->type.type != AMC_EXTRACT_VAL)
 		return 1;
-	src = src_expr->valr->v;
+	src = val->v;
 	switch (src->type) {
 	case YZ_EXTRACT_ARRAY:
 		if (array_set_elem(parser, src->sym, src->offset, e->op))
@@ -262,35 +261,26 @@ int op_assign_extracted_val(struct parser *parser, struct expr *e)
 	default:
 		break;
 	}
-	free_expr(src_expr);
+	free_expr(e->vall->expr);
 	e->vall->type.type = AMC_ERR_TYPE;
 	e->vall->type.v = NULL;
 	e->vall->v = NULL;
 	return 0;
 }
 
-int op_assign_get_vall(struct expr *e, struct symbol **result)
-{
-	if (e->vall->type.type == AMC_SYM)
-		return op_assign_get_vall_sym(e->vall->v, result);
-	if (e->vall->type.type == AMC_EXPR)
-		return op_assign_get_vall_expr(e->vall->v, result);
-	printf("amc: op_assign_get_vall: Value left cannot be assigned.\n");
-	return 1;
-}
-
 int op_assign_get_vall_expr(struct expr *e, struct symbol **result)
 {
-	struct symbol *sym = e->valr->sym;
 	if (e->op != OP_EXTRACT_VAL)
 		return 1;
-	if (e->valr->type.type == AMC_SYM
-			&& sym->result_type.type == YZ_PTR
-			&& ((yz_ptr_type*)sym->result_type.v)->flag_mut)
-		return -1;
+	if (e->valr->type.type == AMC_SYM) {
+		if (e->valr->sym->result_type.type != YZ_PTR)
+			return 1;
+		*result = e->valr->sym;
+		return 0;
+	}
 	if (e->valr->type.type != AMC_EXTRACT_VAL)
 		return 1;
-	return -1;
+	return 0;
 }
 
 int op_assign_get_vall_sym(struct symbol *sym, struct symbol **result)
@@ -340,15 +330,19 @@ int op_apply_special(struct parser *parser, struct expr *e)
 
 int op_assign(struct parser *parser, struct expr *e)
 {
-	int ret = 0;
 	struct symbol *sym = NULL;
 	if (e->vall == NULL && e->valr == NULL)
 		return 0;
-	if ((ret = op_assign_get_vall(e, &sym)) > 0)
+	if (e->vall->type.type == AMC_SYM) {
+		if (op_assign_get_vall_sym(e->vall->sym, &sym))
+			return 1;
+		return identifier_assign_val(parser, sym, e->op);
+	}
+	if (e->vall->type.type != AMC_EXPR)
 		return 1;
-	if (ret == -1)
-		return op_assign_extracted_val(parser, e);
-	return identifier_assign_val(parser, sym, e->op);
+	if (op_assign_get_vall_expr(e->vall->expr, &sym))
+		return 1;
+	return op_assign_extracted_val(parser, e);
 }
 
 struct expr *op_extract_val_expr_create(yz_type *sum_type,
