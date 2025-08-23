@@ -3,7 +3,6 @@
 */
 #include "include/array.h"
 #include "include/ptr.h"
-#include "include/struct.h"
 #include "include/symbol.h"
 #include "include/token.h"
 #include "include/type.h"
@@ -56,6 +55,7 @@ err_type_indicator_not_found:
 int parse_type(struct parser *parser, yz_type *result)
 {
 	str token = TOKEN_NEW;
+	yz_user_type *type = NULL;
 	if (result == NULL)
 		goto err_type_null;
 	if (parser->f->src[parser->f->pos] == '*') {
@@ -75,9 +75,9 @@ int parse_type(struct parser *parser, yz_type *result)
 	result->v = NULL;
 	if (result->type != AMC_ERR_TYPE)
 		return 0;
-	if (parse_type_struct(&token, result, parser->scope))
+	if ((type = yz_user_type_find(&token, parser->scope)) == NULL)
 		return 1;
-	return 0;
+	return parse_type_user(type, result);
 err_type_null:
 	printf("amc: parse_type: %lld,%lld: ARG is empty!\n",
 			parser->f->cur_line, parser->f->cur_column);
@@ -91,6 +91,27 @@ int parse_type_name_pair(struct parser *parser, str *name, yz_type *type)
 		return 1;
 	str_copy(&token, name);
 	return type_pair_parse_type(parser, type);
+}
+
+int parse_type_user(yz_user_type *type, yz_type *result)
+{
+	switch (type->type) {
+	case YZ_STRUCT:
+		result->type = YZ_STRUCT;
+		result->v = type->struct_;
+		break;
+	case YZ_ENUM:
+		result->type = YZ_ENUM;
+		result->v = type->enum_;
+		break;
+	default: goto err_unsupport; break;
+	}
+	return 0;
+err_unsupport:
+	printf("amc: parse_type_user: Unsupport type: '%s':%d\n",
+			yz_get_raw_type_name(type->type),
+			type->type);
+	return 1;
 }
 
 yz_user_type *yz_user_type_find(str *s, struct scope *scope)

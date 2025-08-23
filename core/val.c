@@ -59,6 +59,7 @@ void free_yz_val_noself(yz_val *self)
 	case AMC_SYM:
 	case AMC_ERR_TYPE:
 	case YZ_ARRAY:
+	case YZ_ENUM_ITEM:
 	case YZ_NULL:
 		break;
 	default:

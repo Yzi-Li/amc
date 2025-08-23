@@ -5,7 +5,6 @@ struct A =>
 
 enum Bool: i32 => true | false
 
-; TODO: match
 ;enum struct A =>
 ;| default =>
 ;	i = 0
@@ -16,4 +15,5 @@ enum Bool: i32 => true | false
 ;	b = 1
 
 pub fn main: i32 =>
-	ret Bool.false
+	let a: Bool = Bool.false
+	ret a

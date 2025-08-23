@@ -4,8 +4,14 @@
 #include "include/keywords.h"
 #include "../include/parser.h"
 
+//static int match_parse_condition(struct parser *parser);
+
+//int match_parse_condition(struct parser *parser)
+//{
+//	return 0;
+//}
+
 int parse_match(struct parser *parser)
 {
-	file_try_skip_space(parser->f);
 	return 0;
 }

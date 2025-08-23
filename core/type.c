@@ -78,6 +78,10 @@ yz_type *yz_get_raw_type(yz_type *type)
 	case YZ_CONST:
 		return yz_get_raw_type(type->v);
 		break;
+	case YZ_ENUM:
+	case YZ_ENUM_ITEM:
+		return yz_get_raw_type(&((yz_enum*)type->v)->type);
+		break;
 	default: break;
 	}
 	return type;
@@ -86,33 +90,17 @@ yz_type *yz_get_raw_type(yz_type *type)
 const char *yz_get_raw_type_name(enum YZ_TYPE type)
 {
 	switch (type) {
-	case AMC_ERR_TYPE:
-		return "AMC_ERR_TYPE";
-		break;
-	case AMC_SYM:
-		return "AMC_SYM";
-		break;
-	case AMC_EXPR:
-		return "AMC_EXPR";
-		break;
-	case AMC_EXTRACT_VAL:
-		return "AMC_EXTRACTED_VAL";
-		break;
-	case YZ_ARRAY:
-		return "YZ_ARRAY";
-		break;
-	case YZ_CONST:
-		return "YZ_CONST";
-		break;
-	case YZ_NULL:
-		return "YZ_NULL";
-		break;
-	case YZ_PTR:
-		return "YZ_PTR";
-		break;
-	case YZ_STRUCT:
-		return "YZ_STRUCT";
-		break;
+	case AMC_ERR_TYPE:    return "AMC_ERR_TYPE";      break;
+	case AMC_SYM:         return "AMC_SYM";           break;
+	case AMC_EXPR:        return "AMC_EXPR";          break;
+	case AMC_EXTRACT_VAL: return "AMC_EXTRACTED_VAL"; break;
+	case YZ_ARRAY:        return "YZ_ARRAY";          break;
+	case YZ_ENUM:         return "YZ_ENUM";           break;
+	case YZ_ENUM_ITEM:    return "YZ_ENUM_ITEM";      break;
+	case YZ_CONST:        return "YZ_CONST";          break;
+	case YZ_NULL:         return "YZ_NULL";           break;
+	case YZ_PTR:          return "YZ_PTR";            break;
+	case YZ_STRUCT:       return "YZ_STRUCT";         break;
 	default:
 		return "(Cannot get type)";
 		break;
@@ -170,13 +158,15 @@ void free_yz_type_noself(yz_type *self)
 	case YZ_CONST:
 	case YZ_STRUCT:
 	case YZ_ENUM:
+	case YZ_ENUM_ITEM:
 		break;
 	default:
 #ifdef DEBUG
 		printf(">>> \x1b[34mDEBUG\x1b[0m:amc: "
 				"free_yz_type_noself: "
-				"Not handled type: '%s'\n",
-				yz_get_raw_type_name(self->type));
+				"Not handled type: '%s','%d'\n",
+				yz_get_raw_type_name(self->type),
+				self->type);
 #endif
 		return;
 		break;

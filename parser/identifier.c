@@ -63,7 +63,8 @@ int identifier_read_enum(struct parser *parser, yz_val *val, str *name)
 		return 1;
 	if ((item = yz_enum_item_find(&token, src)) == NULL)
 		return 1;
-	val->type = src->type;
+	val->type.type = YZ_ENUM_ITEM;
+	val->type.v = src;
 	val->l = item->u;
 	return 0;
 err_enum_not_found:
@@ -129,15 +130,12 @@ int identifier_assign_get_val(struct parser *parser,
 	if (expr_apply(parser, expr) > 0)
 		goto err_cannot_apply_expr;
 	if ((*result = identifier_handle_expr_val(expr, dest_type)) == NULL)
-		goto err_cannot_handle_expr;
+		return err_print_pos(__func__, "Cannot handle expr value!",
+				orig_line, orig_column);
 	return 0;
 err_cannot_apply_expr:
 	free_expr(expr);
 	return err_print_pos(__func__, "Cannot apply expr!",
-			orig_line, orig_column);
-err_cannot_handle_expr:
-	free_expr(expr);
-	return err_print_pos(__func__, "Cannot handle expr value!",
 			orig_line, orig_column);
 }
 
@@ -214,10 +212,13 @@ yz_val *identifier_handle_expr_val(struct expr *e, yz_type *type)
 {
 	yz_val *val = expr2yz_val(e);
 	if (val == NULL)
-		return NULL;
+		goto err_free_val;
 	if (identifier_handle_val_type(&val->type, type))
-		return NULL;
+		goto err_free_val;
 	return val;
+err_free_val:
+	free_yz_val(val);
+	return NULL;
 }
 
 int identifier_handle_val_type(yz_type *src, yz_type *dest)

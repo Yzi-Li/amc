@@ -290,20 +290,6 @@ err_free_result:
 	return 1;
 }
 
-int parse_type_struct(str *token, yz_type *result, struct scope *scope)
-{
-	char *err_msg;
-	result->type = YZ_STRUCT;
-	if ((result->v = struct_type_find(token, scope)) == NULL)
-		goto err_not_found;
-	return 0;
-err_not_found:
-	err_msg = str2chr(token->s, token->len);
-	printf("amc: parse_type_struct: Struct: '%s' not found!\n", err_msg);
-	free(err_msg);
-	return 1;
-}
-
 int struct_get_elem(struct parser *parser, yz_val *val)
 {
 	int ret = 0;
@@ -390,12 +376,4 @@ int struct_set_elem_from_ptr(struct parser *parser, struct symbol *sym,
 				orig_line, orig_column);
 	free_yz_val(val);
 	return 0;
-}
-
-yz_struct *struct_type_find(str *s, struct scope *scope)
-{
-	struct yz_user_type *type = yz_user_type_find(s, scope);
-	if (!type || type->type != YZ_STRUCT)
-		return NULL;
-	return type->struct_;
 }

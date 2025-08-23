@@ -258,19 +258,19 @@ int func_def_main(struct parser *parser)
 			&& parser->f->src[parser->f->pos] != ';')
 		file_pos_next(parser->f);
 	if ((handle = backend_call(func_def)(fn, 1, 1)) == NULL)
-		goto err_free_fn;
+		return 1;
 	fn->parse_function = func_call_main;
 	if (symbol_register(fn, &parser->scope_pub->sym_groups[SYMG_FUNC]))
-		goto err_free_fn;
+		return 1;
 	if (parse_block(parser))
-		goto err_free_fn;
+		goto err_pop_symbol;
 	return func_def_end_scope(parser, handle);
 err_not_pub:
 	printf("amc: func_def_main: "ERROR_STR":\n"
 			"| Function: 'main' must be declared as 'pub'.\n");
 	return 1;
-err_free_fn:
-	free_symbol(parser->scope->fn);
+err_pop_symbol:
+	symbol_pop(&parser->scope_pub->sym_groups[SYMG_FUNC]);
 	return 1;
 }
 
@@ -436,8 +436,11 @@ int parse_func_def(struct parser *parser)
 		goto err_free_result;
 	if (func_def_read_name(parser))
 		goto err_free_result;
-	if (func_def_check_main(result->name.s, result->name.len))
-		return func_def_main(parser);
+	if (func_def_check_main(result->name.s, result->name.len)) {
+		if (func_def_main(parser))
+			goto err_free_result;
+		return 0;
+	}
 	if (parser->f->src[parser->f->pos] != ':'
 			&& func_def_read_args(parser))
 		goto err_free_result;
