@@ -3,24 +3,29 @@
 */
 #include "include/asf.h"
 #include "include/cmp.h"
-#include "include/cond.h"
 #include "include/jmp.h"
 #include "include/label.h"
 #include "include/op.h"
-#include "include/scope.h"
 #include "include/val.h"
 #include "../../include/backend/object.h"
 #include <stdlib.h>
 
-static int cond_append_branch(struct asf_cond_handle *handle,
+struct cond_handle {
+	struct object_node **branch;
+	int branch_num;
+	label_id exit_label;
+};
+
+static int cond_append_branch(struct cond_handle *handle,
 		struct object_node *node);
 static int cond_append_exit_label(label_id label);
 static int cond_append_jmp_exit(struct object_node *branch, str *jmp);
-static int cond_end_branches(struct asf_cond_handle *handle, label_id label,
-		int has_else);
+static int cond_end_branches(struct cond_handle *handle, label_id label);
 static str *cond_get_jmp_exit(label_id label);
 
-int cond_append_branch(struct asf_cond_handle *handle,
+static void free_cond_handle(struct cond_handle *handle);
+
+int cond_append_branch(struct cond_handle *handle,
 		struct object_node *node)
 {
 	handle->branch_num += 1;
@@ -56,16 +61,13 @@ err_free_node:
 	return 1;
 }
 
-int cond_end_branches(struct asf_cond_handle *handle, label_id label,
-		int has_else)
+int cond_end_branches(struct cond_handle *handle, label_id label)
 {
 	str *jmp_temp = NULL, *jmp = NULL;
-	if (!has_else && handle->branch_num == 1) {
-		free(handle->branch);
+	if (handle->branch_num == 1)
 		return 0;
-	}
 	if ((jmp_temp = cond_get_jmp_exit(label)) == NULL)
-		goto err_free_branches;
+		return 1;
 	for (int i = 0; i < handle->branch_num; i++) {
 		jmp = str_new();
 		str_copy(jmp_temp, jmp);
@@ -75,21 +77,15 @@ int cond_end_branches(struct asf_cond_handle *handle, label_id label,
 			return 1;
 	}
 	str_free(jmp_temp);
-	handle->branch_num = 0;
-	free(handle->branch);
 	return 0;
-err_free_branches:
-	handle->branch_num = 0;
-	free(handle->branch);
-	return 1;
 }
 
 str *cond_get_jmp_exit(label_id label)
 {
 	str *label_str = asf_label_get_str(label),
 	    *s = NULL;
-	if ((s = asf_inst_jmp(ASF_JMP_ALWAYS, label_str->s,
-					label_str->len)) == NULL)
+	s = asf_inst_jmp(ASF_JMP_ALWAYS, label_str->s, label_str->len);
+	if (s == NULL)
 		goto err_inst_failed;
 	str_free(label_str);
 	return s;
@@ -98,62 +94,88 @@ err_inst_failed:
 	return NULL;
 }
 
-int asf_cond_elif(backend_scope_status *raw_status)
+void free_cond_handle(struct cond_handle *handle)
 {
-	struct asf_scope_status *status = raw_status;
-	if (cond_append_exit_label(asf_label_get_last()))
+	struct cond_handle *c = handle;
+	if (handle == NULL)
+		return;
+	if (c->branch)
+		free(c->branch);
+	free(c);
+}
+
+int asf_cond_elif(backend_cond_if_handle *handle)
+{
+	struct cond_handle *c = handle;
+	if (c == NULL)
 		return 1;
-	if (cond_append_branch(&status->data.cond,
-				cur_obj->sections[ASF_OBJ_TEXT].last))
+	if (cond_append_exit_label(c->exit_label))
+		return 1;
+	if (cond_append_branch(c, cur_obj->sections[ASF_OBJ_TEXT].last))
 		return 1;
 	return 0;
 }
 
-int asf_cond_else(backend_scope_status *raw_status)
+int asf_cond_else(backend_cond_if_handle *handle)
 {
-	label_id label = asf_label_alloc();
-	struct asf_scope_status *status = raw_status;
-	if (cond_append_exit_label(label))
+	struct cond_handle *c = handle;
+	if (c == NULL)
 		return 1;
-	status->type = ASF_SCOPE_STATUS_NO;
-	if (cond_end_branches(&status->data.cond, label, 1))
+	c->exit_label = asf_label_alloc();
+	if (cond_append_exit_label(c->exit_label))
 		return 1;
 	return 0;
 }
 
-int asf_cond_if(backend_scope_status *raw_status)
+int asf_cond_if(backend_cond_if_handle *handle)
 {
-	struct asf_scope_status *status = raw_status;
-	if (status->type != ASF_SCOPE_STATUS_COND)
+	struct cond_handle *c = handle;
+	if (c == NULL)
 		return 1;
-	if (cond_append_exit_label(status->data.cond.exit_label))
+	if (cond_append_exit_label(c->exit_label))
 		return 1;
-	status->data.cond.branch = malloc(sizeof(*status->data.cond.branch));
-	status->data.cond.branch[0] = cur_obj->sections[ASF_OBJ_TEXT].last;
-	status->data.cond.branch_num = 1;
+	if (cond_append_branch(c, cur_obj->sections[ASF_OBJ_TEXT].last))
+		return 1;
 	return 0;
 }
 
-int asf_cond_if_begin(backend_scope_status *raw_status)
+backend_cond_if_handle *asf_cond_if_begin(void)
 {
-	struct asf_scope_status *status = raw_status;
-	status->data.cond.exit_label = asf_label_get_last();
-	if (status->type != ASF_SCOPE_STATUS_NO)
-		if (asf_scope_end(raw_status))
-			return 1;
-	status->type = ASF_SCOPE_STATUS_COND;
+	struct cond_handle *result = calloc(1, sizeof(*result));
+	return result;
+}
+
+int asf_cond_if_cond(backend_cond_if_handle *handle)
+{
+	struct cond_handle *c = handle;
+	if (c == NULL)
+		return 1;
+	c->exit_label = asf_label_get_last();
 	return 0;
+}
+
+int asf_cond_if_end(backend_cond_if_handle *handle)
+{
+	if (cond_end_branches(handle, asf_label_get_last()))
+		return 1;
+	free_cond_handle(handle);
+	return 0;
+}
+
+void asf_cond_if_free_handle(backend_cond_if_handle *handle)
+{
+	free_cond_handle(handle);
 }
 
 backend_cond_match_handle *asf_cond_match_begin(yz_val *val)
 {
-	struct asf_cond_handle *result = calloc(1, sizeof(*result));
+	struct cond_handle *result = calloc(1, sizeof(*result));
 	return result;
 }
 
 int asf_cond_match_case(backend_cond_match_handle *handle, yz_val *val)
 {
-	struct asf_cond_handle *c = handle;
+	struct cond_handle *c = handle;
 	str *jmp, *label;
 	struct object_node *node;
 	struct asf_val src, dest = {
@@ -186,7 +208,7 @@ err_free_node:
 
 int asf_cond_match_case_end(backend_cond_match_handle *handle)
 {
-	struct asf_cond_handle *c = handle;
+	struct cond_handle *c = handle;
 	if (c == NULL)
 		return 1;
 	if (cond_append_exit_label(c->exit_label))
@@ -198,25 +220,13 @@ int asf_cond_match_case_end(backend_cond_match_handle *handle)
 
 int asf_cond_match_end(backend_cond_match_handle *handle)
 {
-	if (cond_end_branches(handle, asf_label_get_last(), 0))
+	if (cond_end_branches(handle, asf_label_get_last()))
 		return 1;
-	free(handle);
+	free_cond_handle(handle);
 	return 0;
 }
 
 void asf_cond_match_free_handle(backend_cond_match_handle *handle)
 {
-	struct asf_cond_handle *h = handle;
-	if (handle == NULL)
-		return;
-	if (h->branch)
-		free(h->branch);
-	free(h);
-}
-
-int asf_cond_handle_end(struct asf_cond_handle *handle)
-{
-	if (cond_end_branches(handle, asf_label_get_last(), 0))
-		return 1;
-	return 0;
+	free_cond_handle(handle);
 }

@@ -19,7 +19,6 @@ struct scope {
 	struct scope *parent;
 
 	backend_scope_status *status;
-	enum SCOPE_STATUS_TYPE status_type;
 
 	struct yz_user_type *types[UCHAR_MAX + 1];
 

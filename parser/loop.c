@@ -45,19 +45,22 @@ err_apply_expr_failed:
 
 int parse_while(struct parser *parser)
 {
-	if (backend_call(while_begin)(parser->scope->status))
+	backend_while_handle *handle = backend_call(while_begin)();
+	if (handle == NULL)
 		goto err_backend_failed;
 	if (loop_condition_parse(parser))
-		return 1;
-	if (backend_call(while_cond)(parser->scope->status))
-		goto err_backend_failed;
+		goto err_free_handle;
+	if (backend_call(while_cond)(handle))
+		goto err_free_handle;
 	if (loop_body_parse(parser))
-		return 1;
-	if (backend_call(while_end)(parser->scope->status))
-		goto err_backend_failed;
+		goto err_free_handle;
+	if (backend_call(while_end)(handle))
+		goto err_free_handle;
 	return 0;
 err_backend_failed:
 	printf("amc: parse_while: %lld,%lld: Backend call failed!\n",
 			parser->f->cur_line, parser->f->cur_column);
+err_free_handle:
+	backend_call(while_free_handle)(handle);
 	return 1;
 }

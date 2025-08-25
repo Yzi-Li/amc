@@ -24,10 +24,19 @@ int asf_array_def(backend_symbol_status **raw_sym_stat, yz_val **vs, int len);
 int asf_array_set_elem(struct symbol *ident, yz_val *offset, yz_val *val,
 		enum OP_ID mode);
 
-int asf_cond_elif(backend_scope_status *raw_status);
-int asf_cond_else(backend_scope_status *raw_status);
-int asf_cond_if(backend_scope_status *raw_status);
-int asf_cond_if_begin(backend_scope_status *raw_status);
+int asf_cond_elif(backend_cond_if_handle *handle);
+int asf_cond_else(backend_cond_if_handle *handle);
+int asf_cond_if(backend_cond_if_handle *handle);
+backend_cond_if_handle *asf_cond_if_begin(void);
+int asf_cond_if_cond(backend_cond_if_handle *handle);
+int asf_cond_if_end(backend_cond_if_handle *handle);
+void asf_cond_if_free_handle(backend_cond_if_handle *handle);
+
+backend_cond_match_handle *asf_cond_match_begin(yz_val *val);
+int asf_cond_match_case(backend_cond_match_handle *handle, yz_val *val);
+int asf_cond_match_case_end(backend_cond_match_handle *handle);
+int asf_cond_match_end(backend_cond_match_handle *handle);
+void asf_cond_match_free_handle(backend_cond_match_handle *handle);
 
 int asf_const_def_str(backend_const *self, str *s);
 void asf_const_free_data(void *self);
@@ -39,12 +48,6 @@ int asf_func_call(struct symbol *fn, yz_val **v);
 backend_func_def_handle *asf_func_def(struct symbol *fn, int pub, int main);
 int asf_func_def_end(backend_func_def_handle *handle);
 int asf_func_ret(yz_val *v, int is_main);
-
-backend_cond_match_handle *asf_cond_match_begin(yz_val *val);
-int asf_cond_match_case(backend_cond_match_handle *handle, yz_val *val);
-int asf_cond_match_case_end(backend_cond_match_handle *handle);
-int asf_cond_match_end(backend_cond_match_handle *handle);
-void asf_cond_match_free_handle(backend_cond_match_handle *handle);
 
 int asf_null_handle_begin(backend_null_handle **handle, yz_val *val);
 int asf_null_handle_end(backend_null_handle *handle);
@@ -86,8 +89,9 @@ int asf_ptr_set_val(struct symbol *ident, yz_val *val, enum OP_ID mode);
 int asf_var_immut_init(struct symbol *ident, yz_val *val);
 int asf_var_set(struct symbol *ident, yz_val *val, enum OP_ID mode);
 
-int asf_while_begin(backend_scope_status *raw_status);
-int asf_while_cond(backend_scope_status *raw_status);
-int asf_while_end(backend_scope_status *raw_status);
+backend_while_handle *asf_while_begin(void);
+int asf_while_end(backend_while_handle *handle);
+int asf_while_cond(backend_while_handle *handle);
+void asf_while_free_handle(backend_while_handle *handle);
 
 #endif

@@ -131,13 +131,11 @@ struct parser *parser_create(str *path, const char *real_path, struct file *f)
 	result->scope->indent = 0;
 	result->scope->parent = NULL;
 	result->scope->status = NULL;
-	result->scope->status_type = SCOPE_TOP;
 	result->scope_pub = calloc(1, sizeof(*result->scope_pub));
 	result->scope_pub->fn = NULL;
 	result->scope_pub->indent = 0;
 	result->scope_pub->parent = NULL;
 	result->scope_pub->status = NULL;
-	result->scope_pub->status_type = SCOPE_TOP;
 	result->scope->parent = result->scope_pub;
 	//result->stat.decorators.hooks
 	//	= calloc(1, sizeof(*result->stat.decorators.hooks));

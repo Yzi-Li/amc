@@ -54,6 +54,9 @@ struct backend {
 	backend_cond_else_f                cond_else;
 	backend_cond_if_f                  cond_if;
 	backend_cond_if_begin_f            cond_if_begin;
+	backend_cond_if_cond_f             cond_if_cond;
+	backend_cond_if_end_f              cond_if_end;
+	backend_cond_if_free_handle_f      cond_if_free_handle;
 	backend_cond_match_begin_f         cond_match_begin;
 	backend_cond_match_case_f          cond_match_case;
 	backend_cond_match_case_end_f      cond_match_case_end;
@@ -82,8 +85,9 @@ struct backend {
 	backend_var_set_f                  var_set;
 	backend_var_immut_init_f           var_immut_init;
 	backend_while_begin_f              while_begin;
-	backend_while_cond_f               while_cond;
 	backend_while_end_f                while_end;
+	backend_while_cond_f               while_cond;
+	backend_while_free_handle_f        while_free_handle;
 };
 
 extern char *backend_assembler;

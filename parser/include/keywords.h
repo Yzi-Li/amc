@@ -17,8 +17,6 @@
  */
 int parse_comment(struct file *f);
 int parse_const(struct parser *parser);
-int parse_elif(struct parser *parser);
-int parse_else(struct parser *parser);
 int parse_enum(struct parser *parser);
 int parse_func_call(struct parser *parser);
 int parse_func_def(struct parser *parser);

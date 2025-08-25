@@ -115,8 +115,7 @@ int parse_block(struct parser *parser)
 		.fn = parser->scope->fn,
 		.indent = parser->scope->indent + 1,
 		.parent = parser->scope,
-		.status = backend_call(scope_begin)(),
-		.status_type = SCOPE_IN_BLOCK,
+		.status = backend_call(scope_begin)()
 	};
 	if (scope_check_is_correct(&cur_scope))
 		return 1;

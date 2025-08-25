@@ -24,6 +24,9 @@ struct backend backend_asf = {
 	.cond_else              = asf_cond_else,
 	.cond_if                = asf_cond_if,
 	.cond_if_begin          = asf_cond_if_begin,
+	.cond_if_cond           = asf_cond_if_cond,
+	.cond_if_end            = asf_cond_if_end,
+	.cond_if_free_handle    = asf_cond_if_free_handle,
 	.cond_match_begin       = asf_cond_match_begin,
 	.cond_match_case        = asf_cond_match_case,
 	.cond_match_case_end    = asf_cond_match_case_end,
@@ -87,9 +90,10 @@ struct backend backend_asf = {
 	.var_immut_init = asf_var_immut_init,
 	.var_set        = asf_var_set,
 
-	.while_begin = asf_while_begin,
-	.while_cond  = asf_while_cond,
-	.while_end   = asf_while_end
+	.while_begin       = asf_while_begin,
+	.while_end         = asf_while_end,
+	.while_cond        = asf_while_cond,
+	.while_free_handle = asf_while_free_handle
 };
 
 int asf_init(int argc, char *argv[])

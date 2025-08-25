@@ -4,28 +4,31 @@
 #include "include/asf.h"
 #include "include/jmp.h"
 #include "include/label.h"
-#include "include/loop.h"
-#include "include/scope.h"
 #include "../../include/backend/object.h"
 #include <stdlib.h>
 
-static int loop_append_jmp_begin(struct asf_scope_status *status,
-		label_id label);
+struct while_handle {
+	label_id begin_label, cond_label;
+};
+
+static int loop_append_jmp_begin(label_id label);
 static int loop_append_label(label_id label);
 
-int loop_append_jmp_begin(struct asf_scope_status *status, label_id label)
+int loop_append_jmp_begin(label_id label)
 {
 	str *label_str = NULL;
 	struct object_node *node = malloc(sizeof(*node));
 	label_str = asf_label_get_str(label);
-	if ((node->s = asf_inst_jmp(ASF_JMP_ALWAYS, label_str->s,
-					label_str->len)) == NULL)
-		goto err_free_node_and_label_str;
+	node->s = asf_inst_jmp(ASF_JMP_ALWAYS, label_str->s, label_str->len);
 	str_free(label_str);
-	status->end_node = node;
+	if (node->s == NULL)
+		goto err_free_node;
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
+		goto err_free_node_and_str;
 	return 0;
-err_free_node_and_label_str:
-	str_free(label_str);
+err_free_node_and_str:
+	str_free(node->s);
+err_free_node:
 	free(node);
 	return 1;
 }
@@ -44,37 +47,42 @@ err_free_node:
 	return 1;
 }
 
-int asf_while_begin(backend_scope_status *raw_status)
+backend_while_handle *asf_while_begin(void)
 {
-	label_id label = -1;
-	struct asf_scope_status *status = raw_status;
-	if (status->type != ASF_SCOPE_STATUS_NO)
-		if (asf_scope_end(raw_status))
-			return 1;
-	status->type = ASF_SCOPE_STATUS_LOOP;
-	label = asf_label_alloc();
+	struct while_handle *result = NULL;
+	label_id label = asf_label_alloc();
 	if (loop_append_label(label))
+		return NULL;
+	result = calloc(1, sizeof(*result));
+	result->begin_label = label;
+	return result;
+}
+
+int asf_while_cond(backend_while_handle *handle)
+{
+	struct while_handle *h = handle;
+	if (h == NULL)
 		return 1;
-	if (loop_append_jmp_begin(status, label))
-		return 1;
+	h->cond_label = asf_label_get_last();
 	return 0;
 }
 
-int asf_while_cond(backend_scope_status *raw_status)
+int asf_while_end(backend_while_handle *handle)
 {
-	struct asf_scope_status *status = raw_status;
-	status->data.loop.cond_end_label = asf_label_get_last();
-	return 0;
-}
-
-int asf_while_end(backend_scope_status *raw_status)
-{
-	return asf_scope_end(raw_status);
-}
-
-int asf_loop_handle_end(struct asf_loop_handle *handle)
-{
-	if (loop_append_label(handle->cond_end_label))
+	struct while_handle *h = handle;
+	if (h == NULL)
 		return 1;
+	if (loop_append_jmp_begin(h->begin_label))
+		return 1;
+	if (loop_append_label(h->cond_label))
+		return 1;
+	asf_while_free_handle(handle);
 	return 0;
+}
+
+void asf_while_free_handle(backend_while_handle *handle)
+{
+	if (handle == NULL)
+		return;
+	free(handle);
 }

@@ -26,8 +26,6 @@
 #define KW_IN_BLOCK 1
 
 static struct symbol keywords[] = {
-	KW_DEF("elif",   4, parse_elif,      KW_REC, !KW_TOPLEVEL,  KW_IN_BLOCK),
-	KW_DEF("else",   4, parse_else,      KW_REC, !KW_TOPLEVEL,  KW_IN_BLOCK),
 	KW_DEF("enum",   4, parse_enum,     !KW_REC,  KW_TOPLEVEL,  KW_IN_BLOCK),
 	KW_DEF("fn",     2, parse_func_def, !KW_REC,  KW_TOPLEVEL, !KW_IN_BLOCK),
 	KW_DEF("if",     2, parse_if,        KW_REC, !KW_TOPLEVEL,  KW_IN_BLOCK),

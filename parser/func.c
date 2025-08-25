@@ -428,8 +428,7 @@ int parse_func_def(struct parser *parser)
 		.fn = result,
 		.indent = parser->scope->indent,
 		.parent = parser->scope,
-		.status = backend_call(scope_begin)(), // TODO: free
-		.status_type = SCOPE_IN_BLOCK,
+		.status = backend_call(scope_begin)()
 	};
 	backend_func_def_handle *handle = NULL;
 	parser->scope = &fn_scope;
@@ -467,10 +466,12 @@ int parse_func_def(struct parser *parser)
 err_free_result:
 	free_symbol(result);
 	func_def_end_scope(parser, NULL);
-	return 1;
+	goto err_free_scope_status;
 err_free_and_pop_result:
 	free_symbol(symbol_pop(&dest_scope->sym_groups[SYMG_FUNC]));
 	func_def_end_scope(parser, NULL);
+err_free_scope_status:
+	backend_call(scope_free)(fn_scope.status);
 	return 1;
 }
 
