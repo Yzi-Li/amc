@@ -40,7 +40,7 @@ backend_func_def_handle *asf_func_def(struct symbol *fn, int pub, int main);
 int asf_func_def_end(backend_func_def_handle *handle);
 int asf_func_ret(yz_val *v, int is_main);
 
-backend_cond_match_handle *asf_cond_match_begin(void);
+backend_cond_match_handle *asf_cond_match_begin(yz_val *val);
 int asf_cond_match_case(backend_cond_match_handle *handle, yz_val *val);
 int asf_cond_match_case_end(backend_cond_match_handle *handle);
 int asf_cond_match_end(backend_cond_match_handle *handle);

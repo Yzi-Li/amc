@@ -145,7 +145,7 @@ int asf_cond_if_begin(backend_scope_status *raw_status)
 	return 0;
 }
 
-backend_cond_match_handle *asf_cond_match_begin(void)
+backend_cond_match_handle *asf_cond_match_begin(yz_val *val)
 {
 	struct asf_cond_handle *result = calloc(1, sizeof(*result));
 	return result;
