@@ -30,11 +30,6 @@
 struct global_parser global_parser = {
 	.has_err = 0,
 	.has_main = 0,
-	.parsed = {},
-	.output = {},
-	.root_dir = {},
-	.root_mod = {},
-	.target_path = {}
 };
 
 static int parse_line(struct parser *parser);
@@ -158,7 +153,7 @@ err_free_parser:
 
 int parser_get_target_from_mod_path(str *result, str *path)
 {
-	str suffix = {};
+	str suffix = {.len = 0, .s = NULL};
 	int suffix_need_free = 0;
 	if ((suffix.s = backend_file_get_suffix(&result->len,
 					&suffix_need_free)) == NULL)
@@ -179,7 +174,7 @@ int parser_init(const char *path, struct file *f)
 {
 	int free_root_dir_cpy = 0, free_pwd = 0;
 	struct parser *parser = NULL;
-	str pwd = {};
+	str pwd;
 	char *root_dir_cpy;
 	if (global_parser.output.s == NULL) {
 		global_parser.output.s = "a.out";

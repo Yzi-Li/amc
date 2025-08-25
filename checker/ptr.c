@@ -12,7 +12,7 @@ int check_ptr_can_null(yz_val *val, struct symbol *sym)
 	struct symbol *val_sym = NULL;
 	yz_ptr_type *ptr;
 	if (val->type.type == AMC_SYM) {
-		val_sym = val->v;
+		val_sym = val->data.v;
 		ptr = val_sym->result_type.v;
 		if (!ptr->flag_can_null)
 			return 1;

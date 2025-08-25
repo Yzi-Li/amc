@@ -14,9 +14,12 @@ static str *mul_mem_or_reg_to_reg(struct asf_val *src, int is_unsigned);
 str *mul_imm_to_reg(struct asf_imm *src, int is_unsigned)
 {
 	str *s = NULL, *tmp = NULL;
-	struct asf_val src_wrap = {.type = ASF_VAL_REG, .reg = ASF_REG_RBX};
-	src_wrap.reg += asf_reg_get(src->type);
-	if ((s = asf_inst_mov_i2r(src, src_wrap.reg)) == NULL)
+	struct asf_val src_wrap = {
+		.type = ASF_VAL_REG,
+		.data.reg = ASF_REG_RBX
+	};
+	src_wrap.data.reg += asf_reg_get(src->type);
+	if ((s = asf_inst_mov_i2r(src, src_wrap.data.reg)) == NULL)
 		return NULL;
 	if ((tmp = mul_mem_or_reg_to_reg(&src_wrap, is_unsigned)) == NULL)
 		goto err_free_s;
@@ -47,7 +50,7 @@ str *mul_mem_or_reg_to_reg(struct asf_val *src, int is_unsigned)
 int asf_op_mul(struct expr *e)
 {
 	enum ASF_REGS dest = ASF_OP_RESULT_REG;
-	struct asf_val multiplicand = {};
+	struct asf_val multiplicand;
 	struct object_node *node = NULL;
 	str *tmp = NULL;
 	if (asf_op_try_push_prev_expr_result(e, dest) == TRY_RESULT_FAULT)
@@ -56,7 +59,7 @@ int asf_op_mul(struct expr *e)
 		return 1;
 	if (asf_val_get(e->valr, &multiplicand))
 		goto err_unsupport_type;
-	if (asf_op_handle_expr(&tmp, e, &multiplicand.reg, dest))
+	if (asf_op_handle_expr(&tmp, e, &multiplicand.data.reg, dest))
 		return 1;
 	node = malloc(sizeof(*node));
 	if ((node->s = asf_inst_op_mul(&multiplicand, 2)) == NULL)
@@ -87,7 +90,7 @@ str *asf_inst_op_mul(struct asf_val *src, int is_unsigned)
 	if (src->type == ASF_VAL_MEM || src->type == ASF_VAL_REG)
 		return mul_mem_or_reg_to_reg(src, is_unsigned);
 	if (src->type == ASF_VAL_IMM)
-		return mul_imm_to_reg(&src->imm, is_unsigned);
+		return mul_imm_to_reg(&src->data.imm, is_unsigned);
 	printf("amc[backend.asf:%s]: asf_inst_op_mul: "
 			"Unsupport type\n", __FILE__);
 	return NULL;

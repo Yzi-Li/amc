@@ -28,7 +28,7 @@ int rmkdir(const char *path)
 {
 	const u32 default_filemode
 		= S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
-	struct stat st = {};
+	struct stat st;
 	char *parent = NULL, *path_cpy = NULL;
 	int path_cpy_len, ret = 0;
 	if (stat(path, &st) == 0) {

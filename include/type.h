@@ -46,13 +46,15 @@ typedef struct yz_type {
 	enum YZ_TYPE type;
 } yz_type;
 
+union yz_user_type_data {
+	struct yz_enum *enum_;
+	struct yz_struct *struct_;
+};
+
 typedef struct yz_user_type {
 	struct yz_user_type *nodes[UCHAR_MAX + 1];
+	union yz_user_type_data data;
 	enum YZ_TYPE type;
-	union {
-		struct yz_enum *enum_;
-		struct yz_struct *struct_;
-	};
 } yz_user_type;
 
 static const struct yz_type_group yz_type_table[] = {

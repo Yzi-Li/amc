@@ -15,7 +15,7 @@ int asf_null_handle_begin(backend_null_handle **handle, yz_val *val)
 	const char *temp =
 		"cmpq $0, %%rax\n"
 		"jne .L%d\n";
-	if (val->type.type != AMC_SYM || val->sym->type != SYM_FUNC)
+	if (val->type.type != AMC_SYM || val->data.sym->type != SYM_FUNC)
 		return 1;
 	label = asf_label_alloc();
 	node = malloc(sizeof(*node));

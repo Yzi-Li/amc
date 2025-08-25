@@ -44,7 +44,8 @@ int dec_syscall(struct parser *parser, struct hook_callee *callee)
 		goto err_arg_failed;
 	if (!YZ_IS_DIGIT(callee->args[0]->type.type))
 		goto err_arg_failed;
-	if (backend_call(dec_syscall)(callee->args[0]->i, parser->sym->argc))
+	if (backend_call(dec_syscall)(callee->args[0]->data.i,
+				parser->sym->argc))
 		goto err_backend_failed;
 	return 0;
 err_arg_failed:
@@ -59,8 +60,8 @@ int decorator_arg_get_val(str *token, yz_val *arg)
 {
 	if (CHR_IS_NUM(token->s[0])) {
 		arg->type.type = YZ_I32;
-		arg->l = 0;
-		if (str2int(token, &arg->l))
+		arg->data.l = 0;
+		if (str2int(token, &arg->data.l))
 			return 1;
 	}
 	return 0;

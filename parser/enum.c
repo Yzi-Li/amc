@@ -53,7 +53,7 @@ int enum_def_read_item(yz_enum *self, struct file *f)
 	if (symbol_read(&token, f))
 		return 1;
 	str_copy(&token, &item->name);
-	item->u = self->count;
+	item->data.u = self->count;
 	if (enum_def_reg_item(self, item))
 		return 1;
 	return enum_def_read_item_check_end(f);
@@ -77,7 +77,7 @@ int enum_def_reg(yz_enum *self, struct scope *scope)
 	if (type == NULL)
 		goto err_defined;
 	type->type = YZ_ENUM;
-	type->enum_ = self;
+	type->data.enum_ = self;
 	return 0;
 err_defined:
 	printf("amc: enum_def_reg: "
@@ -109,7 +109,7 @@ yz_enum *yz_enum_find(str *s, struct scope *scope)
 	struct yz_user_type *type = yz_user_type_find(s, scope);
 	if (!type || type->type != YZ_ENUM)
 		return NULL;
-	return type->enum_;
+	return type->data.enum_;
 }
 
 yz_enum_item *yz_enum_item_find(str *s, yz_enum *src)

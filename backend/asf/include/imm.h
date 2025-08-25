@@ -7,13 +7,15 @@
 #include "../../../utils/cint.h"
 #include "../../../utils/str/str.h"
 
+union asf_imm_data {
+	i8  ib;
+	i16 iw;
+	i32 il;
+	i64 iq;
+};
+
 struct asf_imm {
-	union {
-		i8  ib;
-		i16 iw;
-		i32 il;
-		i64 iq;
-	};
+	union asf_imm_data data;
 	enum ASF_BYTES type;
 };
 

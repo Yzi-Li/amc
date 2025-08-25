@@ -33,12 +33,12 @@ int array_get_elem_handle_val(yz_val *val, yz_val *offset, struct symbol *sym)
 	yz_extract_val *v = malloc(sizeof(*v));
 	v->sym = sym;
 	v->elem = sym;
-	v->offset = offset;
+	v->data.offset = offset;
 	v->type = YZ_EXTRACT_ARRAY;
-	if ((val->v = op_extract_val_expr_create(&arr->type, v)) == NULL)
+	if ((val->data.v = op_extract_val_expr_create(&arr->type, v)) == NULL)
 		return 1;
 	val->type.type = AMC_EXPR;
-	val->type.v = val->v;
+	val->type.v = val->data.v;
 	return 0;
 }
 
@@ -159,7 +159,7 @@ err_cannot_apply_expr:
 
 int array_get_elem(struct parser *parser, yz_val *val)
 {
-	struct symbol *sym = val->v;
+	struct symbol *sym = val->data.v;
 	yz_val *offset = NULL;
 	if (sym->result_type.type != YZ_ARRAY)
 		goto err_not_arr;

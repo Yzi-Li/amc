@@ -15,14 +15,16 @@ enum ASF_VAL_TYPE {
 	ASF_VAL_REG
 };
 
+union asf_val_data {
+	int const_id;
+	struct asf_imm imm;
+	struct asf_mem mem;
+	enum ASF_REGS reg;
+};
+
 struct asf_val {
+	union asf_val_data data;
 	enum ASF_VAL_TYPE type;
-	union {
-		int const_id;
-		struct asf_imm imm;
-		struct asf_mem mem;
-		enum ASF_REGS reg;
-	};
 };
 
 int asf_val_get(yz_val *src, struct asf_val *result);

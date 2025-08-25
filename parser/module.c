@@ -21,7 +21,7 @@ static int module_read_name(str *result, struct file *f);
 
 int import_check_file_exists(str *real_path)
 {
-	struct stat st = {};
+	struct stat st;
 	if (stat(real_path->s, &st))
 		goto err_no_such_path;
 	if (S_ISDIR(st.st_mode))
@@ -39,7 +39,7 @@ err_no_such_path:
 
 struct scope *import_parse_file(str *path, struct parser *parent)
 {
-	struct file f = {};
+	struct file f;
 	struct parser *parser = NULL;
 	str *real_path = NULL;
 	struct scope *result = NULL;
@@ -127,7 +127,7 @@ int module_check_is_import(struct file *f)
 yz_module *module_parse_import(struct parser *parser)
 {
 	yz_module *err_data = NULL;
-	str path = {};
+	str path;
 	yz_module *result = NULL;
 	struct scope *scope = NULL;
 	if (!module_check_is_import(parser->f))

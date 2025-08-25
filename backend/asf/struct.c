@@ -39,8 +39,8 @@ err_free_node:
 int struct_elem_push_empty(yz_val *val)
 {
 	struct asf_imm imm = {
-		.type = asf_yz_type2bytes(&val->type),
-		.iq = 0
+		.data.iq = 0,
+		.type = asf_yz_type2bytes(&val->type)
 	};
 	struct object_node *node = malloc(sizeof(*node));
 	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
@@ -88,7 +88,7 @@ int asf_struct_set_elem(struct symbol *ident, int index, yz_val *val,
 {
 	struct asf_stack_element *dest =
 		asf_struct_get_elem(ident->backend_status, index);
-	struct asf_mem mem = {};
+	struct asf_mem mem;
 	struct object_node *node = NULL;
 	if (dest == NULL)
 		return 1;
@@ -116,9 +116,9 @@ int asf_struct_set_elem_from_ptr(struct symbol *ident, int index, yz_val *val,
 int asf_op_extract_struct_elem(yz_extract_val *val)
 {
 	struct asf_stack_element *cur =
-		asf_struct_get_elem(val->sym->backend_status, val->index);
+		asf_struct_get_elem(val->sym->backend_status, val->data.index);
 	enum ASF_REGS dest = ASF_REG_RAX;
-	struct asf_mem mem = {};
+	struct asf_mem mem;
 	struct object_node *node = NULL;
 	if (cur == NULL)
 		return 1;
@@ -145,7 +145,7 @@ int asf_op_extract_struct_elem_from_ptr(yz_extract_val *val)
 	struct object_node *node = NULL;
 	int offset = 0;
 	struct yz_struct *s = ((yz_ptr_type*)val->sym->result_type.v)->ref.v;
-	struct asf_mem src_operand = {};
+	struct asf_mem src_operand;
 	if (val->sym->type == SYM_FUNC_ARG) {
 		if (val->sym->argc > asf_call_arg_regs_len)
 			return 1;
@@ -159,7 +159,7 @@ int asf_op_extract_struct_elem_from_ptr(yz_extract_val *val)
 	}
 	dest = asf_reg_get(asf_yz_type2bytes(&val->elem->result_type));
 	node = malloc(sizeof(*node));
-	for (int i = 0; i < val->index; i++)
+	for (int i = 0; i < val->data.index; i++)
 		offset += asf_yz_type2bytes(&s->elems[i]->result_type);
 	src_operand.addr = src;
 	src_operand.bytes = asf_regs[dest].bytes;

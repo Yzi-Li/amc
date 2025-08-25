@@ -68,7 +68,7 @@ int op_unary_get_addr(struct parser *parser, struct expr *e)
 	if ((ret = op_get_addr_check(e->valr)) > 0)
 		goto err_check_failed;
 	if (ret == -1)
-		if (expr_apply(parser, e->valr->v))
+		if (expr_apply(parser, e->valr->data.v))
 			return 1;
 	if (op_get_addr_handle_val(e, ret == -1))
 		goto err_check_failed;
@@ -104,17 +104,17 @@ int op_extract_val_handle_expr(struct expr *e)
 {
 	switch (e->valr->type.type) {
 	case AMC_SYM:
-		return op_extract_val_handle_expr_from_sym(e, e->valr->v);
+		return op_extract_val_handle_expr_from_sym(e, e->valr->data.v);
 		break;
 	case AMC_EXPR:
-		if (op_extract_val_handle_expr(e->valr->v))
+		if (op_extract_val_handle_expr(e->valr->data.v))
 			return 1;
-		e->sum_type = ((struct expr*)e->valr->v)->sum_type;
+		e->sum_type = ((struct expr*)e->valr->data.v)->sum_type;
 		return 0;
 		break;
 	case AMC_EXTRACT_VAL:
 		return op_extract_val_handle_expr_from_sym(e,
-				yz_get_extracted_val(e->valr->v));
+				yz_get_extracted_val(e->valr->data.v));
 		break;
 	default: break;
 	}
@@ -143,14 +143,14 @@ int op_get_addr_check(yz_val *v)
 	struct expr *expr = NULL;
 	struct symbol *sym = NULL;
 	if (v->type.type == AMC_SYM) {
-		sym = v->v;
+		sym = v->data.v;
 		if (sym->type != SYM_IDENTIFIER)
 			goto err_val_not_identifier;
 		return 0;
 	}
 	if (v->type.type != AMC_EXPR)
 		return 1;
-	expr = v->v;
+	expr = v->data.v;
 	if (expr->op != OP_EXTRACT_VAL
 			|| expr->valr->type.type != AMC_EXTRACT_VAL)
 		goto err_not_extracted_val;
@@ -168,24 +168,24 @@ int op_get_addr_handle_val(struct expr *e, int from_extracted_val)
 	yz_ptr *ptr = malloc(sizeof(*ptr));
 	yz_ptr_type *ptr_type = malloc(sizeof(*ptr_type));
 	if (!from_extracted_val) {
-		ptr->ref.v = e->valr->v;
+		ptr->ref.data.v = e->valr->data.v;
 		ptr->ref.type.type = AMC_SYM;
-		ptr->ref.type.v = ptr->ref.v;
-		ptr_type->flag_mut = ((struct symbol*)ptr->ref.v)
+		ptr->ref.type.v = ptr->ref.data.v;
+		ptr_type->flag_mut = ((struct symbol*)ptr->ref.data.v)
 			->flags.mut;
 	} else {
-		ptr->ref.v = e->valr->expr->valr->v;
+		ptr->ref.data.v = e->valr->data.expr->valr->data.v;
 		ptr->ref.type.type = AMC_EXTRACT_VAL;
-		ptr->ref.type.v = ptr->ref.v;
-		ptr_type->flag_mut = ((yz_extract_val*)ptr->ref.v)
+		ptr->ref.type.v = ptr->ref.data.v;
+		ptr_type->flag_mut = ((yz_extract_val*)ptr->ref.data.v)
 			->elem->flags.mut;
-		e->valr->expr->valr->v = NULL;
-		free_expr(e->valr->expr);
+		e->valr->data.expr->valr->data.v = NULL;
+		free_expr(e->valr->data.expr);
 	}
 	ptr_type->ref.type = ptr->ref.type.type;
 	ptr_type->ref.v = ptr->ref.type.v;
 	ptr_type->level = 1;
-	e->valr->v = ptr;
+	e->valr->data.v = ptr;
 	e->valr->type.type = YZ_PTR;
 	e->valr->type.v = ptr_type;
 	e->sum_type = &e->valr->type;
@@ -196,10 +196,10 @@ struct symbol *op_get_ptr(struct parser *parser, yz_val *v)
 {
 	struct symbol *ptr = NULL;
 	if (v->type.type == AMC_EXPR)
-		return op_get_ptr_from_expr(parser, v->v);
+		return op_get_ptr_from_expr(parser, v->data.v);
 	if (v->type.type != AMC_SYM)
 		goto err_val_not_ptr;
-	ptr = v->v;
+	ptr = v->data.v;
 	if (ptr->type != SYM_IDENTIFIER && ptr->type != SYM_FUNC_ARG)
 		goto err_val_not_ptr;
 	return ptr;
@@ -216,7 +216,7 @@ struct symbol *op_get_ptr_from_expr(struct parser *parser, struct expr *e)
 		goto err_not_extracted_val;
 	if (e->valr->type.type != AMC_EXTRACT_VAL)
 		goto err_not_extracted_val;
-	src = e->valr->v;
+	src = e->valr->data.v;
 	ptr = src->elem;
 	if (expr_apply(parser, e) > 0)
 		goto err_cannot_apply_expr;
@@ -235,36 +235,36 @@ int op_assign_extracted_val(struct parser *parser, struct expr *e)
 	yz_val *val = NULL;
 	if (e->vall->type.type != AMC_EXPR)
 		return 1;
-	val = e->vall->expr->valr;
+	val = e->vall->data.expr->valr;
 	if (val->type.type == AMC_SYM) {
-		if (ptr_set_val(parser, val->v, e->op))
+		if (ptr_set_val(parser, val->data.v, e->op))
 			return 1;
 		return ptr_set_val_handle_expr(e);
 	}
 	if (val->type.type != AMC_EXTRACT_VAL)
 		return 1;
-	src = val->v;
+	src = val->data.v;
 	switch (src->type) {
 	case YZ_EXTRACT_ARRAY:
-		if (array_set_elem(parser, src->sym, src->offset, e->op))
+		if (array_set_elem(parser, src->sym, src->data.offset, e->op))
 			return 1;
 		break;
 	case YZ_EXTRACT_STRUCT:
-		if (struct_set_elem(parser, src->sym, src->index, e->op))
+		if (struct_set_elem(parser, src->sym, src->data.index, e->op))
 			return 1;
 		break;
 	case YZ_EXTRACT_STRUCT_FROM_PTR:
-		if (struct_set_elem_from_ptr(parser, src->sym, src->index,
+		if (struct_set_elem_from_ptr(parser, src->sym, src->data.index,
 					e->op))
 			return 1;
 		break;
 	default:
 		break;
 	}
-	free_expr(e->vall->expr);
+	free_expr(e->vall->data.expr);
 	e->vall->type.type = AMC_ERR_TYPE;
 	e->vall->type.v = NULL;
-	e->vall->v = NULL;
+	e->vall->data.v = NULL;
 	return 0;
 }
 
@@ -273,9 +273,9 @@ int op_assign_get_vall_expr(struct expr *e, struct symbol **result)
 	if (e->op != OP_EXTRACT_VAL)
 		return 1;
 	if (e->valr->type.type == AMC_SYM) {
-		if (e->valr->sym->result_type.type != YZ_PTR)
+		if (e->valr->data.sym->result_type.type != YZ_PTR)
 			return 1;
-		*result = e->valr->sym;
+		*result = e->valr->data.sym;
 		return 0;
 	}
 	if (e->valr->type.type != AMC_EXTRACT_VAL)
@@ -296,7 +296,7 @@ int op_cmp_ptr_and_null(struct expr *e)
 	struct symbol *sym = NULL;
 	if (e->vall->type.type != AMC_SYM)
 		return 1;
-	sym = e->vall->v;
+	sym = e->vall->data.v;
 	if (sym->result_type.type != YZ_PTR)
 		return 1;
 	((yz_ptr_type*)sym->result_type.v)->flag_checked_null = 1;
@@ -334,13 +334,13 @@ int op_assign(struct parser *parser, struct expr *e)
 	if (e->vall == NULL && e->valr == NULL)
 		return 0;
 	if (e->vall->type.type == AMC_SYM) {
-		if (op_assign_get_vall_sym(e->vall->sym, &sym))
+		if (op_assign_get_vall_sym(e->vall->data.sym, &sym))
 			return 1;
 		return identifier_assign_val(parser, sym, e->op);
 	}
 	if (e->vall->type.type != AMC_EXPR)
 		return 1;
-	if (op_assign_get_vall_expr(e->vall->expr, &sym))
+	if (op_assign_get_vall_expr(e->vall->data.expr, &sym))
 		return 1;
 	return op_assign_extracted_val(parser, e);
 }
@@ -351,9 +351,9 @@ struct expr *op_extract_val_expr_create(yz_type *sum_type,
 	struct expr *expr = malloc(sizeof(*expr));
 	expr->vall = NULL;
 	expr->valr = malloc(sizeof(*expr->valr));
-	expr->valr->v = val;
+	expr->valr->data.v = val;
 	expr->valr->type.type = AMC_EXTRACT_VAL;
-	expr->valr->type.v = expr->valr->v;
+	expr->valr->type.v = expr->valr->data.v;
 	expr->op = OP_EXTRACT_VAL;
 	expr->priority = 0;
 	expr->sum_type = sum_type;

@@ -20,9 +20,9 @@ str *add_imm_to_mem_or_reg(struct asf_imm *src, struct asf_val *dest)
 	if ((tmp = asf_op_get_dest(&bytes, dest)) == NULL)
 		return NULL;
 	s = str_new();
-	str_expand(s, strlen(temp) - 6 + tmp->len + sllen(src->iq));
+	str_expand(s, strlen(temp) - 6 + tmp->len + sllen(src->data.iq));
 	snprintf(s->s, s->len, temp, asf_suffix_get(bytes),
-			src->iq,
+			src->data.iq,
 			tmp->s);
 	str_free(tmp);
 	return s;
@@ -61,21 +61,20 @@ str *add_reg_to_mem_or_reg(enum ASF_REGS src, struct asf_val *dest)
 
 int asf_op_add(struct expr *e)
 {
-	struct asf_val addend = {},
-	               augend = {
+	struct asf_val addend, augend = {
 		.type = ASF_VAL_REG,
-		.reg = ASF_OP_RESULT_REG
+		.data.reg = ASF_OP_RESULT_REG
 	};
 	struct object_node *node = NULL;
 	str *tmp = NULL;
-	if (asf_op_try_push_prev_expr_result(e, augend.reg)
+	if (asf_op_try_push_prev_expr_result(e, augend.data.reg)
 			== TRY_RESULT_FAULT)
 		return 1;
-	if (asf_op_store_val(e->vall, &augend.reg))
+	if (asf_op_store_val(e->vall, &augend.data.reg))
 		return 1;
 	if (asf_val_get(e->valr, &addend))
 		goto err_unsupport_type;
-	if (asf_op_handle_expr(&tmp, e, &addend.reg, augend.reg))
+	if (asf_op_handle_expr(&tmp, e, &addend.data.reg, augend.data.reg))
 		return 1;
 	node = malloc(sizeof(*node));
 	if ((node->s = asf_inst_op_add(&addend, &augend)) == NULL)
@@ -103,13 +102,13 @@ str *asf_inst_op_add(struct asf_val *src, struct asf_val *dest)
 {
 	switch (src->type) {
 	case ASF_VAL_IMM:
-		return add_imm_to_mem_or_reg(&src->imm, dest);
+		return add_imm_to_mem_or_reg(&src->data.imm, dest);
 		break;
 	case ASF_VAL_MEM:
-		return add_mem_to_reg(&src->mem, dest->reg);
+		return add_mem_to_reg(&src->data.mem, dest->data.reg);
 		break;
 	case ASF_VAL_REG:
-		return add_reg_to_mem_or_reg(src->reg, dest);
+		return add_reg_to_mem_or_reg(src->data.reg, dest);
 		break;
 	default: break;
 	}

@@ -93,19 +93,19 @@ str *asf_inst_mov_i2m(struct asf_imm *src, struct asf_mem *dest)
 	s = str_new();
 	if (dest->offset) {
 		str_expand(s, strlen(temp_offset) - 6
-				+ ullen(src->iq)
+				+ ullen(src->data.iq)
 				+ sllen(dest->offset));
 		snprintf(s->s, s->len, temp_offset,
 				asf_suffix_get(src_bytes),
-				src->iq,
+				src->data.iq,
 				dest->offset,
 				asf_regs[dest->addr].name);
 		return s;
 	}
-	str_expand(s, strlen(temp) - 4 + ullen(src->iq));
+	str_expand(s, strlen(temp) - 4 + ullen(src->data.iq));
 	snprintf(s->s, s->len, temp,
 			asf_suffix_get(src_bytes),
-			src->iq,
+			src->data.iq,
 			asf_regs[dest->addr].name);
 	return s;
 }
@@ -118,10 +118,10 @@ str *asf_inst_mov_i2r(struct asf_imm *src, enum ASF_REGS dest)
 	if (src_bytes != asf_regs[dest].bytes)
 		return NULL;
 	s = str_new();
-	str_expand(s, strlen(temp) - 4 + ullen(src->iq));
+	str_expand(s, strlen(temp) - 4 + ullen(src->data.iq));
 	snprintf(s->s, s->len, temp,
 			asf_suffix_get(asf_regs[dest].bytes),
-			src->iq,
+			src->data.iq,
 			asf_regs[dest].name);
 	return s;
 }

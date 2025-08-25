@@ -13,14 +13,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int func_def_start();
+static int func_def_start(void);
 static str *func_ret_imm(struct asf_imm *src);
 static int func_ret_main(yz_val *v);
 static str *func_ret_mem(struct asf_mem *src);
 static str *func_ret_reg(enum ASF_REGS src);
 static int func_ret_val(yz_val *v);
 
-int func_def_start()
+int func_def_start(void)
 {
 	struct object_node *node = malloc(sizeof(*node));
 	const char *temp =
@@ -82,18 +82,18 @@ str *func_ret_reg(enum ASF_REGS src)
 int func_ret_val(yz_val *v)
 {
 	struct object_node *node = NULL;
-	struct asf_val val = {};
+	struct asf_val val;
 	if (asf_val_get(v, &val))
 		return 1;
 	node = malloc(sizeof(*node));
 	if (val.type == ASF_VAL_IMM) {
-		if ((node->s = func_ret_imm(&val.imm)) == NULL)
+		if ((node->s = func_ret_imm(&val.data.imm)) == NULL)
 			goto err_inst_failed;
 	} else if (val.type == ASF_VAL_MEM) {
-		if ((node->s = func_ret_mem(&val.mem)) == NULL)
+		if ((node->s = func_ret_mem(&val.data.mem)) == NULL)
 			goto err_inst_failed;
 	} else if (val.type == ASF_VAL_REG) {
-		if ((node->s = func_ret_reg(val.reg)) == NULL)
+		if ((node->s = func_ret_reg(val.data.reg)) == NULL)
 			goto err_inst_failed;
 	} else {
 		return 1;

@@ -50,7 +50,10 @@ struct asf_reg asf_regs[] = {
 
 str *asf_reg_clean(enum ASF_REGS reg)
 {
-	struct asf_imm zero = {.iq = 0, .type = asf_regs[reg].bytes};
+	struct asf_imm zero = {
+		.data.iq = 0,
+		.type = asf_regs[reg].bytes
+	};
 	*asf_regs[reg].purpose = ASF_REG_PURPOSE_NULL;
 	return asf_inst_mov_i2r(&zero, reg);
 }
@@ -90,7 +93,7 @@ enum ASF_REGS asf_reg_get(enum ASF_BYTES bytes)
 	return -1;
 }
 
-int asf_regs_init()
+int asf_regs_init(void)
 {
 	for (int i = ASF_REG_EAX, base_reg = ASF_REG_RAX;
 			i < LENGTH(asf_regs); i++) {

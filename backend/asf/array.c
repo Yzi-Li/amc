@@ -53,7 +53,7 @@ int array_elem_push_empty(yz_val *val)
 {
 	struct asf_imm imm = {
 		.type = asf_yz_type2bytes(&val->type),
-		.iq = 0
+		.data.iq = 0
 	};
 	struct object_node *node = malloc(sizeof(*node));
 	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
@@ -77,7 +77,7 @@ str *array_get_elem_from_imm(struct asf_stack_element *base,
 	int offset = 0;
 	str *s = str_new();
 	const char *temp = "mov%c -%lld(%%rbp), %%%s\n";
-	offset = base->bytes * src->iq;
+	offset = base->bytes * src->data.iq;
 	str_expand(s, strlen(temp) - 4 + ullen(offset));
 	snprintf(s->s, s->len, temp,
 			asf_suffix_get(base->bytes),
@@ -123,7 +123,7 @@ str *array_set_elem_from_imm(struct asf_stack_element *base,
 	int dest = 0;
 	str *s = str_new();
 	const char *temp = "mov%c %s, -%lld(%%rbp)\n";
-	dest = base->bytes * offset->iq;
+	dest = base->bytes * offset->data.iq;
 	str_expand(s, strlen(temp) - 6 + src->len + ullen(dest));
 	snprintf(s->s, s->len, temp,
 			asf_suffix_get(base->bytes),
@@ -167,15 +167,15 @@ str *array_set_elem_from_reg(struct asf_stack_element *base, enum ASF_REGS reg,
 
 str *array_set_elem_get_val(yz_val *src)
 {
-	struct asf_val val = {};
+	struct asf_val val;
 	if (asf_val_get(src, &val))
 		return NULL;
 	if (val.type == ASF_VAL_IMM) {
-		return asf_imm_str_new(&val.imm);
+		return asf_imm_str_new(&val.data.imm);
 	} else if (val.type == ASF_VAL_REG) {
-		return array_set_elem_get_val_reg(val.reg);
+		return array_set_elem_get_val_reg(val.data.reg);
 	} else if (val.type == ASF_VAL_MEM) {
-		return asf_stack_get_element(&val.mem, 0);
+		return asf_stack_get_element(&val.data.mem, 0);
 	}
 	return NULL;
 }
@@ -219,7 +219,7 @@ err_identifier_reg_failed:
 int asf_array_set_elem(struct symbol *ident, yz_val *offset, yz_val *val,
 		enum OP_ID mode)
 {
-	struct asf_val dest = {};
+	struct asf_val dest;
 	struct object_node *node = NULL;
 	str *src = NULL;
 	if (asf_val_get(offset, &dest))
@@ -231,15 +231,15 @@ int asf_array_set_elem(struct symbol *ident, yz_val *offset, yz_val *val,
 	node = malloc(sizeof(*node));
 	if (dest.type == ASF_VAL_IMM) {
 		if ((node->s = array_set_elem_from_imm(ident->backend_status,
-						&dest.imm, src)) == NULL)
+						&dest.data.imm, src)) == NULL)
 			goto err_inst_failed;
 	} else if (dest.type == ASF_VAL_MEM) {
 		if ((node->s = array_set_elem_from_mem(ident->backend_status,
-						&dest.mem, src)) == NULL)
+						&dest.data.mem, src)) == NULL)
 			goto err_inst_failed;
 	} else if (dest.type == ASF_VAL_REG) {
 		if ((node->s = array_set_elem_from_reg(ident->backend_status,
-						dest.reg, src)) == NULL)
+						dest.data.reg, src)) == NULL)
 			goto err_inst_failed;
 	}
 	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
@@ -260,21 +260,23 @@ int asf_op_extract_array_elem(yz_extract_val *val)
 {
 	struct asf_stack_element *base = NULL;
 	struct object_node *node = NULL;
-	struct asf_val dest = {};
+	struct asf_val dest;
 	if ((base = val->sym->backend_status) == NULL)
 		goto err_identifier_not_found;
-	if (asf_val_get(val->offset, &dest))
+	if (asf_val_get(val->data.offset, &dest))
 		return 1;
 	node = malloc(sizeof(*node));
 	if (dest.type == ASF_VAL_IMM) {
-		if ((node->s = array_get_elem_from_imm(base, &dest.imm))
+		if ((node->s = array_get_elem_from_imm(base, &dest.data.imm))
 				== NULL)
 			goto err_inst_failed;
 	} else if (dest.type == ASF_VAL_MEM) {
-		if ((node->s = array_get_elem_from_mem(base, &dest.mem)) == NULL)
+		node->s = array_get_elem_from_mem(base, &dest.data.mem);
+		if (node->s == NULL)
 			goto err_inst_failed;
 	} else if (dest.type == ASF_VAL_REG) {
-		if ((node->s = array_get_elem_from_reg(base, dest.reg)) == NULL)
+		node->s = array_get_elem_from_reg(base, dest.data.reg);
+		if (node->s == NULL)
 			goto err_inst_failed;
 	}
 	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))

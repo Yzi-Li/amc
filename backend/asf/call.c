@@ -21,7 +21,7 @@ static int call_restore_reg(yz_val *arg, enum ASF_REGS reg);
 int call_push_arg(yz_val *v, enum ASF_REGS reg)
 {
 	struct object_node *node = NULL, *save = NULL;
-	struct asf_val val = {};
+	struct asf_val val;
 	if (asf_val_get(v, &val))
 		goto err_unsupport_type;
 	save = malloc(sizeof(*save));
@@ -31,17 +31,17 @@ int call_push_arg(yz_val *v, enum ASF_REGS reg)
 		goto err_free_save;
 	node = malloc(sizeof(*node));
 	if (val.type == ASF_VAL_CONST) {
-		if ((node->s = call_push_arg_const(val.const_id, reg))
+		if ((node->s = call_push_arg_const(val.data.const_id, reg))
 				== NULL)
 			goto err_inst_failed;
 	} else if (val.type == ASF_VAL_IMM) {
-		if ((node->s = call_push_arg_imm(&val.imm, reg)) == NULL)
+		if ((node->s = call_push_arg_imm(&val.data.imm, reg)) == NULL)
 			goto err_inst_failed;
 	} else if (val.type == ASF_VAL_MEM) {
-		if ((node->s = call_push_arg_mem(&val.mem, reg)) == NULL)
+		if ((node->s = call_push_arg_mem(&val.data.mem, reg)) == NULL)
 			goto err_inst_failed;
 	} else if (val.type == ASF_VAL_REG) {
-		if ((node->s = call_push_arg_reg(val.reg, reg)) == NULL)
+		if ((node->s = call_push_arg_reg(val.data.reg, reg)) == NULL)
 			goto err_inst_failed;
 	} else {
 		object_remove_last(&cur_obj->sections[ASF_OBJ_TEXT]);

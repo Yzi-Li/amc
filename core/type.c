@@ -179,8 +179,8 @@ void free_yz_user_type(void *self)
 	if (self == NULL)
 		return;
 	switch (type->type) {
-	case YZ_ENUM:   free_yz_enum(type->enum_);     break;
-	case YZ_STRUCT: free_yz_struct(type->struct_); break;
+	case YZ_ENUM:   free_yz_enum(type->data.enum_);     break;
+	case YZ_STRUCT: free_yz_struct(type->data.struct_); break;
 	default: break;
 	}
 	free(self);

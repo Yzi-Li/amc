@@ -14,7 +14,7 @@ struct symbol *yz_get_extracted_val(yz_extract_val *val)
 	switch (val->type) {
 	case YZ_EXTRACT_STRUCT:
 		return ((yz_struct*)val->sym->result_type.v)
-			->elems[val->index];
+			->elems[val->data.index];
 		break;
 	default:
 		return NULL;
@@ -29,7 +29,7 @@ void free_yz_extract_val(struct yz_extract_val *self)
 		return;
 	switch (self->type) {
 	case YZ_EXTRACT_ARRAY:
-		free_yz_val(self->offset);
+		free_yz_val(self->data.offset);
 		break;
 	default: break;
 	}
@@ -52,10 +52,10 @@ void free_yz_val_noself(yz_val *self)
 		return;
 	free_yz_type_noself(&self->type);
 	switch (self->type.type) {
-	case AMC_EXPR:        free_expr(self->v);           break;
-	case AMC_EXTRACT_VAL: free_yz_extract_val(self->v); break;
-	case YZ_CONST:        free_yz_const(self->v);       break;
-	case YZ_PTR:          free_yz_ptr(self->v);         break;
+	case AMC_EXPR:        free_expr(self->data.v);           break;
+	case AMC_EXTRACT_VAL: free_yz_extract_val(self->data.v); break;
+	case YZ_CONST:        free_yz_const(self->data.v);       break;
+	case YZ_PTR:          free_yz_ptr(self->data.v);         break;
 	case AMC_SYM:
 	case AMC_ERR_TYPE:
 	case YZ_ARRAY:

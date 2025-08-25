@@ -65,7 +65,7 @@ int identifier_read_enum(struct parser *parser, yz_val *val, str *name)
 		return 1;
 	val->type.type = YZ_ENUM_ITEM;
 	val->type.v = src;
-	val->l = item->u;
+	val->data.l = item->data.u;
 	return 0;
 err_enum_not_found:
 	err_msg = str2chr(name->s, name->len);
@@ -178,13 +178,13 @@ int identifier_check_can_assign_val(struct parser *parser,
 		return 1;
 	if (val->type.type == YZ_NULL)
 		return 0;
-	if (val->type.type == AMC_EXPR && val->expr->op == OP_GET_ADDR) {
-		if (check_ptr_get_addr_to_ident(val->expr, ident))
+	if (val->type.type == AMC_EXPR && val->data.expr->op == OP_GET_ADDR) {
+		if (check_ptr_get_addr_to_ident(val->data.expr, ident))
 			goto err_print_pos;
 		return 1;
 	}
-	if (val->type.type == AMC_SYM && val->sym->type == SYM_FUNC) {
-		ptr = val->sym->result_type.v;
+	if (val->type.type == AMC_SYM && val->data.sym->type == SYM_FUNC) {
+		ptr = val->data.sym->result_type.v;
 		if (!ptr->flag_can_null)
 			return 1;
 		ret = identifier_try_handle_null(parser, ident, val);
@@ -244,9 +244,9 @@ int identifier_read(struct parser *parser, yz_val *val)
 			goto err_identifier_not_found;
 		return identifier_read_enum(parser, val, &token);
 	}
-	val->v = sym;
+	val->data.v = sym;
 	val->type.type = AMC_SYM;
-	val->type.v = val->v;
+	val->type.v = val->data.v;
 	if (parser->f->src[parser->f->pos] == '[')
 		return array_get_elem(parser, val);
 	if (parser->f->src[parser->f->pos] == '.') {

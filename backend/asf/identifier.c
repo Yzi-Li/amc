@@ -34,13 +34,13 @@ static str *identifier_set_reg(struct asf_mem *dest, enum OP_ID mode,
 int identifier_change_get_op_inst(struct object_node *parent,
 		enum ASF_REGS src, int is_unsigned, enum OP_ID mode)
 {
-	struct asf_val dest = {.type = ASF_VAL_REG, .reg = ASF_REG_RAX},
-	               src_wrap  = {.type = ASF_VAL_REG, .reg = src};
+	struct asf_val dest = {.type = ASF_VAL_REG, .data.reg = ASF_REG_RAX},
+	               src_wrap  = {.type = ASF_VAL_REG, .data.reg = src};
 	struct object_node *node = NULL;
 	node = malloc(sizeof(*node));
 	if (object_insert(node, parent->prev, parent))
 		goto err_free_node;
-	dest.reg += asf_reg_get(asf_regs[src].bytes);
+	dest.data.reg += asf_reg_get(asf_regs[src].bytes);
 	switch (mode) {
 	case OP_ASSIGN_ADD:
 		if ((node->s = asf_inst_op_add(&src_wrap, &dest)) == NULL)
@@ -166,7 +166,7 @@ str *identifier_set_reg(struct asf_mem *dest, enum OP_ID mode,
 
 int asf_var_set(struct symbol *ident, yz_val *val, enum OP_ID mode)
 {
-	struct asf_mem mem = {};
+	struct asf_mem mem;
 	struct object_node *node = malloc(sizeof(*node));
 	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
 		goto err_free_node;
@@ -208,21 +208,21 @@ err_registered:
 
 str *asf_identifier_set(struct asf_mem *dest, enum OP_ID mode, yz_val *src)
 {
-	struct asf_val val = {};
+	struct asf_val val;
 	if (asf_val_get(src, &val))
 		goto err_unsupport_type;
 	switch (val.type) {
 	case ASF_VAL_CONST:
-		return identifier_set_const(dest, mode, val.const_id);
+		return identifier_set_const(dest, mode, val.data.const_id);
 		break;
 	case ASF_VAL_IMM:
-		return identifier_set_imm(dest, mode, &val.imm);
+		return identifier_set_imm(dest, mode, &val.data.imm);
 		break;
 	case ASF_VAL_MEM:
-		return identifier_set_mem(dest, mode, &val.mem);
+		return identifier_set_mem(dest, mode, &val.data.mem);
 		break;
 	case ASF_VAL_REG:
-		return identifier_set_reg(dest, mode, val.reg);
+		return identifier_set_reg(dest, mode, val.data.reg);
 		break;
 	}
 err_unsupport_type:

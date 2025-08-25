@@ -54,6 +54,11 @@ struct backend {
 	backend_cond_else_f                cond_else;
 	backend_cond_if_f                  cond_if;
 	backend_cond_if_begin_f            cond_if_begin;
+	backend_cond_match_begin_f         cond_match_begin;
+	backend_cond_match_case_f          cond_match_case;
+	backend_cond_match_case_end_f      cond_match_case_end;
+	backend_cond_match_end_f           cond_match_end;
+	backend_cond_match_free_handle_f   cond_match_free_handle;
 	backend_const_def_str_f            const_def_str;
 	backend_const_free_data_f          const_free_data;
 	backend_dec_c_fn_f                 dec_c_fn;

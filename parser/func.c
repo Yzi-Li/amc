@@ -50,6 +50,8 @@ static yz_val *func_ret_get_val(struct symbol *fn, struct expr *expr);
 yz_val *func_call_arg_handle(struct expr *expr, struct symbol *arg)
 {
 	yz_val *result = expr2yz_val(expr);
+	if (result == NULL)
+		return NULL;
 	if ((result->type.type == AMC_SYM || result->type.type == YZ_NULL)
 			&& arg->result_type.type == YZ_PTR) {
 		if (!check_ptr_can_null(result, arg))
@@ -375,7 +377,7 @@ yz_val *func_ret_get_val(struct symbol *fn, struct expr *expr)
 		return NULL;
 	if (result->type.type == AMC_SYM) {
 		if (fn->result_type.type == YZ_PTR)
-			if (!check_ptr_can_ret(result->v, fn))
+			if (!check_ptr_can_ret(result->data.v, fn))
 				goto err_free_result;
 		return result;
 	}
@@ -428,7 +430,6 @@ int parse_func_def(struct parser *parser)
 		.parent = parser->scope,
 		.status = backend_call(scope_begin)(), // TODO: free
 		.status_type = SCOPE_IN_BLOCK,
-		.sym_groups = {}
 	};
 	backend_func_def_handle *handle = NULL;
 	parser->scope = &fn_scope;
@@ -478,7 +479,7 @@ int parse_func_ret(struct parser *parser)
 	struct expr *expr = NULL;
 	i64 orig_column = parser->f->cur_column,
 	    orig_line = parser->f->cur_line;
-	yz_val *val = {};
+	yz_val *val = NULL;
 	if ((expr = parse_expr(parser, 1)) == NULL)
 		return err_print_pos(__func__, "Cannot parse expr!",
 				orig_line, orig_column);

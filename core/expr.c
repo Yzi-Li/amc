@@ -12,9 +12,9 @@ yz_val *expr2yz_val(struct expr *expr)
 		return result;
 	}
 	result = malloc(sizeof(*result));
-	result->v = expr;
+	result->data.v = expr;
 	result->type.type = AMC_EXPR;
-	result->type.v = result->v;
+	result->type.v = result->data.v;
 	return result;
 }
 

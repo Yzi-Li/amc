@@ -24,7 +24,7 @@ err_free_node:
 	return 1;
 }
 
-backend_scope_status *asf_scope_begin()
+backend_scope_status *asf_scope_begin(void)
 {
 	struct asf_scope_status *status = calloc(1, sizeof(*status));
 	status->start_node = cur_obj->sections[ASF_OBJ_TEXT].last;
@@ -46,7 +46,7 @@ int asf_scope_end(backend_scope_status *raw_status)
 			return 1;
 		break;
 	case ASF_SCOPE_STATUS_COND:
-		if (asf_cond_handle_end(&status->cond))
+		if (asf_cond_handle_end(&status->data.cond))
 			return 1;
 		if (scope_end_normal(status))
 			return 1;
@@ -54,7 +54,7 @@ int asf_scope_end(backend_scope_status *raw_status)
 	case ASF_SCOPE_STATUS_LOOP:
 		if (scope_end_normal(status))
 			return 1;
-		if (asf_loop_handle_end(&status->loop))
+		if (asf_loop_handle_end(&status->data.loop))
 			return 1;
 		break;
 	default:

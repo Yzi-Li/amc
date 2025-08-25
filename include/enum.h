@@ -6,12 +6,14 @@
 #include "type.h"
 #include "../utils/cint.h"
 
+union yz_enum_item_data {
+	i64 s;
+	u64 u;
+};
+
 typedef struct yz_enum_item {
+	union yz_enum_item_data data;
 	str name;
-	union {
-		i64 s;
-		u64 u;
-	};
 } yz_enum_item;
 
 typedef struct yz_enum {

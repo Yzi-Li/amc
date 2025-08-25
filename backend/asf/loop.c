@@ -63,7 +63,7 @@ int asf_while_begin(backend_scope_status *raw_status)
 int asf_while_cond(backend_scope_status *raw_status)
 {
 	struct asf_scope_status *status = raw_status;
-	status->loop.cond_end_label = asf_label_get_last();
+	status->data.loop.cond_end_label = asf_label_get_last();
 	return 0;
 }
 

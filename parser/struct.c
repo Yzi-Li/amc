@@ -154,7 +154,7 @@ int struct_def_reg(yz_struct *self, struct scope *scope)
 	if (type == NULL)
 		goto err_defined;
 	type->type = YZ_STRUCT;
-	type->struct_ = self;
+	type->data.struct_ = self;
 	return 0;
 err_defined:
 	printf("amc: struct_def_reg: "
@@ -176,30 +176,30 @@ int struct_get_elem_from_ptr_handle_val(yz_val *val, int index,
 		struct symbol *elem)
 {
 	yz_extract_val *v = malloc(sizeof(*v));
-	v->index = index;
-	v->sym = val->sym;
+	v->data.index = index;
+	v->sym = val->data.sym;
 	v->elem = elem;
 	v->type = YZ_EXTRACT_STRUCT_FROM_PTR;
-	val->v = op_extract_val_expr_create(&elem->result_type, v);
-	if (val->v == NULL)
+	val->data.v = op_extract_val_expr_create(&elem->result_type, v);
+	if (val->data.v == NULL)
 		return 1;
 	val->type.type = AMC_EXPR;
-	val->type.v = val->v;
+	val->type.v = val->data.v;
 	return 0;
 }
 
 int struct_get_elem_handle_val(yz_val *val, int index, struct symbol *elem)
 {
 	yz_extract_val *v = malloc(sizeof(*v));
-	v->index = index;
-	v->sym = val->v;
+	v->data.index = index;
+	v->sym = val->data.v;
 	v->elem = elem;
 	v->type = YZ_EXTRACT_STRUCT;
-	val->v = op_extract_val_expr_create(&elem->result_type, v);
-	if (val->v == NULL)
+	val->data.v = op_extract_val_expr_create(&elem->result_type, v);
+	if (val->data.v == NULL)
 		return 1;
 	val->type.type = AMC_EXPR;
-	val->type.v = val->v;
+	val->type.v = val->data.v;
 	return 0;
 }
 
@@ -293,7 +293,7 @@ err_free_result:
 int struct_get_elem(struct parser *parser, yz_val *val)
 {
 	int ret = 0;
-	struct symbol *sym = val->v;
+	struct symbol *sym = val->data.v;
 	yz_struct *src = sym->result_type.v;
 	str token = TOKEN_NEW;
 	if (struct_get_elem_read_name(parser->f, &token))
@@ -309,7 +309,7 @@ err_print_pos:
 int struct_get_elem_from_ptr(struct parser *parser, yz_val *val)
 {
 	int ret = 0;
-	struct symbol *sym = val->v;
+	struct symbol *sym = val->data.v;
 	yz_struct *src = ((yz_ptr_type*)sym->result_type.v)->ref.v;
 	str token = TOKEN_NEW;
 	if (struct_get_elem_read_name(parser->f, &token))

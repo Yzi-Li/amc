@@ -14,7 +14,7 @@
 
 static const char *src = NULL;
 
-static int err_no_input();
+static int err_no_input(void);
 static int opt_as(int argc, char *argv[], struct option *opt);
 static int opt_as_flags(int argc, char *argv[], struct option *opt);
 static int opt_ld(int argc, char *argv[], struct option *opt);
@@ -23,7 +23,7 @@ static int opt_link(int argc, char *argv[], struct option *opt);
 static int opt_output(int argc, char *argv[], struct option *opt);
 static int opt_read_src(int argc, char *argv[], struct option *opt);
 static int opt_root_mod(int argc, char *argv[], struct option *opt);
-static int print_version();
+static int print_version(void);
 
 static struct option options[] = {
 	{
@@ -93,7 +93,7 @@ static struct option options[] = {
 	}
 };
 
-int err_no_input()
+int err_no_input(void)
 {
 	die("amc: \x1b[31merror\x1b[0m: no input file!\n");
 	return 1;
@@ -146,7 +146,7 @@ int opt_root_mod(int argc, char *argv[], struct option *opt)
 	return 0;
 }
 
-int print_version()
+int print_version(void)
 {
 	die("Atom compiler(Yuan Zi Compiler) v%s\n", AMC_VERSION);
 	return 0;
@@ -154,7 +154,7 @@ int print_version()
 
 int main(int argc, char *argv[])
 {
-	struct file f = {};
+	struct file f;
 	if (getarg(argc, argv, options))
 		return 1;
 	if (backend_init(argc, argv))

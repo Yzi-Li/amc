@@ -115,10 +115,9 @@ void free_object_head(struct object_head *self)
 
 void free_object_section(struct object_section *o)
 {
-	struct object_node *cur, *nex;
-	if (o->head == NULL)
+	struct object_node *cur = o->head, *nex;
+	if (cur == NULL)
 		return;
-	cur = o->head;
 	while (cur != NULL) {
 		nex = cur->next;
 		str_free(cur->s);

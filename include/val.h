@@ -6,28 +6,31 @@
 #include "type.h"
 #include "../utils/cint.h"
 
+union yz_val_data {
+	void *v;
+	char *s;
+	i8 b;
+	i16 w;
+	i32 i;
+	i64 l;
+
+	struct expr *expr;
+	struct symbol *sym;
+};
+
 typedef struct yz_val {
-	union {
-		void *v;
-		char *s;
-		i8 b;
-		i16 w;
-		i32 i;
-		i64 l;
-
-		struct expr *expr;
-		struct symbol *sym;
-	};
-
+	union yz_val_data data;
 	yz_type type;
 } yz_val;
 
+union yz_extract_val_data {
+	int index;
+	yz_val *offset;
+};
+
 typedef struct yz_extract_val {
+	union yz_extract_val_data data;
 	struct symbol *elem, *sym;
-	union {
-		int index;
-		yz_val *offset;
-	};
 	enum {
 		YZ_EXTRACT_ARRAY,
 		YZ_EXTRACT_STRUCT,

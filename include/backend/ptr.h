@@ -7,6 +7,7 @@
 #include "../symbol.h"
 #include "../val.h"
 
-typedef int (*backend_ptr_set_val_f)(struct symbol *ident, yz_val *val, enum OP_ID mode);
+typedef int (*backend_ptr_set_val_f)(struct symbol *ident, yz_val *val,
+		enum OP_ID mode);
 
 #endif

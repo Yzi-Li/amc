@@ -117,7 +117,6 @@ int parse_block(struct parser *parser)
 		.parent = parser->scope,
 		.status = backend_call(scope_begin)(),
 		.status_type = SCOPE_IN_BLOCK,
-		.sym_groups = {}
 	};
 	if (scope_check_is_correct(&cur_scope))
 		return 1;

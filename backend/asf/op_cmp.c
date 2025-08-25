@@ -21,17 +21,16 @@ int cmp_and_jmp(struct expr *e, enum ASF_JMP_TYPE jmp_type)
 {
 	label_id label = -1;
 	struct object_node *node = NULL;
-	struct asf_val src = {},
-	               dest = {
+	struct asf_val src, dest = {
 		.type = ASF_VAL_REG,
-		.reg = ASF_OP_RESULT_REG
+		.data.reg = ASF_OP_RESULT_REG
 	};
 	if ((label = asf_label_alloc()) == -1)
 		goto err_label_alloc_failed;
 	if (asf_op_try_push_prev_expr_result(e, ASF_OP_RESULT_REG)
 			== TRY_RESULT_FAULT)
 		return 1;
-	if (asf_op_store_val(e->vall, &dest.reg))
+	if (asf_op_store_val(e->vall, &dest.data.reg))
 		return 1;
 	if (asf_val_get(e->valr, &src))
 		goto err_unsupport_type;
@@ -65,9 +64,9 @@ str *cmp_imm_with_mem_or_reg(struct asf_imm *src, struct asf_val *dest)
 	if ((tmp = asf_op_get_dest(&bytes, dest)) == NULL)
 		return NULL;
 	s = str_new();
-	str_expand(s, strlen(temp) - 6 + ullen(src->iq) + tmp->len);
+	str_expand(s, strlen(temp) - 7 + ullen(src->data.iq) + tmp->len);
 	snprintf(s->s, s->len, temp, asf_suffix_get(bytes),
-			src->iq,
+			src->data.iq,
 			tmp->s);
 	str_free(tmp);
 	return s;
@@ -160,13 +159,13 @@ str *asf_inst_cmp(struct asf_val *src, struct asf_val *dest)
 {
 	switch (src->type) {
 	case ASF_VAL_IMM:
-		return cmp_imm_with_mem_or_reg(&src->imm, dest);
+		return cmp_imm_with_mem_or_reg(&src->data.imm, dest);
 		break;
 	case ASF_VAL_MEM:
-		return cmp_mem_with_reg(&src->mem, dest->reg);
+		return cmp_mem_with_reg(&src->data.mem, dest->data.reg);
 		break;
 	case ASF_VAL_REG:
-		return cmp_reg_with_mem_or_reg(src->reg, dest);
+		return cmp_reg_with_mem_or_reg(src->data.reg, dest);
 		break;
 	default: break;
 	}

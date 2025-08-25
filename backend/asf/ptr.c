@@ -43,7 +43,7 @@ ptr_set_val_get_addr(struct symbol *ident, enum ASF_REGS *addr)
 enum GET_ADDR_RESULT
 ptr_set_val_get_addr_mem(struct symbol *ident, enum ASF_REGS addr)
 {
-	struct asf_mem mem = {};
+	struct asf_mem mem;
 	struct object_node *node;
 	str *tmp = NULL;
 	int reg_pushed = 0;
@@ -119,7 +119,7 @@ int asf_ptr_set_val(struct symbol *ident, yz_val *val, enum OP_ID mode)
 	};
 	enum GET_ADDR_RESULT get_addr_result = GET_ADDR_FAULT;
 	struct object_node *node = NULL;
-	struct asf_val v = {};
+	struct asf_val v;
 	if (asf_val_get(val, &v))
 		goto err_unsupport_type;
 	if (ident->result_type.type != YZ_PTR)
@@ -130,18 +130,21 @@ int asf_ptr_set_val(struct symbol *ident, yz_val *val, enum OP_ID mode)
 	node = malloc(sizeof(*node));
 	switch (v.type) {
 	case ASF_VAL_IMM:
-		dest.bytes = v.imm.type;
-		if ((node->s = ptr_set_val_imm(&dest, mode, &v.imm)) == NULL)
+		dest.bytes = v.data.imm.type;
+		node->s = ptr_set_val_imm(&dest, mode, &v.data.imm);
+		if (node->s == NULL)
 			goto err_free_node;
 		break;
 	case ASF_VAL_MEM:
-		dest.bytes = v.mem.bytes;
-		if ((node->s = ptr_set_val_mem(&dest, mode, &v.mem)) == NULL)
+		dest.bytes = v.data.mem.bytes;
+		node->s = ptr_set_val_mem(&dest, mode, &v.data.mem);
+		if (node->s == NULL)
 			goto err_free_node;
 		break;
 	case ASF_VAL_REG:
-		dest.bytes = asf_regs[v.reg].bytes;
-		if ((node->s = ptr_set_val_reg(&dest, mode, v.reg)) == NULL)
+		dest.bytes = asf_regs[v.data.reg].bytes;
+		node->s = ptr_set_val_reg(&dest, mode, v.data.reg);
+		if (node->s == NULL)
 			goto err_free_node;
 		break;
 	default: goto err_unsupport_type; break;

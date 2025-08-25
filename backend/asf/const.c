@@ -9,9 +9,9 @@
 static int const_count = -1;
 static const char *const_label = ".LC%d:\n";
 
-static int const_label_new();
+static int const_label_new(void);
 
-int const_label_new()
+int const_label_new(void)
 {
 	struct object_node *node = malloc(sizeof(*node));
 	node->s = str_new();
@@ -43,7 +43,7 @@ int asf_const_def_str(backend_const *self, str *s)
 	if (object_append(&cur_obj->sections[ASF_OBJ_RODATA], node))
 		goto err_free_node_and_str;
 	self->val.type.type = YZ_I32;
-	self->val.i = const_count;
+	self->val.data.i = const_count;
 	return 0;
 err_free_node_and_str:
 	str_free(node->s);

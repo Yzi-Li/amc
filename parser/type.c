@@ -98,11 +98,11 @@ int parse_type_user(yz_user_type *type, yz_type *result)
 	switch (type->type) {
 	case YZ_STRUCT:
 		result->type = YZ_STRUCT;
-		result->v = type->struct_;
+		result->v = type->data.struct_;
 		break;
 	case YZ_ENUM:
 		result->type = YZ_ENUM;
-		result->v = type->enum_;
+		result->v = type->data.enum_;
 		break;
 	default: goto err_unsupport; break;
 	}

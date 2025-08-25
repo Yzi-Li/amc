@@ -32,6 +32,7 @@ static struct symbol keywords[] = {
 	KW_DEF("fn",     2, parse_func_def, !KW_REC,  KW_TOPLEVEL, !KW_IN_BLOCK),
 	KW_DEF("if",     2, parse_if,        KW_REC, !KW_TOPLEVEL,  KW_IN_BLOCK),
 	KW_DEF("let",    3, parse_let,      !KW_REC,  KW_TOPLEVEL,  KW_IN_BLOCK),
+	KW_DEF("match",  5, parse_match,     KW_REC, !KW_TOPLEVEL,  KW_IN_BLOCK),
 	KW_DEF("mod",    3, parse_mod,      !KW_REC,  KW_TOPLEVEL, !KW_IN_BLOCK),
 	KW_DEF("pub",    3, parse_pub,      !KW_REC,  KW_TOPLEVEL, !KW_IN_BLOCK),
 	KW_DEF("ret",    3, parse_func_ret, !KW_REC, !KW_TOPLEVEL,  KW_IN_BLOCK),

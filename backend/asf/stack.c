@@ -16,7 +16,7 @@ static unsigned int asf_stack_addr = 0;
 struct asf_stack_element *asf_stack_top = NULL;
 
 static int stack_element_append(enum ASF_BYTES bytes);
-static void stack_element_remove();
+static void stack_element_remove(void);
 
 int stack_element_append(enum ASF_BYTES bytes)
 {
@@ -50,7 +50,7 @@ int stack_element_append(enum ASF_BYTES bytes)
 	return 0;
 }
 
-void stack_element_remove()
+void stack_element_remove(void)
 {
 	if (asf_stack_top == NULL)
 		return;
@@ -62,7 +62,7 @@ void stack_element_remove()
 
 str *asf_inst_pop(enum ASF_REGS dest)
 {
-	struct asf_mem mem = {};
+	struct asf_mem mem;
 	str *s = NULL;
 	s = asf_inst_mov_m2r(asf_stack_element2mem(asf_stack_top, &mem), dest);
 	stack_element_remove();
@@ -71,17 +71,17 @@ str *asf_inst_pop(enum ASF_REGS dest)
 
 str *asf_inst_push(yz_val *val)
 {
-	struct asf_val v = {};
+	struct asf_val v;
 	if (asf_val_get(val, &v))
 		goto err_unsupport_type;
 	if (v.type == ASF_VAL_CONST) {
-		return asf_inst_push_const(v.const_id);
+		return asf_inst_push_const(v.data.const_id);
 	} else if (v.type == ASF_VAL_IMM) {
-		return asf_inst_push_imm(&v.imm);
+		return asf_inst_push_imm(&v.data.imm);
 	} else if (v.type == ASF_VAL_MEM) {
-		return asf_inst_push_mem(&v.mem);
+		return asf_inst_push_mem(&v.data.mem);
 	} else if (v.type == ASF_VAL_REG) {
-		return asf_inst_push_reg(v.reg);
+		return asf_inst_push_reg(v.data.reg);
 	}
 err_unsupport_type:
 	printf("amc[backend.asf]: asf_inst_push: Unsupport type: '%s'!\n",
@@ -91,7 +91,7 @@ err_unsupport_type:
 
 str *asf_inst_push_const(int src)
 {
-	struct asf_mem mem = {};
+	struct asf_mem mem;
 	if (stack_element_append(ASF_BYTES_U64))
 		return NULL;
 	asf_stack_element2mem(asf_stack_top, &mem);
@@ -100,7 +100,7 @@ str *asf_inst_push_const(int src)
 
 str *asf_inst_push_imm(struct asf_imm *src)
 {
-	struct asf_mem mem = {};
+	struct asf_mem mem;
 	if (stack_element_append(src->type))
 		return NULL;
 	asf_stack_element2mem(asf_stack_top, &mem);
@@ -109,7 +109,7 @@ str *asf_inst_push_imm(struct asf_imm *src)
 
 str *asf_inst_push_mem(struct asf_mem *src)
 {
-	struct asf_mem right_operand = {};
+	struct asf_mem right_operand;
 	if (stack_element_append(src->bytes))
 		return NULL;
 	asf_stack_element2mem(asf_stack_top, &right_operand);
@@ -118,7 +118,7 @@ str *asf_inst_push_mem(struct asf_mem *src)
 
 str *asf_inst_push_reg(enum ASF_REGS src)
 {
-	struct asf_mem mem = {};
+	struct asf_mem mem;
 	if (stack_element_append(asf_regs[src].bytes))
 		return NULL;
 	*asf_regs[src].purpose = ASF_REG_PURPOSE_NULL;
