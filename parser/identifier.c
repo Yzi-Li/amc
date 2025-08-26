@@ -1,15 +1,10 @@
 /* This file is part of amc.
    SPDX-License-Identifier: GPL-3.0-or-later
 */
-#include "include/array.h"
 #include "include/block.h"
-#include "include/enum.h"
 #include "include/expr.h"
 #include "include/identifier.h"
 #include "include/indent.h"
-#include "include/struct.h"
-#include "include/symbol.h"
-#include "include/token.h"
 #include "include/utils.h"
 #include "../include/backend.h"
 #include "../include/checker/ptr.h"
@@ -22,11 +17,9 @@
 #include "../include/token.h"
 #include "../utils/str/str.h"
 #include <stdio.h>
-#include <stdlib.h>
 
 static int identifier_assign_backend_call(struct symbol *sym, yz_val *val,
 		enum OP_ID mode);
-static int identifier_read_enum(struct parser *parser, yz_val *val, str *name);
 static enum TRY_RESULT identifier_try_handle_null(struct parser *parser,
 		struct symbol *ident, yz_val *val);
 
@@ -47,32 +40,6 @@ int identifier_assign_backend_call(struct symbol *sym, yz_val *val,
 err_unsupport_op:
 	printf("amc: identifier_assign_backend_call: "
 			"Unsupport operator for immutable identifier!\n");
-	return 1;
-}
-
-int identifier_read_enum(struct parser *parser, yz_val *val, str *name)
-{
-	char *err_msg;
-	yz_enum_item *item = NULL;
-	yz_enum *src = yz_enum_find(name, parser->scope);
-	str token = TOKEN_NEW;
-	if (src == NULL)
-		goto err_enum_not_found;
-	file_pos_next(parser->f);
-	if (symbol_read(&token, parser->f))
-		return 1;
-	if ((item = yz_enum_item_find(&token, src)) == NULL)
-		return 1;
-	val->type.type = YZ_ENUM_ITEM;
-	val->type.v = src;
-	val->data.l = item->data.u;
-	return 0;
-err_enum_not_found:
-	err_msg = str2chr(name->s, name->len);
-	printf("amc: identifier_read_enum: %lld,%lld: Enum: '%s' not found!\n",
-			parser->f->cur_line, parser->f->cur_column,
-			err_msg);
-	free(err_msg);
 	return 1;
 }
 
@@ -230,52 +197,4 @@ int identifier_handle_val_type(yz_type *src, yz_type *dest)
 	src->type = dest->type;
 	src->v = dest->v;
 	return 0;
-}
-
-int identifier_read(struct parser *parser, yz_val *val)
-{
-	char *err_msg;
-	struct symbol *sym = NULL;
-	str token = TOKEN_NEW;
-	if (token_read_before(SPECIAL_TOKEN_END, &token, parser->f) == NULL)
-		return 1;
-	if (!symbol_find(&token, &sym, parser->scope, SYMG_SYM)) {
-		if (parser->f->src[parser->f->pos] != '.')
-			goto err_identifier_not_found;
-		return identifier_read_enum(parser, val, &token);
-	}
-	val->data.v = sym;
-	val->type.type = AMC_SYM;
-	val->type.v = val->data.v;
-	if (parser->f->src[parser->f->pos] == '[')
-		return array_get_elem(parser, val);
-	if (parser->f->src[parser->f->pos] == '.') {
-		if (sym->result_type.type == YZ_PTR
-				&& ((yz_ptr_type*)sym->result_type.v)
-				->ref.type == YZ_STRUCT)
-			return struct_get_elem_from_ptr(parser, val);
-		if (sym->result_type.type != YZ_STRUCT)
-			goto err_syntax_err;
-		return struct_get_elem(parser, val);
-	}
-	file_skip_space(parser->f);
-	return 0;
-err_identifier_not_found:
-	err_msg = str2chr(token.s, token.len);
-	printf("amc: identifier_read: %lld,%lld: "
-			"Identifier: '%s' not found!\n",
-			parser->f->cur_line, parser->f->cur_column,
-			err_msg);
-	free(err_msg);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
-err_syntax_err:
-	err_msg = str2chr(token.s, token.len);
-	printf("amc: identifier_read: %lld,%lld: "
-			"Identifier: '%s' not struct!\n",
-			parser->f->cur_line, parser->f->cur_column,
-			err_msg);
-	free(err_msg);
-	backend_stop(BE_STOP_SIGNAL_ERR);
-	return 1;
 }

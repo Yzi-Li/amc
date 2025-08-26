@@ -2,11 +2,10 @@
    SPDX-License-Identifier: GPL-3.0-or-later
 */
 #include "include/expr.h"
-#include "include/func.h"
-#include "include/identifier.h"
 #include "include/keywords.h"
 #include "include/null.h"
 #include "include/op.h"
+#include "include/symbol.h"
 #include "include/token.h"
 #include "../include/array.h"
 #include "../include/backend.h"
@@ -74,7 +73,6 @@ static int expr_sub_append(struct expr **prev, struct expr *cur);
 static int expr_term(struct parser *parser, int top, yz_val *v);
 static int expr_term_chr(struct parser *parser, int top, yz_val *v);
 static int expr_term_expr(struct parser *parser, int top, yz_val *v);
-static int expr_term_func(struct parser *parser, int top, yz_val *v);
 static int expr_term_identifier(struct parser *parser, int top, yz_val *v);
 static int expr_term_int(struct parser *parser, int top, yz_val *v);
 static int expr_term_null(struct parser *parser, int top, yz_val *v);
@@ -100,6 +98,8 @@ int expr_binary(struct parser *parser, int top, struct expr *e)
 	if ((ret = expr_binary_read_op(parser, top, e)) != EXPR_HANDLED) {
 		if (ret == EXPR_TERM_END)
 			return expr_single_term(e);
+		if (ret == EXPR_FAULT)
+			return EXPR_FAULT;
 		return EXPR_END;
 	}
 	if ((ret = expr_term(parser, top, e->valr)) == EXPR_FAULT)
@@ -150,6 +150,8 @@ int expr_check_end(struct file *f)
 
 int expr_check_end_special(struct file *f, int top)
 {
+	if (f->src[f->pos] == '\0')
+		return EXPR_TERM_END;
 	if (top)
 		return expr_check_end_top(f, NULL);
 	return expr_check_end(f);
@@ -319,8 +321,6 @@ int expr_term(struct parser *parser, int top, yz_val *v)
 		return expr_term_chr(parser, top, v);
 	} else if (parser->f->src[parser->f->pos] == '(') {
 		return expr_term_expr(parser, top, v);
-	} else if (parser->f->src[parser->f->pos] == '[') {
-		return expr_term_func(parser, top, v);
 	} else if (parser->f->src[parser->f->pos] == '"') {
 		return expr_term_str(parser, top, v);
 	} else if ((unary = expr_unary_get_op(parser->f->src[parser->f->pos]))
@@ -377,22 +377,9 @@ err_cannot_parse_expr:
 	return EXPR_FAULT;
 }
 
-int expr_term_func(struct parser *parser, int top, yz_val *v)
-{
-	struct symbol *callee = NULL;
-	if (func_call_read(parser, &callee))
-		return EXPR_FAULT;
-	v->data.v = callee;
-	v->type.type = AMC_SYM;
-	v->type.v = v->data.v;
-	if (expr_check_end_special(parser->f, top))
-		return EXPR_TERM_END;
-	return EXPR_HANDLED;
-}
-
 int expr_term_identifier(struct parser *parser, int top, yz_val *v)
 {
-	if (identifier_read(parser, v) > 1)
+	if (symbol_read(parser, v) > 0)
 		return EXPR_FAULT;
 	if (expr_check_end_special(parser->f, top))
 		return EXPR_TERM_END;

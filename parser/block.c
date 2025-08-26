@@ -3,7 +3,6 @@
 */
 #include "include/block.h"
 #include "include/expr.h"
-#include "include/func.h"
 #include "include/indent.h"
 #include "include/keywords.h"
 #include "include/utils.h"
@@ -17,7 +16,6 @@
 
 static int block_parse_direct(struct parser *parser);
 static int block_parse_expr(struct parser *parser);
-static int block_parse_func(struct parser *parser);
 static int block_parse_keyword(struct parser *parser);
 static int block_parse_line(struct parser *parser);
 
@@ -28,8 +26,6 @@ int block_parse_direct(struct parser *parser)
 		return 0;
 	if (parser->f->src[parser->f->pos] == '(')
 		return block_parse_expr(parser);
-	if (parser->f->src[parser->f->pos] == '[')
-		return block_parse_func(parser);
 	if ((ret = block_parse_keyword(parser)) == 0)
 		return 0;
 	if (ret > 0)
@@ -49,14 +45,6 @@ int block_parse_expr(struct parser *parser)
 	free_expr(expr);
 	file_pos_next(parser->f);
 	return 0;
-}
-
-int block_parse_func(struct parser *parser)
-{
-	if (func_call_read(parser, NULL))
-		return 1;
-	file_skip_space(parser->f);
-	return keyword_end(parser->f);
 }
 
 int block_parse_keyword(struct parser *parser)

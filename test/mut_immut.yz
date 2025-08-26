@@ -5,5 +5,5 @@ pub fn main: i32 =>
 	; let a: i32 = 1
 	let mut a: i32 = 1
 	; throw err when 'a' is immutable.
-	a -= [func 1] + 1
+	a -= (func 1) + 1
 	ret a

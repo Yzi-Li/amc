@@ -3,8 +3,9 @@
 */
 #ifndef AMC_PARSER_FUNC_H
 #define AMC_PARSER_FUNC_H
-#include "../../include/symbol.h"
+#include "../../include/parser.h"
+#include "../../include/val.h"
 
-int func_call_read(struct parser *parser, struct symbol **fn);
+int func_call_read(struct parser *parser, yz_val *val, struct symbol *fn);
 
 #endif

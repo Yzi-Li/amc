@@ -50,7 +50,7 @@ int enum_def_read_item(yz_enum *self, struct file *f)
 {
 	yz_enum_item *item = calloc(1, sizeof(*item));
 	str token = TOKEN_NEW;
-	if (symbol_read(&token, f))
+	if (symbol_read_name(&token, f))
 		return 1;
 	str_copy(&token, &item->name);
 	item->data.u = self->count;
@@ -102,6 +102,32 @@ int enum_def_single_line(yz_enum *self, struct parser *parser)
 			return 1;
 	}
 	return 0;
+}
+
+int enum_read(struct parser *parser, yz_val *val, str *name)
+{
+	char *err_msg;
+	yz_enum_item *item = NULL;
+	yz_enum *src = yz_enum_find(name, parser->scope);
+	str token = TOKEN_NEW;
+	if (src == NULL)
+		goto err_enum_not_found;
+	file_pos_next(parser->f);
+	if (symbol_read_name(&token, parser->f))
+		return 1;
+	if ((item = yz_enum_item_find(&token, src)) == NULL)
+		return 1;
+	val->type.type = YZ_ENUM_ITEM;
+	val->type.v = src;
+	val->data.l = item->data.u;
+	return 0;
+err_enum_not_found:
+	err_msg = str2chr(name->s, name->len);
+	printf("amc: identifier_read_enum: %lld,%lld: Enum: '%s' not found!\n",
+			parser->f->cur_line, parser->f->cur_column,
+			err_msg);
+	free(err_msg);
+	return 1;
 }
 
 yz_enum *yz_enum_find(str *s, struct scope *scope)

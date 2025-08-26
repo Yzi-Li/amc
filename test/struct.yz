@@ -5,7 +5,7 @@ struct Str =>
 	mut siz: i32
 	mut s: *i32
 
-fn a(s: *mut Str): i32 =>
+fn func(s: *mut Str): i32 =>
 	let a: i32 = s.siz
 	s.siz = 1
 	ret a
@@ -17,6 +17,6 @@ pub fn main: i32 =>
 	test.siz += 1
 	test.s = &test.siz
 	let b: *i32 = &a
-	; let c: i32 = [a &test]
+	; let c: i32 = func &test
 	let c: i32 = test_.siz
 	ret c

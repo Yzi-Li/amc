@@ -17,6 +17,5 @@ int identifier_check_can_assign_val(struct parser *parser,
 int identifier_check_mut(struct file *f);
 yz_val *identifier_handle_expr_val(struct expr *e, yz_type *type);
 int identifier_handle_val_type(yz_type *src, yz_type *dest);
-int identifier_read(struct parser *parser, yz_val *val);
 
 #endif

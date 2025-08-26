@@ -87,7 +87,7 @@ err_type_null:
 int parse_type_name_pair(struct parser *parser, str *name, yz_type *type)
 {
 	str token = TOKEN_NEW;
-	if (symbol_read(&token, parser->f))
+	if (symbol_read_name(&token, parser->f))
 		return 1;
 	str_copy(&token, name);
 	return type_pair_parse_type(parser, type);
