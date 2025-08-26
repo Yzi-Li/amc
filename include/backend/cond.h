@@ -3,6 +3,7 @@
 */
 #ifndef AMC_BE_COND_H
 #define AMC_BE_COND_H
+#include "../match.h"
 #include "../val.h"
 
 typedef void backend_cond_if_handle;
@@ -16,7 +17,8 @@ typedef int (*backend_cond_if_cond_f)(backend_cond_if_handle *handle);
 typedef int (*backend_cond_if_end_f)(backend_cond_if_handle *handle);
 typedef void (*backend_cond_if_free_handle_f)(backend_cond_if_handle *handle);
 
-typedef backend_cond_match_handle *(*backend_cond_match_begin_f)(yz_val *val);
+typedef backend_cond_match_handle *(*backend_cond_match_begin_f)(
+		enum MATCH_MODE mode);
 typedef int (*backend_cond_match_case_f)(backend_cond_match_handle *handle,
 		yz_val *val);
 typedef int (*backend_cond_match_case_end_f)(

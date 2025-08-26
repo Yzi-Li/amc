@@ -8,6 +8,7 @@
 #include "include/utils.h"
 #include "../include/backend.h"
 #include "../include/enum.h"
+#include "../include/match.h"
 #include "../include/parser.h"
 #include "../utils/utils.h"
 #include <stdio.h>
@@ -16,11 +17,6 @@ enum MATCH_RESULT {
 	MATCH_RESULT_HANDLED,
 	MATCH_RESULT_END,
 	MATCH_RESULT_FAULT
-};
-
-enum MATCH_MODE {
-	MATCH_MODE_FAULT = -1,
-	MATCH_MODE_ENUM
 };
 
 struct match_context_enum {
@@ -48,6 +44,7 @@ static int match_handle_case_context(struct match_context *context,
 static int match_handle_case_enum(struct match_context *context, yz_val *val);
 static int match_handle_context(struct match_context *context, yz_val *val);
 static int match_handle_enum_mode(struct match_context *context, yz_val *val);
+static int match_parse_body(struct match_context *context, yz_val *val);
 static enum MATCH_RESULT match_parse_case(struct match_context *context);
 static yz_val *match_parse_case_cond(struct parser *parser);
 static yz_val *match_parse_condition(struct parser *parser);
@@ -55,6 +52,7 @@ static yz_val *match_parse_condition(struct parser *parser);
 int match_end(struct match_context *context)
 {
 	switch (context->mode) {
+	case MATCH_MODE_COND: return 0; break;
 	case MATCH_MODE_ENUM:
 		return match_end_enum_mode(context);
 		break;
@@ -91,6 +89,7 @@ enum MATCH_MODE match_get_mode(yz_val *val)
 int match_handle_case_context(struct match_context *context, yz_val *val)
 {
 	switch (context->mode) {
+	case MATCH_MODE_COND: return 0; break;
 	case MATCH_MODE_ENUM:
 		return match_handle_case_enum(context, val);
 		break;
@@ -128,6 +127,7 @@ int match_handle_context(struct match_context *context, yz_val *val)
 	if ((context->mode = match_get_mode(val)) == MATCH_MODE_FAULT)
 		return 1;
 	switch (context->mode) {
+	case MATCH_MODE_COND: return 0; break;
 	case MATCH_MODE_ENUM:
 		return match_handle_enum_mode(context, val);
 		break;
@@ -145,6 +145,28 @@ int match_handle_enum_mode(struct match_context *context, yz_val *val)
 	context->data.e.enum_count = 0;
 	context->data.e.self = val->data.sym->result_type.v;
 	return 0;
+}
+
+int match_parse_body(struct match_context *context, yz_val *val)
+{
+	enum MATCH_RESULT ret = 0;
+	context->handle = backend_call(cond_match_begin)(context->mode);
+	if (context->handle == NULL)
+		return 1;
+	free_yz_val(val);
+	while ((ret = match_parse_case(context))
+			!= MATCH_RESULT_END) {
+		if (ret == MATCH_RESULT_FAULT)
+			goto err_free_handle;
+	}
+	if (match_end(context))
+		goto err_free_handle;
+	if (backend_call(cond_match_end)(context->handle))
+		return 1;
+	return 0;
+err_free_handle:
+	backend_call(cond_match_free_handle)(context->handle);
+	return 1;
 }
 
 enum MATCH_RESULT
@@ -192,12 +214,12 @@ yz_val *match_parse_case_cond(struct parser *parser)
 		goto err_free_expr;
 	return val;
 err_cannot_parse_expr:
-	printf("|< amc: %s: %lld,%lld: Cannot parse expression!\n",
+	printf("| %s: %lld,%lld: Cannot parse expression!\n",
 			__func__, orig_line, orig_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return NULL;
 err_cannot_apply_expr:
-	printf("|< amc: %s: %lld,%lld: Cannot apply expression!\n",
+	printf("| %s: %lld,%lld: Cannot apply expression!\n",
 			__func__, orig_line, orig_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 err_free_expr:
@@ -214,53 +236,45 @@ yz_val *match_parse_condition(struct parser *parser)
 		goto err_cannot_parse_expr;
 	if (expr_apply(parser, expr) > 0)
 		goto err_cannot_apply_expr;
+	if (try_next_line(parser->f) != TRY_RESULT_HANDLED)
+		goto err_no_nl;
 	return expr2yz_val(expr);
 err_cannot_parse_expr:
-	printf("|< amc: %s: %lld,%lld: Cannot parse expression!\n",
+	printf("| %s: %lld,%lld: Cannot parse expression!\n",
 			__func__, orig_line, orig_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
 	return NULL;
 err_cannot_apply_expr:
-	printf("|< amc: %s: %lld,%lld: Cannot apply expression!\n",
+	printf("| %s: %lld,%lld: Cannot apply expression!\n",
 			__func__, orig_line, orig_column);
 	backend_stop(BE_STOP_SIGNAL_ERR);
+	return NULL;
+err_no_nl:
+	free_expr(expr);
+	printf("amc: %s: %lld,%lld: Missing line break character.\n",
+			__func__, parser->f->cur_line, parser->f->cur_column);
 	return NULL;
 }
 
 int parse_match(struct parser *parser)
 {
-	enum MATCH_RESULT ret = 0;
 	yz_val *val = NULL;
 	struct match_context context = {
 		.data.v = NULL,
 		.parser = parser
 	};
+	if (try_next_line(parser->f) == TRY_RESULT_HANDLED) {
+		context.mode = MATCH_MODE_COND;
+		return match_parse_body(&context, NULL);
+	}
 	if ((val = match_parse_condition(context.parser)) == NULL)
 		return 1;
 	if (match_handle_context(&context, val))
 		goto err_free_val;
-	if (try_next_line(parser->f) != TRY_RESULT_HANDLED)
-		goto err_no_nl;
-	if ((context.handle = backend_call(cond_match_begin)(val)) == NULL)
+	if (match_parse_body(&context, val))
 		goto err_free_val;
-	free_yz_val(val);
-	while ((ret = match_parse_case(&context))
-			!= MATCH_RESULT_END) {
-		if (ret == MATCH_RESULT_FAULT)
-			goto err_free_handle;
-	}
-	if (match_end(&context))
-		goto err_free_handle;
-	if (backend_call(cond_match_end)(context.handle))
-		return 1;
 	return 0;
-err_no_nl:
-	printf("amc: %s: %lld,%lld: Missing line break character.\n",
-			__func__, parser->f->cur_line, parser->f->cur_column);
 err_free_val:
 	free_yz_val(val);
-	return 1;
-err_free_handle:
-	backend_call(cond_match_free_handle)(context.handle);
 	return 1;
 }

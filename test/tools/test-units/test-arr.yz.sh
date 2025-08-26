@@ -5,6 +5,9 @@ bin="$2"
 
 $bin
 
-if [ $? -ne 0 ]; then
+ret=$?
+echo $ret
+
+if [ $ret -ne 0 ]; then
 	exit 1
 fi

@@ -32,7 +32,7 @@ int asf_cond_if_cond(backend_cond_if_handle *handle);
 int asf_cond_if_end(backend_cond_if_handle *handle);
 void asf_cond_if_free_handle(backend_cond_if_handle *handle);
 
-backend_cond_match_handle *asf_cond_match_begin(yz_val *val);
+backend_cond_match_handle *asf_cond_match_begin(enum MATCH_MODE mode);
 int asf_cond_match_case(backend_cond_match_handle *handle, yz_val *val);
 int asf_cond_match_case_end(backend_cond_match_handle *handle);
 int asf_cond_match_end(backend_cond_match_handle *handle);

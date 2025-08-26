@@ -7,8 +7,8 @@
 
 typedef int label_id;
 
-label_id asf_label_alloc();
-label_id asf_label_get_last();
+label_id asf_label_alloc(void);
+label_id asf_label_get_last(void);
 str *asf_label_get_str(label_id id);
 
 #endif

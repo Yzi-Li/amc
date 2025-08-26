@@ -6,7 +6,7 @@ bin="$2"
 $bin
 
 ret=$?
-echo $?
+echo $ret
 
 if [ $ret -ne 0 ]; then
 	exit 1

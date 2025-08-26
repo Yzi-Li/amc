@@ -17,13 +17,13 @@ int label_is_exists(label_id id)
 	return 1;
 }
 
-label_id asf_label_alloc()
+label_id asf_label_alloc(void)
 {
 	label_id_top += 1;
 	return label_id_top;
 }
 
-label_id asf_label_get_last()
+label_id asf_label_get_last(void)
 {
 	return label_id_top;
 }

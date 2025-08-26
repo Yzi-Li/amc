@@ -55,6 +55,12 @@ char *token_read_before(const char *s, str *token, struct file *f);
  */
 int token_read_region(char *se, str *region, struct file *f);
 
+/**
+ * Try read token. If not expect then return 0.
+ * @return:
+ *   0: not expect.
+ *   1: readed with expect.
+ */
 int token_try_read(str *expect, struct file *f);
 
 #endif

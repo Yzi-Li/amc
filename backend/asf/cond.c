@@ -16,6 +16,11 @@ struct cond_handle {
 	label_id exit_label;
 };
 
+struct match_handle {
+	struct cond_handle c;
+	enum MATCH_MODE mode;
+};
+
 static int cond_append_branch(struct cond_handle *handle,
 		struct object_node *node);
 static int cond_append_exit_label(label_id label);
@@ -23,7 +28,12 @@ static int cond_append_jmp_exit(struct object_node *branch, str *jmp);
 static int cond_end_branches(struct cond_handle *handle, label_id label);
 static str *cond_get_jmp_exit(label_id label);
 
+static int match_case_cond(struct match_handle *handle, yz_val *val);
+static int match_case_enum(struct match_handle *handle, yz_val *val);
+
 static void free_cond_handle(struct cond_handle *handle);
+static void free_cond_handle_noself(struct cond_handle *handle);
+static void free_match_handle(struct match_handle *handle);
 
 int cond_append_branch(struct cond_handle *handle,
 		struct object_node *node)
@@ -94,14 +104,62 @@ err_inst_failed:
 	return NULL;
 }
 
+int match_case_cond(struct match_handle *handle, yz_val *val)
+{
+	handle->c.exit_label = asf_label_get_last();
+	return 0;
+}
+
+int match_case_enum(struct match_handle *handle, yz_val *val)
+{
+	str *jmp, *label;
+	struct object_node *node;
+	struct asf_val src, dest = {
+		.data.reg = ASF_OP_RESULT_REG,
+		.type = ASF_VAL_REG
+	};
+	if (handle == NULL)
+		return 1;
+	if (asf_val_get(val, &src))
+		return 1;
+	dest.data.reg += asf_reg_get(asf_yz_type2bytes(&val->type));
+	node = malloc(sizeof(*node));
+	if ((node->s = asf_inst_cmp(&src, &dest)) == NULL)
+		goto err_free_node;
+	handle->c.exit_label = asf_label_alloc();
+	label = asf_label_get_str(handle->c.exit_label);
+	jmp = asf_inst_jmp(ASF_JMP_NE, label->s, label->len);
+	str_free(label);
+	str_append(node->s, jmp->len, jmp->s);
+	str_free(jmp);
+	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
+		goto err_free_node_and_str;
+	return 0;
+err_free_node_and_str:
+	str_free(node->s);
+err_free_node:
+	free(node);
+	return 1;
+}
+
 void free_cond_handle(struct cond_handle *handle)
 {
-	struct cond_handle *c = handle;
+	free_cond_handle_noself(handle);
+	free(handle);
+}
+
+void free_cond_handle_noself(struct cond_handle *handle)
+{
 	if (handle == NULL)
 		return;
-	if (c->branch)
-		free(c->branch);
-	free(c);
+	if (handle->branch)
+		free(handle->branch);
+}
+
+void free_match_handle(struct match_handle *handle)
+{
+	free_cond_handle_noself(&handle->c);
+	free(handle);
 }
 
 int asf_cond_elif(backend_cond_if_handle *handle)
@@ -167,66 +225,53 @@ void asf_cond_if_free_handle(backend_cond_if_handle *handle)
 	free_cond_handle(handle);
 }
 
-backend_cond_match_handle *asf_cond_match_begin(yz_val *val)
+backend_cond_match_handle *asf_cond_match_begin(enum MATCH_MODE mode)
 {
-	struct cond_handle *result = calloc(1, sizeof(*result));
+	struct match_handle *result = calloc(1, sizeof(*result));
+	result->mode = mode;
 	return result;
 }
 
 int asf_cond_match_case(backend_cond_match_handle *handle, yz_val *val)
 {
-	struct cond_handle *c = handle;
-	str *jmp, *label;
-	struct object_node *node;
-	struct asf_val src, dest = {
-		.data.reg = ASF_OP_RESULT_REG,
-		.type = ASF_VAL_REG
-	};
-	if (c == NULL)
+	struct match_handle *m = handle;
+	if (m == NULL)
 		return 1;
-	if (asf_val_get(val, &src))
+	switch(m->mode) {
+	case MATCH_MODE_COND:
+		return match_case_cond(m, val);
+		break;
+	case MATCH_MODE_ENUM:
+		return match_case_enum(m, val);
+		break;
+	default:
 		return 1;
-	dest.data.reg += asf_reg_get(asf_yz_type2bytes(&val->type));
-	node = malloc(sizeof(*node));
-	if ((node->s = asf_inst_cmp(&src, &dest)) == NULL)
-		goto err_free_node;
-	c->exit_label = asf_label_alloc();
-	label = asf_label_get_str(c->exit_label);
-	jmp = asf_inst_jmp(ASF_JMP_NE, label->s, label->len);
-	str_free(label);
-	str_append(node->s, jmp->len, jmp->s);
-	str_free(jmp);
-	if (object_append(&cur_obj->sections[ASF_OBJ_TEXT], node))
-		goto err_free_node_and_str;
-	return 0;
-err_free_node_and_str:
-	str_free(node->s);
-err_free_node:
-	free(node);
-	return 1;
+		break;
+	}
 }
 
 int asf_cond_match_case_end(backend_cond_match_handle *handle)
 {
-	struct cond_handle *c = handle;
-	if (c == NULL)
+	struct match_handle *m = handle;
+	if (m == NULL)
 		return 1;
-	if (cond_append_exit_label(c->exit_label))
+	if (cond_append_exit_label(m->c.exit_label))
 		return 1;
-	if (cond_append_branch(handle, cur_obj->sections[ASF_OBJ_TEXT].last))
+	if (cond_append_branch(&m->c, cur_obj->sections[ASF_OBJ_TEXT].last))
 		return 1;
 	return 0;
 }
 
 int asf_cond_match_end(backend_cond_match_handle *handle)
 {
-	if (cond_end_branches(handle, asf_label_get_last()))
+	struct match_handle *m = handle;
+	if (cond_end_branches(&m->c, asf_label_get_last()))
 		return 1;
-	free_cond_handle(handle);
+	free_match_handle(handle);
 	return 0;
 }
 
 void asf_cond_match_free_handle(backend_cond_match_handle *handle)
 {
-	free_cond_handle(handle);
+	free_match_handle(handle);
 }

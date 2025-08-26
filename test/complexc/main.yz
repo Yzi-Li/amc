@@ -2,4 +2,4 @@
 fn hello: i32
 
 pub fn main: i32 =>
-	ret [hello]
+	ret hello

@@ -117,7 +117,7 @@ str *cmp_reg_with_mem_or_reg(enum ASF_REGS src, struct asf_val *dest)
 	if ((tmp = asf_op_get_dest(&bytes, dest)) == NULL)
 		return NULL;
 	s = str_new();
-	str_expand(s, strlen(temp) - 2 + tmp->len);
+	str_expand(s, strlen(temp) - 3 + tmp->len);
 	snprintf(s->s, s->len, temp, asf_suffix_get(bytes),
 			asf_regs[src].name,
 			tmp->s);

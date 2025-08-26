@@ -4,4 +4,4 @@ fn rec fib(n: i32): i32 =>
 	ret (fib (n - 1)) + (fib (n - 2))
 
 pub fn main: i32 =>
-	ret fib 30
+	ret fib 35
